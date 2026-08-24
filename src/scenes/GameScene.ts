@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { Player } from '../entities/Player'
 import { Enemy } from '../entities/Enemy'
+import { Boss } from '../entities/Boss'
 import { Bullet } from '../objects/Bullet'
 
 export class GameScene extends Phaser.Scene {
@@ -8,6 +9,9 @@ export class GameScene extends Phaser.Scene {
   private platforms!: Phaser.Tilemaps.TilemapLayer
   private enemies!: Phaser.Physics.Arcade.Group
   private bullets!: Phaser.Physics.Arcade.Group
+  private boss?: Boss
+  private bossBar!: Phaser.GameObjects.Graphics
+  private bossActive = false
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
   private shootKey!: Phaser.Input.Keyboard.Key
   private healthText!: Phaser.GameObjects.Text
@@ -22,6 +26,7 @@ export class GameScene extends Phaser.Scene {
     this.load.tilemapTiledJSON('level', 'assets/level.json')
     this.load.spritesheet('player', 'assets/player.png', { frameWidth: 16, frameHeight: 24 })
     this.load.spritesheet('enemy', 'assets/enemy.png', { frameWidth: 18, frameHeight: 18 })
+    this.load.spritesheet('boss', 'assets/boss.png', { frameWidth: 32, frameHeight: 32 })
     this.load.image('bullet', 'assets/bullet.png')
   }
 
@@ -51,7 +56,6 @@ export class GameScene extends Phaser.Scene {
     this.player = new Player(this, 64, 500, this.bullets)
 
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1)
-    this.cameras.main.setZoom(2)
 
     this.spawnEnemies()
 
@@ -75,6 +79,10 @@ export class GameScene extends Phaser.Scene {
       undefined,
       this,
     )
+
+    // Boss HP bar must exist before the boss spawns (spawn draws it once).
+    this.bossBar = this.add.graphics().setScrollFactor(0).setDepth(200)
+    this.spawnBoss()
 
     this.healthText = this.add.text(10, 10, 'HP: 10', {
       fontSize: '8px',
@@ -108,6 +116,11 @@ export class GameScene extends Phaser.Scene {
       if (enemy.active) enemy.update()
       return true
     })
+
+    if (this.bossActive && this.boss?.active) {
+      this.boss.update()
+      this.drawBossBar()
+    }
   }
 
   private createAnimations() {
@@ -148,6 +161,14 @@ export class GameScene extends Phaser.Scene {
         key: 'enemy-walk',
         frames: this.anims.generateFrameNumbers('enemy', { start: 0, end: 1 }),
         frameRate: 6,
+        repeat: -1,
+      })
+    }
+    if (!this.anims.exists('boss-idle')) {
+      this.anims.create({
+        key: 'boss-idle',
+        frames: this.anims.generateFrameNumbers('boss', { start: 0, end: 1 }),
+        frameRate: 4,
         repeat: -1,
       })
     }
@@ -231,27 +252,27 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Orange explosion burst + shockwave ring at a world position. */
-  spawnExplosion(x: number, y: number) {
+  spawnExplosion(x: number, y: number, big = false) {
     const p = this.add.particles(x, y, 'bullet', {
-      speed: { min: 40, max: 120 },
-      scale: { start: 1.1, end: 0 },
-      lifespan: 380,
+      speed: { min: big ? 60 : 40, max: big ? 180 : 120 },
+      scale: { start: big ? 1.6 : 1.1, end: 0 },
+      lifespan: big ? 560 : 380,
       tint: [0xfbbf24, 0xf97316, 0xef4444],
       emitting: false,
     })
-    p.explode(16)
-    this.time.delayedCall(450, () => p.destroy())
+    p.explode(big ? 30 : 16)
+    this.time.delayedCall(big ? 620 : 450, () => p.destroy())
 
-    const ring = this.add.circle(x, y, 4).setStrokeStyle(2, 0xffffff, 1)
+    const ring = this.add.circle(x, y, big ? 8 : 4).setStrokeStyle(2, 0xffffff, 1)
     this.tweens.add({
       targets: ring,
-      radius: 22,
+      radius: big ? 46 : 22,
       alpha: 0,
-      duration: 240,
+      duration: big ? 380 : 240,
       ease: 'Cubic.Out',
       onComplete: () => ring.destroy(),
     })
-    this.cameras.main.shake(90, 0.003)
+    this.cameras.main.shake(big ? 260 : 90, big ? 0.008 : 0.003)
   }
 
   /** Gray dust puff at the player's feet on hard landings. */
@@ -295,6 +316,76 @@ export class GameScene extends Phaser.Scene {
       this.enemies.add(enemy)
       this.enemyCount++
     }
+  }
+
+  private spawnBoss() {
+    const boss = new Boss(this, 1480, 470, (hp, max) => this.drawBossBar(hp, max))
+    this.boss = boss
+    this.bossActive = true
+    this.physics.add.collider(this.boss, this.platforms)
+    this.physics.add.overlap(
+      this.bullets,
+      this.boss,
+      this.handleBulletHitBoss as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+      undefined,
+      this,
+    )
+    this.physics.add.overlap(
+      this.player,
+      this.boss,
+      this.handlePlayerHitBoss as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+      undefined,
+      this,
+    )
+    this.drawBossBar()
+  }
+
+  private drawBossBar(hp?: number, max?: number) {
+    const W = this.cameras.main.width
+    const barW = W - 40
+    const x = 20
+    const y = this.cameras.main.height - 14
+    const barH = 8
+    this.bossBar.clear()
+    if (!this.bossActive) return
+    this.bossBar.fillStyle(0x0a0d14, 0.8).fillRect(x - 2, y - 2, barW + 4, barH + 4)
+    this.bossBar.fillStyle(0x1a1c29, 1).fillRect(x, y, barW, barH)
+    const cur = hp ?? this.boss?.getHealth() ?? 0
+    const m = max ?? this.boss?.getMaxHealth() ?? 1
+    const frac = Math.max(0, cur / m)
+    this.bossBar.fillStyle(0xef4444, 1).fillRect(x, y, barW * frac, barH)
+    this.bossBar.fillStyle(0xffffff, 0.35).fillRect(x, y, barW * frac, 1)
+  }
+
+  private handleBulletHitBoss(
+    bullet: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+    boss: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+  ) {
+    const b = bullet as Phaser.Physics.Arcade.Image
+    const bo = boss as Boss
+    if (!b.active || !bo.active) return
+    this.spawnSparks(b.x, b.y)
+    b.disableBody(true, true)
+    bo.takeDamage(1)
+  }
+
+  private handlePlayerHitBoss(
+    player: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+    boss: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+  ) {
+    const p = player as Player
+    const bo = boss as Boss
+    if (!bo.active) return
+    p.takeDamage(1, bo.x < p.x ? 1 : -1)
+  }
+
+  /** Called by the Boss when its HP reaches zero. */
+  bossDefeated() {
+    this.bossActive = false
+    this.bossBar.clear()
+    this.add.text(this.cameras.main.width / 2 - 30, 90, 'STAGE CLEAR', {
+      fontSize: '16px', color: '#4ade80', fontFamily: 'monospace',
+    }).setScrollFactor(0).setDepth(200)
   }
 
   private handleBulletHitEnemy(
