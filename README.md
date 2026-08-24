@@ -11,6 +11,22 @@ Jeu de plateforme 2D au rendu **16-bit authentique** (256×224 natif, pixel-art,
 
 ## Contrôles
 
+### 📱 Mobile / tactile
+
+Sur écran tactile, un **D-pad virtuel + boutons** apparaît automatiquement :
+
+| Contrôle | Action |
+|----------|--------|
+| ◀ ▶ | Déplacement |
+| **A** | Saut (maintenir = saut plus haut) |
+| **B** | Tir — tap = tir rapide, **maintenu** = charge, relâcher = tir chargé |
+| 🔊 / ⛶ (haut-droit) | Son on/off · Plein écran |
+
+Menus : tap pour avancer dans l'intro ; sur la sélection de stage, tap = sélection,
+re-tap sur la carte sélectionnée = confirmer. Le clavier reste fonctionnel en parallèle.
+
+### ⌨️ Clavier
+
 | Touche | Action |
 |--------|--------|
 | ← → | Déplacement (avec accélération/friction) |
@@ -109,3 +125,4 @@ Sprites en pixel-art procédural (grille de pixels, palette limitée, outline 1p
 - [x] Tir chargé (maintenir Z) + orbes d'énergie + pouvoir de boss absorbable
 - [x] Sons et musique (Web Audio procédural, touche M)
 - [x] Système de vies / game over
+- [x] Contrôles tactiles mobiles (D-pad virtuel + A/B, tap menus)

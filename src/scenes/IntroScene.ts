@@ -83,6 +83,8 @@ export class IntroScene extends Phaser.Scene {
     }
     this.input.keyboard!.on('keydown-Z', advance)
     this.input.keyboard!.on('keydown-ENTER', advance)
+    // Mobile: tap anywhere to advance.
+    this.input.on('pointerdown', advance)
     this.input.keyboard!.once('keydown', () => {
       sfx.unlock()
       startMusic('menu')

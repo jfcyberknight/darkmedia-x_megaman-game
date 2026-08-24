@@ -61,6 +61,12 @@ export class StageSelectScene extends Phaser.Scene {
 
       const card = this.add.rectangle(x, y, this.cardSize, this.cardSize, s.midColor, 1)
       card.setStrokeStyle(2, s.accent, 0.45)
+      card.setInteractive({ useHandCursor: true })
+      // Mobile: tap a card to select it; tap the selected card again to launch.
+      card.on('pointerdown', () => {
+        if (this.selected === i) this.confirm()
+        else this.select(i)
+      })
       this.cards.push(card)
 
       this.add.text(x, y, String(i + 1), {
@@ -80,7 +86,7 @@ export class StageSelectScene extends Phaser.Scene {
     }).setOrigin(0.5)
     this.nameText.setShadow(0, 0, '#35e0ff', 6, true, true)
 
-    this.add.text(width / 2, height * 0.84, '← → MOVE     Z CONFIRM', {
+    this.add.text(width / 2, height * 0.84, '← → MOVE   Z/TAP CONFIRM', {
       fontSize: '8px', color: '#5a6280', fontFamily: 'monospace', letterSpacing: 1,
     }).setOrigin(0.5)
 
@@ -102,9 +108,13 @@ export class StageSelectScene extends Phaser.Scene {
   }
 
   private move(dir: number) {
-    this.selected = (this.selected + dir + STAGES.length) % STAGES.length
-    this.nameText.setText(STAGES[this.selected].name)
-    this.skyline.setTexture(`bg-far-${STAGES[this.selected].id}`)
+    this.select((this.selected + dir + STAGES.length) % STAGES.length)
+  }
+
+  private select(i: number) {
+    this.selected = i
+    this.nameText.setText(STAGES[i].name)
+    this.skyline.setTexture(`bg-far-${STAGES[i].id}`)
     this.renderCursor()
   }
 

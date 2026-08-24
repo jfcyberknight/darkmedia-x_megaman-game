@@ -5,6 +5,7 @@ import { TitleScene } from './scenes/TitleScene'
 import { StageSelectScene } from './scenes/StageSelectScene'
 import { GameScene } from './scenes/GameScene'
 import { getTrack } from './audio'
+import { installTouchControls } from './touch'
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -30,6 +31,7 @@ const config: Phaser.Types.Core.GameConfig = {
 }
 
 const game = new Phaser.Game(config)
+installTouchControls()
 // Exposed for headless debugging probes only.
 ;(window as unknown as { __game?: Phaser.Game; __track?: () => string | null }).__game = game
 ;(window as unknown as { __track?: () => string | null }).__track = getTrack

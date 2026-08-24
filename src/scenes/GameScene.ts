@@ -8,6 +8,7 @@ import { Bullet } from '../objects/Bullet'
 import { drawVignette } from '../ui'
 import { sfx, startMusic, stopMusic } from '../audio'
 import { STAGES, DEFAULT_STAGE, type StageDef } from '../stages'
+import { touchState, isTouchUI } from '../touch'
 
 const WORLD_W = 800
 const WORLD_H = 320
@@ -37,6 +38,9 @@ export class GameScene extends Phaser.Scene {
   private bgMid!: Phaser.GameObjects.TileSprite
   private enemyCount = 0
   private stage: StageDef = DEFAULT_STAGE
+  // Previous-frame state of the touch buttons (edge detection for jump/shoot).
+  private tPrevJump = false
+  private tPrevShoot = false
 
   constructor() {
     super({ key: 'GameScene' })
@@ -176,7 +180,7 @@ export class GameScene extends Phaser.Scene {
       fontSize: '8px', color: '#a9b3cf', fontFamily: 'monospace', letterSpacing: 1,
     }).setScrollFactor(0).setDepth(200)
 
-    this.add.text(6, 24, '←→:move ↑:jump Z:hold=charge', {
+    this.add.text(6, 24, isTouchUI() ? '◀▶ MOVE  A JUMP  B HOLD=CHARGE' : '←→:move ↑:jump Z:hold=charge', {
       fontSize: '7px', color: '#5a6280', fontFamily: 'monospace',
     }).setScrollFactor(0).setDepth(200)
 
@@ -215,13 +219,17 @@ export class GameScene extends Phaser.Scene {
 
     if (!this.bossIntroDone && this.player.x > 660) this.bossWarning()
 
-    const left = this.cursors.left!.isDown
-    const right = this.cursors.right!.isDown
-    const jump = Phaser.Input.Keyboard.JustDown(this.cursors.up!)
-    const jumpHeld = this.cursors.up!.isDown
-    const shootPressed = Phaser.Input.Keyboard.JustDown(this.shootKey)
-    const shootHeld = this.shootKey.isDown
-    const shootReleased = Phaser.Input.Keyboard.JustUp(this.shootKey)
+    // Merge keyboard + touch (virtual pad). Touch edges are computed against
+    // the previous frame so tap/hold/release semantics match the keyboard.
+    const left = this.cursors.left!.isDown || touchState.left
+    const right = this.cursors.right!.isDown || touchState.right
+    const jump = Phaser.Input.Keyboard.JustDown(this.cursors.up!) || (touchState.jump && !this.tPrevJump)
+    const jumpHeld = this.cursors.up!.isDown || touchState.jump
+    const shootHeld = this.shootKey.isDown || touchState.shoot
+    const shootPressed = Phaser.Input.Keyboard.JustDown(this.shootKey) || (touchState.shoot && !this.tPrevShoot)
+    const shootReleased = Phaser.Input.Keyboard.JustUp(this.shootKey) || (!touchState.shoot && this.tPrevShoot)
+    this.tPrevJump = touchState.jump
+    this.tPrevShoot = touchState.shoot
 
     if (Phaser.Input.Keyboard.JustDown(this.muteKey)) {
       const m = sfx.toggleMute()
