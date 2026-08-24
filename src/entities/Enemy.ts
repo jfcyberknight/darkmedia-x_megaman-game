@@ -11,8 +11,8 @@ export interface StageEnemy {
 }
 
 export class Enemy extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
-  private patrolSpeed = 100
-  private patrolDistance = 150
+  private patrolSpeed = 20
+  private patrolDistance = 30
   private startX = 0
   private health = 2
 
@@ -23,8 +23,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
     scene.add.existing(this)
     scene.physics.add.existing(this)
 
-    this.body!.setSize(34, 34)
-    this.body!.setOffset(5, 8)
+    this.body!.setSize(14, 14)
+    this.body!.setOffset(4, 4)
     this.setCollideWorldBounds(true)
     this.setVelocityX(this.patrolSpeed)
     this.play('enemy-walk')

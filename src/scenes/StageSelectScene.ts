@@ -4,8 +4,8 @@ import { drawStarfield, drawSkyline, drawVignette } from '../ui'
 
 export class StageSelectScene extends Phaser.Scene {
   private selected = 0
-  private cardSize = 120
-  private cardSpacing = 30
+  private cardSize = 48
+  private cardSpacing = 12
   private cursor!: Phaser.GameObjects.Rectangle
   private cards: Phaser.GameObjects.Rectangle[] = []
   private cardGlows: Phaser.GameObjects.Image[] = []
@@ -33,11 +33,11 @@ export class StageSelectScene extends Phaser.Scene {
     this.skyline = drawSkyline(this, `bg-far-${STAGES[this.selected].id}`, -2)
     this.skyline.setAlpha(0.45)
 
-    const header = this.add.text(width / 2, 48, 'SELECT YOUR STAGE', {
-      fontSize: '32px', color: '#e2e8f0', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 6,
+    const header = this.add.text(width / 2, 20, 'SELECT YOUR STAGE', {
+      fontSize: '14px', color: '#e2e8f0', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 6,
     }).setOrigin(0.5)
-    header.setStroke('#0a0512', 8)
-    header.setShadow(0, 0, '#35e0ff', 16, true, true)
+    header.setStroke('#0a0512', 3)
+    header.setShadow(0, 0, '#35e0ff', 6, true, true)
 
     // Layout cards in one row, centered
     const total = STAGES.length
@@ -54,7 +54,7 @@ export class StageSelectScene extends Phaser.Scene {
       const glowImg = this.add.image(x, y, 'glow')
         .setTint(s.accent)
         .setBlendMode(Phaser.BlendModes.ADD)
-        .setScale(1.6)
+        .setScale(0.7)
         .setAlpha(0)
       this.cardGlows.push(glowImg)
 
@@ -63,24 +63,24 @@ export class StageSelectScene extends Phaser.Scene {
       this.cards.push(card)
 
       this.add.text(x, y, String(i + 1), {
-        fontSize: '44px', color: '#ffffff', fontFamily: 'monospace', fontStyle: 'bold',
+        fontSize: '16px', color: '#ffffff', fontFamily: 'monospace', fontStyle: 'bold',
       }).setOrigin(0.5).setAlpha(0.85)
-      this.add.text(x, y + 42, s.name, {
-        fontSize: '11px', color: '#8b93a8', fontFamily: 'monospace', letterSpacing: 1,
+      this.add.text(x, y + 18, s.name, {
+        fontSize: '6px', color: '#8b93a8', fontFamily: 'monospace', letterSpacing: 1,
       }).setOrigin(0.5)
     }
 
-    this.cursor = this.add.rectangle(0, 0, this.cardSize + 8, this.cardSize + 8)
-    this.cursor.setStrokeStyle(2.5, 0xffffff, 1)
+    this.cursor = this.add.rectangle(0, 0, this.cardSize + 4, this.cardSize + 4)
+    this.cursor.setStrokeStyle(1.5, 0xffffff, 1)
     this.tweens.add({ targets: this.cursor, scale: { from: 1, to: 1.06 }, duration: 500, yoyo: true, repeat: -1 })
 
     this.nameText = this.add.text(width / 2, height * 0.72, STAGES[this.selected].name, {
-      fontSize: '26px', color: '#e2e8f0', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 6,
+      fontSize: '11px', color: '#e2e8f0', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 6,
     }).setOrigin(0.5)
-    this.nameText.setShadow(0, 0, '#35e0ff', 14, true, true)
+    this.nameText.setShadow(0, 0, '#35e0ff', 6, true, true)
 
     this.add.text(width / 2, height * 0.84, '← → MOVE     Z CONFIRM', {
-      fontSize: '15px', color: '#5a6280', fontFamily: 'monospace', letterSpacing: 3,
+      fontSize: '8px', color: '#5a6280', fontFamily: 'monospace', letterSpacing: 1,
     }).setOrigin(0.5)
 
     drawVignette(this, 0.5)
@@ -108,7 +108,7 @@ export class StageSelectScene extends Phaser.Scene {
     this.cardGlows.forEach((g, i) => g.setAlpha(i === this.selected ? 0.35 : 0))
     const card = this.cards[this.selected]
     this.cursor.setPosition(card.x, card.y)
-    this.cursor.setStrokeStyle(2.5, STAGES[this.selected].accent, 1)
+    this.cursor.setStrokeStyle(1.5, STAGES[this.selected].accent, 1)
   }
 
   private confirm() {

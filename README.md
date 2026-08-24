@@ -1,6 +1,6 @@
 # darkmedia-x_megaman-game
 
-Jeu de plateforme 2D au style moderne (rendu 960×540 lisse, dégradés, glow, parallaxe), développé avec **Phaser 3**, **TypeScript** et **Vite**.
+Jeu de plateforme 2D au rendu **16-bit authentique** (256×224 natif, pixel-art, palette limitée — esprit Mega Man X), développé avec **Phaser 3**, **TypeScript** et **Vite**.
 
 ## Stack
 
@@ -87,7 +87,7 @@ formes lisses anti-aliasées, dégradés, rim light, glow additif. Le monde est
 npm run assets   # régénère public/assets/*.png + level.json (échelle 80px)
 ```
 
-Des aperçus agrandis sont écrits dans `scripts/preview/` (ignoré par git).
+Sprites en pixel-art procédural (grille de pixels, palette limitée, outline 1px). Des aperçus agrandis sont écrits dans `scripts/preview/` (ignoré par git).
 
 ## Prochaines améliorations
 

@@ -16,7 +16,7 @@ export function drawStarfield(scene: Phaser.Scene, count = 110): Phaser.GameObje
   for (let i = 0; i < count; i++) {
     const x = Math.random() * width
     const y = Math.random() * height
-    const r = Math.random() > 0.85 ? 2.2 : 1.2
+    const r = Math.random() > 0.85 ? 1 : 0.6
     const star = scene.add.circle(x, y, r, 0xffffff, 0.3 + Math.random() * 0.45)
     star.setScrollFactor(0).setDepth(-4)
     scene.tweens.add({

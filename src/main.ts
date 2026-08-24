@@ -7,16 +7,16 @@ import { GameScene } from './scenes/GameScene'
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: 'game-container',
-  width: 960,
-  height: 540,
-  pixelArt: false,
-  antialias: true,
-  roundPixels: false,
+  width: 256,
+  height: 224,
+  pixelArt: true,
+  antialias: false,
+  roundPixels: true,
   backgroundColor: '#0d0e15',
   physics: {
     default: 'arcade',
     arcade: {
-      gravity: { x: 0, y: 2250 },
+      gravity: { x: 0, y: 450 },
       debug: false,
     },
   },

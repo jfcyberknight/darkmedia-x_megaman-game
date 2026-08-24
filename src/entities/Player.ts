@@ -4,27 +4,27 @@ import { sfx } from '../audio'
 
 const CHARGE_MID = 400
 const CHARGE_BIG = 1000
-const WORLD_G = 2250
+const WORLD_G = 450
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
-  // --- movement tuning ---
-  private speed = 350
-  private runAccel = 2900        // ground acceleration (px/s²)
-  private runDecel = 3600        // ground friction
-  private airAccel = 2200        // air control
-  private airDecel = 2400
-  private jumpVelocity = -1120
-  private fallMult = 1.4         // gravity ×1.4 while falling (snappier arcs)
-  private lowJumpMult = 2.7      // extra gravity when releasing jump early
-  private apexThreshold = 150    // |vy| window treated as the jump apex
-  private apexBonus = 0.52       // gravity ×0.52 near apex (hang time)
-  private maxFall = 1300         // terminal velocity
+  // --- movement tuning (16px tiles, 256x224 view) ---
+  private speed = 70
+  private runAccel = 580
+  private runDecel = 720
+  private airAccel = 440
+  private airDecel = 480
+  private jumpVelocity = -224
+  private fallMult = 1.4
+  private lowJumpMult = 2.7
+  private apexThreshold = 30
+  private apexBonus = 0.52
+  private maxFall = 260
   private coyoteTime = 120
   private jumpBufferTime = 120
-  private wallSlideSpeed = 230   // max fall speed while pushing against a wall
-  private wallJumpX = 470        // horizontal impulse away from the wall
-  private wallJumpY = -980
-  private wallCoyote = 130       // grace to jump after leaving a wall
+  private wallSlideSpeed = 46
+  private wallJumpX = 94
+  private wallJumpY = -196
+  private wallCoyote = 130
 
   private maxHealth = 10
   private health = 10
@@ -63,10 +63,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this)
     scene.physics.add.existing(this)
 
-    this.body!.setSize(28, 50)
-    this.body!.setOffset(6, 8)
+    this.body!.setSize(12, 20)
+    this.body!.setOffset(5, 8)
     this.setCollideWorldBounds(true)
-    this.setMaxVelocity(600, this.maxFall)
+    this.setMaxVelocity(120, this.maxFall)
   }
 
   update(
@@ -129,9 +129,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     // --- landing / jump feedback ---
     if (onGround && !this.wasOnGround) {
-      if (this.prevVy > 600) {
+      if (this.prevVy > 130) {
         ;(this.scene as Phaser.Scene & { spawnLandingDust(x: number, y: number): void })
-          .spawnLandingDust(this.x, this.y + 25)
+          .spawnLandingDust(this.x, this.y + 10)
       }
       this.squash(1.16, 0.84)
     }
@@ -225,9 +225,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.chargeHalo = this.scene.add.image(this.x, this.y, 'glow')
         .setBlendMode(Phaser.BlendModes.ADD).setDepth(39)
     }
-    const pulse = Math.sin(this.scene.time.now / 70) * 0.06
-    const base = 0.16 + level * 0.3
-    this.chargeGlow.setPosition(this.x, this.y).setScale(base + 0.12 + pulse).setAlpha(0.55 + level * 0.15)
+    const pulse = Math.sin(this.scene.time.now / 70) * 0.02
+    const base = 0.05 + level * 0.1
+    this.chargeGlow.setPosition(this.x, this.y).setScale(base + 0.05 + pulse).setAlpha(0.55 + level * 0.15)
     this.chargeHalo.setPosition(this.x, this.y).setScale(base * 1.9 + pulse).setAlpha(0.2 + level * 0.14)
     let tint: number
     if (level >= 2) {
@@ -258,18 +258,18 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     const key = type === 'normal' ? 'bullet' : type === 'mid' ? 'bullet-mid' : 'bullet-big'
-    const bullet = this.bullets.get(this.x + dir * 20, this.y - 1, key) as Bullet
+    const bullet = this.bullets.get(this.x + dir * 8, this.y - 1, key) as Bullet
     if (!bullet) return
     bullet.activate(dir, type, this.powerUp ? 1 : 0, this.powerUp)
 
-    const flashScale = type === 'big' ? 0.6 : type === 'mid' ? 0.4 : 0.26
+    const flashScale = type === 'big' ? 0.22 : type === 'mid' ? 0.14 : 0.09
     if (type === 'normal') sfx.shoot()
     else if (type === 'mid') sfx.shootMid()
     else sfx.shootBig()
     ;(this.scene as Phaser.Scene & {
       spawnMuzzleFlash(x: number, y: number, scale?: number, flame?: boolean): void
-    }).spawnMuzzleFlash(this.x + dir * 20, this.y - 1, flashScale, this.powerUp)
-    this.scene.cameras.main.shake(type === 'normal' ? 25 : 60, type === 'normal' ? 0.001 : 0.0025)
+    }).spawnMuzzleFlash(this.x + dir * 8, this.y - 1, flashScale, this.powerUp)
+    this.scene.cameras.main.shake(type === 'normal' ? 25 : 60, type === 'normal' ? 0.001 : 0.002)
   }
 
   takeDamage(amount: number, knockbackDir: number) {
@@ -283,8 +283,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.charging = false
     this.hideChargeVisual()
 
-    this.setVelocityX(knockbackDir * 300)
-    this.setVelocityY(-450)
+    this.setVelocityX(knockbackDir * 60)
+    this.setVelocityY(-90)
 
     // Red hit flash + camera kick
     this.setTintFill(0xff5050)
@@ -305,8 +305,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.dead = true
     this.charging = false
     this.hideChargeVisual()
-    this.setVelocityX(-knockbackDir * 150)
-    this.setVelocityY(-520)
+    this.setVelocityX(-knockbackDir * 30)
+    this.setVelocityY(-104)
     this.scene.tweens.add({
       targets: this,
       alpha: { from: 1, to: 0.15 },

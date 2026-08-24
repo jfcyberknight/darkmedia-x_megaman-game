@@ -41,8 +41,8 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this)
     scene.physics.add.existing(this)
 
-    this.body!.setSize(62, 60)
-    this.body!.setOffset(9, 16)
+    this.body!.setSize(25, 24)
+    this.body!.setOffset(9, 10)
     this.setCollideWorldBounds(true)
     this.play('boss-idle')
   }
@@ -65,7 +65,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
 
     switch (this.aiState) {
       case 'walk': {
-        this.setVelocityX(Math.sign(dx) * (this.enraged ? 95 : 70))
+        this.setVelocityX(Math.sign(dx) * (this.enraged ? 19 : 14))
         this.setFlipX(dx < 0)
         this.cooldown -= delta
         if (this.cooldown <= 0 && adx < 580) this.pickAttack(adx)
@@ -130,12 +130,12 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     } else if (this.pending === 'dash') {
       const dir = Math.sign(this.target.x - this.x) || 1
       this.setFlipX(dir < 0)
-      this.setVelocityX(dir * (this.enraged ? 560 : 470))
+      this.setVelocityX(dir * (this.enraged ? 112 : 94))
       sfx.dash()
       this.aiState = 'dash'
       this.stateTime = 0
     } else {
-      this.setVelocityY(-720)
+      this.setVelocityY(-144)
       sfx.jump()
       this.aiState = 'slam'
       this.stateTime = 0
@@ -145,9 +145,9 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
   private fireVolleyShot() {
     this.shotsFired++
     sfx.bossShot()
-    const sx = this.x + (this.flipX ? -26 : 26)
+    const sx = this.x + (this.flipX ? -10 : 10)
     const sy = this.y - 6
-    ;(this.scene as BossScene).spawnEnemyBullet(sx, sy, this.target.x, this.target.y, 350, 0xff5546)
+    ;(this.scene as BossScene).spawnEnemyBullet(sx, sy, this.target.x, this.target.y, 70, 0xff5546)
   }
 
   private slamLand() {
@@ -156,8 +156,8 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     this.setVelocityX(0)
     sfx.slam()
     this.scene.cameras.main.shake(240, 0.006)
-    ;(this.scene as BossScene).spawnShockwave(this.x - 44, this.y + 36, -1)
-    ;(this.scene as BossScene).spawnShockwave(this.x + 44, this.y + 36, 1)
+    ;(this.scene as BossScene).spawnShockwave(this.x - 18, this.y + 14, -1)
+    ;(this.scene as BossScene).spawnShockwave(this.x + 18, this.y + 14, 1)
   }
 
   private endAttack() {

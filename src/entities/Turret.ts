@@ -18,8 +18,8 @@ export class Turret extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
 
     ;(this.body as Phaser.Physics.Arcade.Body).allowGravity = false
     this.setImmovable(true)
-    this.body!.setSize(30, 24)
-    this.body!.setOffset(5, 14)
+    this.body!.setSize(12, 10)
+    this.body!.setOffset(3, 8)
     this.setFlipX(target.x < x)
   }
 
@@ -33,7 +33,7 @@ export class Turret extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
     this.cooldown -= delta
     const dx = this.target.x - this.x
     const dy = this.target.y - this.y
-    if (this.cooldown <= 0 && Math.abs(dx) < 560 && Math.abs(dy) < 150) {
+    if (this.cooldown <= 0 && Math.abs(dx) < 112 && Math.abs(dy) < 30) {
       this.setFlipX(dx < 0)
       this.telegraphing = 320
       this.setTint(0xff9d8a)
@@ -45,11 +45,11 @@ export class Turret extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
     this.cooldown = 2100
     this.clearTint()
     sfx.turretShot()
-    const sx = this.x + (this.flipX ? -26 : 26)
-    const sy = this.y + 2
+    const sx = this.x + (this.flipX ? -10 : 10)
+    const sy = this.y + 1
     ;(this.scene as Phaser.Scene & {
       spawnEnemyBullet(x: number, y: number, tx: number, ty: number, speed?: number, tint?: number): void
-    }).spawnEnemyBullet(sx, sy, this.target.x, this.target.y, 360, 0xff5546)
+    }).spawnEnemyBullet(sx, sy, this.target.x, this.target.y, 72, 0xff5546)
   }
 
   takeDamage(amount: number) {

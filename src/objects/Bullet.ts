@@ -3,9 +3,9 @@ import Phaser from 'phaser'
 export type BulletType = 'normal' | 'mid' | 'big'
 
 const BULLET_DEF: Record<BulletType, { key: string; damage: number; speed: number; pierce: boolean }> = {
-  normal: { key: 'bullet', damage: 1, speed: 700, pierce: false },
-  mid: { key: 'bullet-mid', damage: 2, speed: 640, pierce: false },
-  big: { key: 'bullet-big', damage: 4, speed: 540, pierce: true },
+  normal: { key: 'bullet', damage: 1, speed: 140, pierce: false },
+  mid: { key: 'bullet-mid', damage: 2, speed: 128, pierce: false },
+  big: { key: 'bullet-big', damage: 4, speed: 108, pierce: true },
 }
 
 export class Bullet extends Phaser.Physics.Arcade.Image {

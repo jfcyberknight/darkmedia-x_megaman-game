@@ -1,6 +1,6 @@
 /**
- * HD asset generator — modern 2D look (smooth gradients, rim light, glow).
- * World scale: x2.5 vs the original SNES build (tiles 80px, world 4000x1600).
+ * SNES-style pixel-art asset generator — authentic 16-bit look.
+ * Native resolution: 256x224, 16px tiles, world 800x320.
  * Run: node scripts/generate-assets.mjs
  */
 import { PNG } from 'pngjs'
@@ -14,136 +14,50 @@ const previewDir = join(__dirname, 'preview')
 mkdirSync(outDir, { recursive: true })
 mkdirSync(previewDir, { recursive: true })
 
-// ---------------------------------------------------------------------------
-// Float canvas with source-over + additive compositing (RGBA 0..255, alpha 0..1)
-// ---------------------------------------------------------------------------
+// --------------------------- pixel canvas ---------------------------
 function C(w, h) {
-  return { w, h, d: new Float32Array(w * h * 4) }
+  return { w, h, px: Array.from({ length: h }, () => new Array(w).fill(null)) }
 }
-const clamp = (v, a, b) => (v < a ? a : v > b ? b : v)
-
-function over(c, x, y, r, g, b, a) {
-  x |= 0; y |= 0
-  if (x < 0 || y < 0 || x >= c.w || y >= c.h) return
-  const i = (y * c.w + x) * 4, d = c.d
-  const sa = clamp(a, 0, 1), da = d[i + 3] / 255
-  const oa = sa + da * (1 - sa)
-  if (oa <= 0) return
-  d[i] = (r * sa + d[i] * da * (1 - sa)) / oa
-  d[i + 1] = (g * sa + d[i + 1] * da * (1 - sa)) / oa
-  d[i + 2] = (b * sa + d[i + 2] * da * (1 - sa)) / oa
-  d[i + 3] = oa * 255
-}
-function addPx(c, x, y, r, g, b, a) {
-  x |= 0; y |= 0
-  if (x < 0 || y < 0 || x >= c.w || y >= c.h) return
-  const i = (y * c.w + x) * 4, d = c.d
-  d[i] = Math.min(255, d[i] + r * a)
-  d[i + 1] = Math.min(255, d[i + 1] + g * a)
-  d[i + 2] = Math.min(255, d[i + 2] + b * a)
-  d[i + 3] = Math.min(255, d[i + 3] + 255 * a)
-}
-
-/** Fill a bounded region: cov(x,y) -> coverage 0..1 (AA), col(x,y) -> [r,g,b]. */
-function fillB(c, x0, y0, x1, y1, cov, col) {
-  const xa = Math.max(0, Math.floor(x0)), xb = Math.min(c.w - 1, Math.ceil(x1))
-  const ya = Math.max(0, Math.floor(y0)), yb = Math.min(c.h - 1, Math.ceil(y1))
-  for (let y = ya; y <= yb; y++)
-    for (let x = xa; x <= xb; x++) {
-      const a = cov(x + 0.5, y + 0.5)
-      if (a > 0.003) {
-        const [r, g, b] = col(x + 0.5, y + 0.5)
-        over(c, x, y, r, g, b, a)
-      }
-    }
-}
-
-// --- bounded shape primitives (1px anti-aliasing) ---
-const rr = (c, cx, cy, hw, hh, r, col) => {
-  const cov = (x, y) => {
-    const dx = Math.max(Math.abs(x - cx) - (hw - r), 0)
-    const dy = Math.max(Math.abs(y - cy) - (hh - r), 0)
-    return clamp(0.5 - (Math.sqrt(dx * dx + dy * dy) - r), 0, 1)
-  }
-  fillB(c, cx - hw - 1, cy - hh - 1, cx + hw + 1, cy + hh + 1, cov, col)
-}
-const el = (c, cx, cy, rx, ry, col) => {
-  const cov = (x, y) => {
-    const dx = (x - cx) / rx, dy = (y - cy) / ry
-    const d = Math.sqrt(dx * dx + dy * dy) - 1
-    return clamp(0.5 - d * Math.min(rx, ry) * 0.8, 0, 1)
-  }
-  fillB(c, cx - rx - 1, cy - ry - 1, cx + rx + 1, cy + ry + 1, cov, col)
-}
-const seg = (c, x1, y1, x2, y2, r, col) => {
-  const cov = (x, y) => {
-    const vx = x2 - x1, vy = y2 - y1
-    const len2 = vx * vx + vy * vy || 1
-    const t = clamp(((x - x1) * vx + (y - y1) * vy) / len2, 0, 1)
-    const px = x1 + vx * t, py = y1 + vy * t
-    return clamp(0.5 - (Math.sqrt((x - px) ** 2 + (y - py) ** 2) - r), 0, 1)
-  }
-  fillB(c, Math.min(x1, x2) - r - 1, Math.min(y1, y2) - r - 1, Math.max(x1, x2) + r + 1, Math.max(y1, y2) + r + 1, cov, col)
-}
-
-/** Additive glow blob. */
-function glow(c, cx, cy, rad, [r, g, b], intensity = 1) {
-  const x0 = Math.max(0, Math.floor(cx - rad)), x1 = Math.min(c.w - 1, Math.ceil(cx + rad))
-  const y0 = Math.max(0, Math.floor(cy - rad)), y1 = Math.min(c.h - 1, Math.ceil(cy + rad))
-  for (let y = y0; y <= y1; y++)
-    for (let x = x0; x <= x1; x++) {
-      const dx = x + 0.5 - cx, dy = y + 0.5 - cy
-      const dist = Math.sqrt(dx * dx + dy * dy) / rad
-      if (dist >= 1) continue
-      const fall = (1 - dist) * (1 - dist)
-      addPx(c, x, y, r, g, b, fall * intensity)
-    }
-}
-
-// --- color helpers ---
 const hex = (h) => [(h >> 16) & 255, (h >> 8) & 255, h & 255]
-const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]
-const clamp01 = (v) => clamp(v, 0, 1)
-const solid = (c1) => () => c1
+const mix = (a, b, t) => [Math.round(a[0] + (b[0] - a[0]) * t), Math.round(a[1] + (b[1] - a[1]) * t), Math.round(a[2] + (b[2] - a[2]) * t)]
+const clamp01 = (v) => Math.max(0, Math.min(1, v))
 
-/** Soft dark outline around existing opaque pixels (small canvases only). */
-function outline(c, col = [10, 12, 24], width = 2, strength = 0.95) {
-  const src = Float32Array.from(c.d)
-  const alphaAt = (x, y) => (x < 0 || y < 0 || x >= c.w || y >= c.h ? 0 : src[(y * c.w + x) * 4 + 3] / 255)
+function px(c, x, y, col) {
+  x = Math.round(x); y = Math.round(y)
+  if (x >= 0 && y >= 0 && x < c.w && y < c.h) c.px[y][x] = col
+}
+function rect(c, x0, y0, x1, y1, col) {
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) px(c, x, y, col)
+}
+function ell(c, cx, cy, rx, ry, col) {
+  for (let y = cy - ry; y <= cy + ry; y++)
+    for (let x = cx - rx; x <= cx + rx; x++) {
+      const dx = (x - cx) / (rx + 0.5), dy = (y - cy) / (ry + 0.5)
+      if (dx * dx + dy * dy <= 1) px(c, x, y, col)
+    }
+}
+function seg(c, x1, y1, x2, y2, col) {
+  const n = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1), 1)
+  for (let i = 0; i <= n; i++) px(c, x1 + ((x2 - x1) * i) / n, y1 + ((y2 - y1) * i) / n, col)
+}
+function blit(dst, src, ox, oy) {
+  for (let y = 0; y < src.h; y++)
+    for (let x = 0; x < src.w; x++)
+      if (src.px[y][x]) px(dst, x + ox, y + oy, src.px[y][x])
+}
+/** 1px dark outline around filled pixels. */
+function outline(c, col) {
+  const marks = []
   for (let y = 0; y < c.h; y++)
     for (let x = 0; x < c.w; x++) {
-      const i = (y * c.w + x) * 4
-      if (src[i + 3] / 255 > 0.35) continue
-      let m = 0
-      for (let dy = -width; dy <= width; dy++)
-        for (let dx = -width; dx <= width; dx++) {
-          const a = alphaAt(x + dx, y + dy)
-          const fall = 1 - Math.sqrt(dx * dx + dy * dy) / (width + 0.5)
-          if (fall > 0 && a * fall > m) m = a * fall
-        }
-      if (m > 0.12) over(c, x, y, col[0], col[1], col[2], Math.min(1, m * strength))
+      if (c.px[y][x]) continue
+      const n = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => {
+        const yy = y + dy, xx = x + dx
+        return yy >= 0 && yy < c.h && xx >= 0 && xx < c.w && c.px[yy][xx]
+      })
+      if (n) marks.push([x, y])
     }
-}
-
-function save(c, file) {
-  const png = new PNG({ width: c.w, height: c.h })
-  for (let i = 0; i < c.w * c.h; i++) {
-    png.data[i * 4] = clamp(Math.round(c.d[i * 4]), 0, 255)
-    png.data[i * 4 + 1] = clamp(Math.round(c.d[i * 4 + 1]), 0, 255)
-    png.data[i * 4 + 2] = clamp(Math.round(c.d[i * 4 + 2]), 0, 255)
-    png.data[i * 4 + 3] = clamp(Math.round(c.d[i * 4 + 3]), 0, 255)
-  }
-  writeFileSync(join(outDir, file), PNG.sync.write(png))
-}
-function savePreview(c, file, scale = 4) {
-  const png = new PNG({ width: c.w * scale, height: c.h * scale })
-  for (let y = 0; y < png.height; y++)
-    for (let x = 0; x < png.width; x++) {
-      const sx = Math.floor(x / scale), sy = Math.floor(y / scale)
-      const i = (y * png.width + x) * 4, s = (sy * c.w + sx) * 4
-      png.data[i] = c.d[s]; png.data[i + 1] = c.d[s + 1]; png.data[i + 2] = c.d[s + 2]; png.data[i + 3] = c.d[s + 3]
-    }
-  writeFileSync(join(previewDir, file), PNG.sync.write(png))
+  for (const [x, y] of marks) px(c, x, y, col)
 }
 function stitch(canvases) {
   const w = canvases.reduce((a, c) => a + c.w, 0)
@@ -151,12 +65,7 @@ function stitch(canvases) {
   const out = C(w, h)
   let ox = 0
   for (const c of canvases) {
-    for (let y = 0; y < h; y++)
-      for (let x = 0; x < c.w; x++) {
-        const i = (y * c.w + x) * 4, o = (y * out.w + x + ox) * 4
-        if (c.d[i + 3] <= 0) continue
-        out.d[o] = c.d[i]; out.d[o + 1] = c.d[i + 1]; out.d[o + 2] = c.d[i + 2]; out.d[o + 3] = c.d[i + 3]
-      }
+    blit(out, c, ox, 0)
     ox += c.w
   }
   return out
@@ -171,619 +80,520 @@ function mulberry32(seed) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Palette — Mega Man X spirit: vivid blue/white armor, crystal gems, expressive eye
-// ---------------------------------------------------------------------------
-const P = {
-  armorHi: hex(0x8ab8ff),
-  armorTop: hex(0x3b7dff),
-  armorLo: hex(0x1c40a8),
-  armorDeep: hex(0x122a6e),
-  whiteArmor: hex(0xeef3fc),
-  whiteLo: hex(0xb9cbe6),
-  joint: hex(0x18203a),
-  gunTop: hex(0x93a2bd),
-  gunLo: hex(0x3a435c),
-  visor: hex(0x4de3ff),
-  visorDeep: hex(0x0f86c8),
-  core: hex(0x6df0ff),
-  white: hex(0xffffff),
-  bootTop: hex(0x2f5fd0),
-  bootLo: hex(0x16265e),
-  skin: hex(0xf6cfa4),
-  eye: hex(0x1c2c50),
+// smooth float helpers (glow, vignette, haze only)
+function CF(w, h) { return { w, h, d: new Float32Array(w * h * 4) } }
+function fOver(c, x, y, r, g, b, a) {
+  x |= 0; y |= 0
+  if (x < 0 || y < 0 || x >= c.w || y >= c.h) return
+  const i = (y * c.w + x) * 4, d = c.d
+  const sa = Math.max(0, Math.min(1, a)), da = d[i + 3] / 255
+  const oa = sa + da * (1 - sa)
+  if (oa <= 0) return
+  d[i] = (r * sa + d[i] * da * (1 - sa)) / oa
+  d[i + 1] = (g * sa + d[i + 1] * da * (1 - sa)) / oa
+  d[i + 2] = (b * sa + d[i + 2] * da * (1 - sa)) / oa
+  d[i + 3] = oa * 255
+}
+function save(c, file) {
+  const png = new PNG({ width: c.w, height: c.h })
+  const isFloat = !!c.d
+  for (let i = 0; i < c.w * c.h; i++) {
+    if (isFloat) {
+      for (let k = 0; k < 4; k++) {
+        png.data[i * 4 + k] = Math.max(0, Math.min(255, Math.round(c.d[i * 4 + k])))
+      }
+    } else {
+      const col = c.px[Math.floor(i / c.w)][i % c.w]
+      png.data[i * 4] = col ? col[0] : 0
+      png.data[i * 4 + 1] = col ? col[1] : 0
+      png.data[i * 4 + 2] = col ? col[2] : 0
+      png.data[i * 4 + 3] = col ? 255 : 0
+    }
+  }
+  writeFileSync(join(outDir, file), PNG.sync.write(png))
+}
+function savePreview(c, file, scale = 4) {
+  const png = new PNG({ width: c.w * scale, height: c.h * scale })
+  for (let y = 0; y < png.height; y++)
+    for (let x = 0; x < png.width; x++) {
+      const sx = Math.floor(x / scale), sy = Math.floor(y / scale)
+      const i = (y * png.width + x) * 4
+      if (c.d) {
+        const s = (sy * c.w + sx) * 4
+        png.data[i] = c.d[s]; png.data[i + 1] = c.d[s + 1]; png.data[i + 2] = c.d[s + 2]; png.data[i + 3] = c.d[s + 3]
+      } else {
+        const col = c.px[sy][sx]
+        png.data[i] = col ? col[0] : 0; png.data[i + 1] = col ? col[1] : 0; png.data[i + 2] = col ? col[2] : 0; png.data[i + 3] = col ? 255 : 0
+      }
+    }
+  writeFileSync(join(previewDir, file), PNG.sync.write(png))
 }
 
-// ============================ PLAYER (40x60, 8 frames) ============================
-// Sleek armored hero facing right: glowing visor, chest core, buster cannon.
+// --------------------------- palette (X spirit) ---------------------------
+const A = {
+  hi: hex(0x8ab8ff), top: hex(0x3b7dff), mid: hex(0x2a5cd0), lo: hex(0x1c40a8), deep: hex(0x122a6e),
+  white: hex(0xeef3fc), whiteLo: hex(0xb9cbe6),
+  gem: hex(0x4de3ff), gemHi: hex(0xc8f6ff),
+  joint: hex(0x18203a), gun: hex(0x93a2bd), gunLo: hex(0x3a435c),
+  skin: hex(0xf6cfa4), skinLo: hex(0xd9a878), eye: hex(0x1c2c50),
+  boot: hex(0x2f5fd0), bootLo: hex(0x16265e),
+  outline: hex(0x10142a),
+}
+
+// ============================ PLAYER 22x30 x8 ============================
+// X-style armored hero in profile: crystal crest, visible eye, white chest.
 
 function drawHead(c, ox, oy) {
-  // skull dome (vivid X blue, strong rim light)
-  el(c, ox + 17, oy + 12.5, 9.5, 9.2, (x, y) => {
-    const t = clamp01((y - (oy + 4)) / 17)
-    const light = Math.max(0, 1 - Math.hypot((x - (ox + 13)) / 10, (y - (oy + 8)) / 9))
-    return mix(mix(P.armorTop, P.armorLo, t), P.armorHi, light * 0.6)
-  })
-  // helmet back rim
-  el(c, ox + 10.5, oy + 14.5, 4, 5.6, (x, y) => mix(P.armorLo, P.armorDeep, clamp01((y - (oy + 9)) / 11)))
-  // face (skin, front of profile)
-  rr(c, ox + 22.3, oy + 13.2, 4.8, 6, 3, solid(P.skin))
-  // big expressive eye
-  el(c, ox + 23.8, oy + 13, 2.6, 2, solid(P.white))
-  el(c, ox + 24.7, oy + 13.2, 1.25, 1.6, solid(P.eye))
-  el(c, ox + 24.2, oy + 12.4, 0.55, 0.55, solid(P.white))
-  // helmet brow overhang above the eye
-  rr(c, ox + 22.6, oy + 9.8, 4.9, 1.8, 1.7, (x, y) => mix(P.armorHi, P.armorTop, clamp01((y - (oy + 8)) / 4)))
-  // jaw
-  rr(c, ox + 22.8, oy + 19.6, 3.2, 1.8, 1.6, solid(mix(P.skin, [190, 140, 100], 0.3)))
-  // ear pod with crystal center
-  el(c, ox + 12, oy + 13.5, 2.9, 3.3, solid(mix(P.armorLo, P.joint, 0.4)))
-  el(c, ox + 12, oy + 13.5, 1.4, 1.7, solid(P.visor))
-  glow(c, ox + 12, oy + 13.5, 4.5, P.visor, 0.35)
-  // crystal crest gem on top
-  const cx = ox + 16.5, cy = oy + 3, r = 4.2
-  fillB(c, cx - r - 1, cy - r - 1, cx + r + 1, cy + r + 1,
-    (x, y) => clamp01(r - (Math.abs(x - cx) * 0.75 + Math.abs(y - cy) * 1.5) + 0.5),
-    (x, y) => {
-      const spec = Math.max(0, 1 - Math.hypot((x - cx - 1.2) / 4, (y - cy - 1) / 3))
-      return mix(P.visor, P.white, spec * 0.75)
-    })
-  glow(c, cx, cy, 7, P.visor, 0.5)
+  // helmet dome
+  ell(c, ox + 10, oy + 8, 6, 5.5, A.mid)
+  ell(c, ox + 9, oy + 7, 5, 4.2, A.top)
+  rect(c, ox + 6, oy + 4, ox + 9, oy + 5, A.hi)          // top shine
+  rect(c, ox + 13, oy + 8, ox + 15, oy + 11, A.lo)       // right shade
+  // crystal crest gem
+  px(c, ox + 9, oy + 0, A.gemHi); px(c, ox + 10, oy + 0, A.gem)
+  rect(c, ox + 8, oy + 1, ox + 11, oy + 2, A.gem)
+  px(c, ox + 9, oy + 3, A.gem); px(c, ox + 10, oy + 3, hex(0x2fa8d8))
+  px(c, ox + 9, oy + 1, A.gemHi)
+  // face (front)
+  rect(c, ox + 13, oy + 9, ox + 18, oy + 15, A.skin)
+  rect(c, ox + 13, oy + 15, ox + 17, oy + 16, A.skinLo)  // jaw shade
+  // big eye
+  rect(c, ox + 15, oy + 10, ox + 17, oy + 12, A.white)
+  rect(c, ox + 17, oy + 10, ox + 17, oy + 12, A.eye)
+  px(c, ox + 15, oy + 10, A.white)
+  // helmet brow overhang
+  rect(c, ox + 12, oy + 8, ox + 17, oy + 9, A.top)
+  px(c, ox + 12, oy + 8, A.hi)
+  // ear pod
+  ell(c, ox + 6, oy + 9, 1.6, 2, A.lo)
+  px(c, ox + 6, oy + 9, A.gem)
+  // jaw bottom
+  rect(c, ox + 14, oy + 16, ox + 16, oy + 16, A.skinLo)
 }
-
 function drawTorso(c, ox, oy) {
-  // neck
-  rr(c, ox + 20, oy + 21.5, 2.6, 2, 1.5, solid(P.joint))
-  // torso base (blue armor)
-  rr(c, ox + 20, oy + 29.5, 7, 8.5, 5, (x, y) => {
-    const t = clamp01((y - (oy + 21)) / 17)
-    const light = Math.max(0, 1 - Math.hypot((x - (ox + 16)) / 9, (y - (oy + 25)) / 10))
-    return mix(mix(P.armorTop, P.armorLo, t), P.armorHi, light * 0.45)
-  })
-  // white chest plate (front)
-  rr(c, ox + 22.3, oy + 27.5, 5.4, 6.6, 3.6, (x, y) => {
-    const t = clamp01((y - (oy + 21)) / 13)
-    const spec = Math.max(0, 1 - Math.hypot((x - (ox + 20.8)) / 5, (y - (oy + 25)) / 4))
-    return mix(mix(P.whiteArmor, P.whiteLo, t), P.white, spec * 0.6)
-  })
-  // core gem on the chest
-  el(c, ox + 24.5, oy + 29.5, 1.9, 1.9, solid(P.white))
-  glow(c, ox + 24.5, oy + 29.5, 6, P.core, 0.55)
-  // back pack hump
-  rr(c, ox + 14, oy + 27, 3, 5.2, 2.5, (x, y) => mix(P.armorLo, P.armorDeep, clamp01((y - (oy + 22)) / 10)))
+  rect(c, ox + 11, oy + 17, ox + 13, oy + 18, A.joint)   // neck
+  // torso base
+  rect(c, ox + 8, oy + 18, ox + 15, oy + 24, A.mid)
+  rect(c, ox + 8, oy + 18, ox + 10, oy + 24, A.top)
+  rect(c, ox + 14, oy + 19, ox + 15, oy + 24, A.lo)
+  // white chest plate
+  rect(c, ox + 12, oy + 19, ox + 17, oy + 23, A.white)
+  rect(c, ox + 12, oy + 22, ox + 17, oy + 23, A.whiteLo)
+  px(c, ox + 13, oy + 19, A.white)
+  // core gem
+  rect(c, ox + 15, oy + 20, ox + 16, oy + 21, A.gem)
+  px(c, ox + 15, oy + 20, A.gemHi)
+  // back pack
+  rect(c, ox + 5, oy + 19, ox + 7, oy + 24, A.lo)
+  rect(c, ox + 5, oy + 19, ox + 6, oy + 20, A.mid)
   // belt
-  rr(c, ox + 20, oy + 39, 6.5, 2, 1.5, solid(P.joint))
-  rr(c, ox + 21.5, oy + 39, 1.4, 1.2, 1, solid(P.visor))
+  rect(c, ox + 8, oy + 25, ox + 15, oy + 25, A.joint)
+  px(c, ox + 11, oy + 25, A.gem)
 }
-
 function drawBackArm(c, ox, oy) {
-  seg(c, ox + 16, oy + 27, ox + 15, oy + 35, 2.5, (x, y) => mix(P.armorDeep, P.joint, clamp01((y - oy - 27) / 9)))
-  el(c, ox + 15, oy + 37.5, 2.3, 2.3, solid(P.joint))
+  rect(c, ox + 6, oy + 19, ox + 7, oy + 23, A.lo)
+  rect(c, ox + 6, oy + 24, ox + 7, oy + 25, A.joint)
 }
-
-/** Buster cannon (front arm, pointing right); raised=true for shooting pose. */
-function drawBuster(c, ox, oy, raised = false) {
-  const sy = raised ? -3 : 0
-  // shoulder pauldron
-  el(c, ox + 24.5, oy + 25 + sy, 4.4, 4, (x, y) => {
-    const light = Math.max(0, 1 - Math.hypot((x - (ox + 23)) / 5, (y - (oy + 23 + sy)) / 4))
-    return mix(P.armorTop, P.armorHi, light * 0.7)
-  })
-  // upper arm
-  seg(c, ox + 25, oy + 28.5 + sy, ox + 28.5, oy + 30 + sy, 2.7, solid(P.gunLo))
+function drawBuster(c, ox, oy) {
+  // shoulder
+  ell(c, ox + 15, oy + 20, 2.5, 2.2, A.top)
+  px(c, ox + 14, oy + 19, A.hi)
   // cannon
-  rr(c, ox + 33, oy + 30 + sy, 5.8, 3.9, 3.2, (x, y) => {
-    const t = clamp01((y - (oy + 26 + sy)) / 9)
-    const spec = Math.max(0, 1 - Math.abs(y - (oy + 28 + sy)) / 1.5)
-    return mix(mix(P.gunTop, P.gunLo, t), P.white, spec * 0.25)
-  })
-  // muzzle ring + energy tip
-  rr(c, ox + 37.2, oy + 30 + sy, 1.3, 3.1, 1.2, solid(P.joint))
-  el(c, ox + 38.4, oy + 30 + sy, 1.3, 2.1, solid(P.visor))
-  glow(c, ox + 38.3, oy + 30 + sy, 6.5, P.visor, 0.6)
+  rect(c, ox + 16, oy + 21, ox + 20, oy + 24, A.gun)
+  rect(c, ox + 16, oy + 24, ox + 20, oy + 24, A.gunLo)
+  rect(c, ox + 19, oy + 21, ox + 20, oy + 24, A.gunLo)
+  px(c, ox + 21, oy + 22, A.gem)
+  px(c, ox + 21, oy + 23, A.gem)
 }
-
-// --- profile legs: hip -> knee -> ankle chain + boot with forward toe ---
-function drawLeg(c, ox, oy, [hipX, kneeX, kneeY, footX, footY], dark) {
-  const thigh = dark ? P.armorLo : P.armorTop
-  const shin = dark ? P.armorDeep : P.armorLo
-  seg(c, ox + hipX, oy + 41.5, ox + kneeX, oy + kneeY, 3.5, solid(thigh))
-  seg(c, ox + kneeX, oy + kneeY, ox + footX, oy + footY, 2.9, solid(shin))
-  rr(c, ox + footX + 1.2, oy + footY + 1.6, 4.4, 3.3, 2.5, solid(dark ? P.bootLo : P.bootTop))
-  rr(c, ox + footX + 4.4, oy + footY + 2.4, 2, 1.8, 1.5, solid(dark ? mix(P.bootLo, [0, 0, 0], 0.35) : mix(P.bootTop, P.armorHi, 0.25)))
+function drawBoot(c, ox, oy, x, y, dark) {
+  rect(c, ox + x, oy + y, ox + x + 4, oy + y + 2, dark ? A.bootLo : A.boot)
+  rect(c, ox + x, oy + y + 3, ox + x + 5, oy + y + 3, dark ? hex(0x101a44) : A.bootLo)
+  px(c, ox + x + 5, oy + y + 1, dark ? A.bootLo : A.armorHi)
 }
 function legsIdle(c, ox, oy) {
-  drawLeg(c, ox, oy, [18.5, 17.5, 48.5, 17, 54], true)
-  drawLeg(c, ox, oy, [22, 22.5, 48.5, 23, 54], false)
+  // thighs
+  rect(c, ox + 9, oy + 26, ox + 10, oy + 27, A.lo)
+  rect(c, ox + 12, oy + 26, ox + 13, oy + 27, A.mid)
+  drawBoot(c, ox, oy, 8, 27, true)
+  drawBoot(c, ox, oy, 12, 27, false)
 }
 function legsRun(c, ox, oy, phase) {
-  // [hipX, kneeX, kneeY, footX, footY] per leg — classic 4-phase stride
   const poses = [
-    { front: [22, 26, 47, 29, 52.5], back: [19, 14, 47, 10, 51] },
-    { front: [21.5, 22, 48, 23, 54], back: [19, 18.5, 47.5, 16.5, 51.5] },
-    { front: [21, 15.5, 47.5, 11.5, 52], back: [19.5, 25, 47, 28, 52] },
-    { front: [21.5, 19.5, 48, 18, 54], back: [19, 22, 47.5, 24, 51] },
+    [[13, 27, 17, 28], [7, 27, 4, 26]],
+    [[11, 27, 12, 28], [9, 27, 7, 26]],
+    [[7, 27, 4, 26], [13, 27, 17, 27]],
+    [[10, 27, 9, 28], [12, 27, 14, 26]],
   ]
-  const p = poses[phase]
-  drawLeg(c, ox, oy, p.back, true)
-  drawLeg(c, ox, oy, p.front, false)
+  const [front, back] = poses[phase]
+  const leg = ([x1, y1, x2, y2], dark) => {
+    seg(c, ox + x1, oy + 25, ox + x1 + Math.sign(x2 - x1) * 1, oy + y1, dark ? A.lo : A.mid)
+    seg(c, ox + x1 + Math.sign(x2 - x1) * 1, oy + y1, ox + x2, oy + y2, dark ? A.bootLo : A.lo)
+    drawBoot(c, ox, oy, x2 - 1, y2, dark)
+  }
+  leg(back, true)
+  leg(front, false)
 }
 function legsJump(c, ox, oy) {
-  drawLeg(c, ox, oy, [19, 13, 46, 11, 50], true)
-  drawLeg(c, ox, oy, [21.5, 27, 46, 26, 51], false)
+  seg(c, ox + 10, oy + 25, ox + 7, oy + 26, A.lo)
+  drawBoot(c, ox, oy, 5, 26, true)
+  seg(c, ox + 12, oy + 25, ox + 15, oy + 26, A.mid)
+  drawBoot(c, ox, oy, 14, 26, false)
 }
 function legsFall(c, ox, oy) {
-  drawLeg(c, ox, oy, [19, 14, 48, 11, 53.5], true)
-  drawLeg(c, ox, oy, [21.5, 26, 48, 28, 54], false)
+  seg(c, ox + 10, oy + 25, ox + 7, oy + 27, A.lo)
+  drawBoot(c, ox, oy, 5, 27, true)
+  seg(c, ox + 12, oy + 25, ox + 16, oy + 27, A.mid)
+  drawBoot(c, ox, oy, 15, 27, false)
 }
-
-function playerFrame(bob, legsFn, shooting = false) {
-  const c = C(40, 60)
-  const oy = bob ? 1.5 : 0
+function playerFrame(bob, legsFn) {
+  const c = C(22, 30)
+  const oy = bob ? 1 : 0
   legsFn(c, 0, 0)
   drawBackArm(c, 0, oy)
   drawTorso(c, 0, oy)
   drawHead(c, 0, oy)
-  drawBuster(c, 0, oy, shooting)
-  outline(c, [8, 10, 22], 2)
+  drawBuster(c, 0, oy)
+  outline(c, A.outline)
   return c
 }
-
-// frames: 0 idle, 1 idle-bob, 2-5 run, 6 jump, 7 fall
 const playerFrames = [
   playerFrame(false, legsIdle),
   playerFrame(true, legsIdle),
-  playerFrame(false, (c, ox, oy) => legsRun(c, ox, oy, 0)),
-  playerFrame(true, (c, ox, oy) => legsRun(c, ox, oy, 1)),
-  playerFrame(false, (c, ox, oy) => legsRun(c, ox, oy, 2)),
-  playerFrame(true, (c, ox, oy) => legsRun(c, ox, oy, 3)),
+  playerFrame(false, (c, x, y) => legsRun(c, x, y, 0)),
+  playerFrame(true, (c, x, y) => legsRun(c, x, y, 1)),
+  playerFrame(false, (c, x, y) => legsRun(c, x, y, 2)),
+  playerFrame(true, (c, x, y) => legsRun(c, x, y, 3)),
   playerFrame(false, legsJump),
   playerFrame(false, legsFall),
 ]
 const playerSheet = stitch(playerFrames)
 save(playerSheet, 'player.png')
-savePreview(playerSheet, 'player.png', 4)
+savePreview(playerSheet, 'player.png', 5)
 
-// ============================ ENEMY (45x45, 2 frames) ============================
-// Scarab drone: glossy red-orange dome, glowing eyes, skittering legs.
+// ============================ ENEMY 22x22 x2 ============================
+const E = {
+  hi: hex(0xffe9a8), top: hex(0xffd34d), mid: hex(0xe0a825), lo: hex(0xb87808),
+  dark: hex(0x5e3c04), eyeW: hex(0xffffff), eyeB: hex(0x1c2c50),
+  outline: hex(0x3a2604),
+}
 function enemyFrame(step) {
-  const c = C(45, 45)
-  const bob = step === 1 ? -1.2 : 0
-  // glossy golden shell (X-style mech colors)
-  el(c, 22.5, 20 + bob, 15, 12.5, (x, y) => {
-    const t = clamp01((y - (8 + bob)) / 25)
-    const spec = Math.max(0, 1 - Math.hypot((x - 16) / 8, (y - (13 + bob)) / 6))
-    return mix(mix(hex(0xffd34d), hex(0xb87808), t), hex(0xfff3c8), spec * 0.85)
-  })
-  // shell seam + rivets
-  seg(c, 22.5, 8.5 + bob, 22.5, 30 + bob, 0.7, solid(hex(0x9a6a08)))
-  for (const [rx, ry] of [[14, 15], [31, 15], [22.5, 11]]) el(c, rx, ry + bob, 1.2, 1.2, solid(hex(0x8a5a06)))
-  // visor slit + big expressive eyes
-  rr(c, 22.5, 25 + bob, 12, 3.4, 3, solid(hex(0x241505)))
-  for (const ex of [16.5, 28.5]) {
-    el(c, ex, 25 + bob, 2.3, 2.1, solid(hex(0xffffff)))
-    el(c, ex + 0.7, 25.2 + bob, 1.1, 1.4, solid(hex(0x1c2c50)))
-    el(c, ex + 0.2, 24.5 + bob, 0.5, 0.5, solid(hex(0xffffff)))
-    glow(c, ex, 25 + bob, 5, hex(0xffe9a8), 0.45)
-  }
+  const c = C(22, 22)
+  const bob = step === 1 ? -1 : 0
+  // golden dome
+  ell(c, 11, 10 + bob, 8, 6.5, E.mid)
+  ell(c, 11, 9 + bob, 7, 5.5, E.top)
+  ell(c, 8, 7 + bob, 3, 2, E.hi)
+  px(c, 6, 6 + bob, E.hi)
+  // rivets
+  px(c, 7, 11 + bob, E.lo); px(c, 15, 11 + bob, E.lo); px(c, 11, 5 + bob, E.lo)
+  // visor + eyes
+  rect(c, 5, 13 + bob, 17, 15 + bob, hex(0x241505))
+  rect(c, 7, 13 + bob, 9, 14 + bob, E.eyeW)
+  rect(c, 13, 13 + bob, 15, 14 + bob, E.eyeW)
+  px(c, 8, 13 + bob, E.eyeB); px(c, 14, 13 + bob, E.eyeB)
   // antenna
-  seg(c, 22.5, 9 + bob, 22.5, 4 + bob, 1.1, solid(hex(0x8a5a06)))
-  el(c, 22.5, 3.4 + bob, 1.5, 1.5, solid(hex(0xfff3c4)))
-  glow(c, 22.5, 3.4 + bob, 5, hex(0xffd166), 0.7)
+  px(c, 11, 1 + bob, E.dark); px(c, 11, 2 + bob, E.dark)
+  px(c, 11, 0 + bob, hex(0xfff3c4))
   // underside
-  rr(c, 22.5, 33.5 + bob, 10, 3, 2.5, solid(hex(0x4a3008)))
-  // legs (alternate pairs)
-  const legsA = [[[12, 34], [7, 41]], [[33, 34], [38, 41]]]
-  const legsB = [[[14, 34], [11, 42]], [[31, 34], [34, 42]]]
-  for (const [[x1, y1], [x2, y2]] of step === 0 ? legsA : legsB) {
-    seg(c, x1, y1 + bob, x2, y2 + bob, 2.3, solid(hex(0x7a4e0a)))
-    el(c, x2, y2 + bob, 2.5, 1.8, solid(hex(0x3a2604)))
+  rect(c, 7, 16 + bob, 15, 17 + bob, hex(0x4a3008))
+  // legs
+  if (step === 0) {
+    seg(c, 7, 17, 5, 20, E.dark); seg(c, 15, 17, 17, 19, E.dark)
+    px(c, 5, 20, hex(0x2a1a02)); px(c, 17, 19, hex(0x2a1a02))
+  } else {
+    seg(c, 8, 17, 6, 20, E.dark); seg(c, 14, 17, 16, 20, E.dark)
+    px(c, 6, 20, hex(0x2a1a02)); px(c, 16, 20, hex(0x2a1a02))
   }
-  outline(c, [40, 26, 4], 2)
+  outline(c, E.outline)
   return c
 }
 const enemySheet = stitch([enemyFrame(0), enemyFrame(1)])
 save(enemySheet, 'enemy.png')
-savePreview(enemySheet, 'enemy.png', 4)
+savePreview(enemySheet, 'enemy.png', 6)
 
-// ============================ BOSS (80x80, 2 frames) ============================
-// Heavy war machine: armored hull, glowing eye bar, pulsing reactor core.
+// ============================ BOSS 44x44 x2 ============================
+const B = {
+  hi: hex(0xa9c2e8), top: hex(0x6f86b8), mid: hex(0x46557a), lo: hex(0x27304a), deep: hex(0x161c2c),
+  eye: hex(0xff4d4d), eyeHi: hex(0xffe1d0), amber: hex(0xffc857), orange: hex(0xff9a3c),
+  outline: hex(0x0c101c),
+}
 function bossFrame(pulse) {
-  const c = C(80, 80)
-  // leg tracks
-  rr(c, 29, 71, 11, 5.5, 4, solid(hex(0x1a2130)))
-  rr(c, 51, 71, 11, 5.5, 4, solid(hex(0x1a2130)))
-  rr(c, 29, 68, 9, 3, 2, solid(hex(0x39465e)))
-  rr(c, 51, 68, 9, 3, 2, solid(hex(0x39465e)))
+  const c = C(44, 44)
+  // treads
+  rect(c, 10, 38, 19, 42, B.deep)
+  rect(c, 25, 38, 34, 42, B.deep)
+  rect(c, 12, 37, 17, 38, B.mid)
+  rect(c, 27, 37, 32, 38, B.mid)
   // torso
-  rr(c, 40, 56, 21, 13, 9, (x, y) => {
-    const t = clamp01((y - 44) / 26)
-    const light = Math.max(0, 1 - Math.hypot((x - 30) / 16, (y - 48) / 12))
-    return mix(mix(hex(0x4b5a74), hex(0x1c2436), t), hex(0x8fa3c4), light * 0.4)
-  })
-  // hull dome (cool steel-blue with orange Maverick accents)
-  el(c, 40, 33, 28, 21, (x, y) => {
-    const t = clamp01((y - 12) / 42)
-    const rim = Math.max(0, 1 - Math.hypot((x - 30) / 22, (y - 20) / 14))
-    const spec = Math.max(0, 1 - Math.hypot((x - 28) / 10, (y - 22) / 8))
-    return mix(mix(mix(hex(0x6f86b8), hex(0x27304a), t), hex(0xa9c2e8), rim * 0.55), hex(0xe4edfa), spec * 0.5)
-  })
-  // orange accent stripes on the hull
-  seg(c, 22, 46, 30, 42, 1.6, solid(hex(0xff9a3c)))
-  seg(c, 50, 42, 58, 46, 1.6, solid(hex(0xff9a3c)))
-  // top plate + warning lights
-  rr(c, 40, 12, 15, 4.5, 4, solid(hex(0x2b3448)))
-  for (const lx of [32, 40, 48]) {
-    el(c, lx, 10.5, 1.6, 1.3, solid(hex(0xffc857)))
-    glow(c, lx, 10.5, 4.5, hex(0xffb347), 0.5)
-  }
+  rect(c, 12, 28, 32, 38, B.mid)
+  rect(c, 12, 28, 16, 38, B.top)
+  rect(c, 28, 30, 32, 38, B.lo)
+  // reactor core
+  const r = pulse ? 4 : 3
+  ell(c, 22, 33, r, r, hex(0xfff6d8))
+  // hull dome
+  ell(c, 22, 19, 16, 12, B.mid)
+  ell(c, 22, 18, 15, 11, B.top)
+  ell(c, 15, 13, 6, 4, B.hi)
+  // orange accent stripes
+  seg(c, 10, 27, 17, 24, B.orange)
+  seg(c, 34, 24, 27, 27, B.orange)
+  // top plate + lights
+  rect(c, 15, 5, 29, 9, B.lo)
+  rect(c, 16, 4, 28, 5, B.mid)
+  for (const lx of [18, 22, 26]) px(c, lx, 6, B.amber)
   // eye visor
-  rr(c, 40, 33, 18, 5.5, 5, solid(hex(0x12060a)))
-  seg(c, 27, 33, 53, 33, 2.4, solid(pulse ? hex(0xff4d4d) : hex(0xff6b5e)))
-  seg(c, 33, 33, 45, 33, 1.3, solid(hex(0xffe1d0)))
-  glow(c, 40, 33, 16, hex(0xff3b3b), pulse ? 0.75 : 0.5)
-  // shoulder pods + fins
-  for (const [sx, dir] of [[13, -1], [67, 1]]) {
-    el(c, sx, 32, 8.5, 9, (x, y) => {
-      const t = clamp01((y - 23) / 18)
-      return mix(hex(0x3c4a63), hex(0x161d2c), t)
-    })
-    seg(c, sx, 24, sx + dir * 4, 14, 2.6, solid(hex(0x2b3448)))
-    el(c, sx, 32, 3, 3.4, solid(hex(0xff6b5e)))
-    glow(c, sx, 32, 7, hex(0xff5546), 0.45)
-  }
-  // reactor core (pulses)
-  const coreR = pulse ? 6.4 : 5.6
-  el(c, 40, 56, coreR, coreR, solid(hex(0xfff6d8)))
-  glow(c, 40, 56, 18, hex(0xffc857), pulse ? 0.95 : 0.6)
-  // hull seam
-  seg(c, 18, 44, 62, 44, 0.8, solid(hex(0x1a2130)))
-  outline(c, [7, 9, 16], 2)
+  rect(c, 10, 18, 34, 23, hex(0x12060a))
+  rect(c, 13, 20, 31, 21, pulse ? B.eye : hex(0xff6b5e))
+  rect(c, 17, 20, 25, 20, B.eyeHi)
+  // shoulder pods
+  ell(c, 6, 19, 4, 5, B.mid)
+  ell(c, 6, 19, 2.5, 3, B.lo)
+  px(c, 6, 19, hex(0xff6b5e))
+  ell(c, 38, 19, 4, 5, B.mid)
+  ell(c, 38, 19, 2.5, 3, B.lo)
+  px(c, 38, 19, hex(0xff6b5e))
+  seg(c, 5, 15, 2, 10, B.lo)
+  seg(c, 39, 15, 42, 10, B.lo)
+  outline(c, B.outline)
   return c
 }
 const bossSheet = stitch([bossFrame(false), bossFrame(true)])
 save(bossSheet, 'boss.png')
-savePreview(bossSheet, 'boss.png', 4)
+savePreview(bossSheet, 'boss.png', 6)
 
-// ============================ BULLET (18x10) ============================
-{
-  const c = C(18, 10)
-  // soft outer halo (low-alpha ellipse)
-  const halo = C(18, 10)
-  el(halo, 9, 5, 8.5, 4.4, solid(hex(0x35e0ff)))
-  for (let i = 3; i < halo.d.length; i += 4) halo.d[i] *= 0.35
-  for (let i = 0; i < halo.d.length; i += 4)
-    if (halo.d[i + 3] > 0) over(c, i / 4 % 18, Math.floor(i / 4 / 18), halo.d[i], halo.d[i + 1], halo.d[i + 2], halo.d[i + 3] / 255)
-  el(c, 9, 5, 5.6, 2.8, solid(hex(0x9df2ff)))
-  el(c, 9, 5, 3, 1.7, solid(hex(0xffffff)))
-  save(c, 'bullet.png')
-  savePreview(c, 'bullet.png', 8)
-}
-
-// ============================ CHARGED BULLETS + ENERGY ORB ============================
-function plasmaBolt(w, h, layers) {
-  const c = C(w, h)
-  const cx = w / 2, cy = h / 2
-  const [haloDef, ...cores] = layers
-  const halo = C(w, h)
-  el(halo, cx, cy, haloDef.rx, haloDef.ry, solid(haloDef.col))
-  for (let i = 3; i < halo.d.length; i += 4) halo.d[i] *= (haloDef.a ?? 0.35)
-  for (let i = 0; i < halo.d.length; i += 4)
-    if (halo.d[i + 3] > 0) over(c, (i / 4) % w, Math.floor(i / 4 / w), halo.d[i], halo.d[i + 1], halo.d[i + 2], halo.d[i + 3] / 255)
-  for (const L of cores) el(c, cx, cy, L.rx, L.ry, solid(L.col))
-  return c
-}
-save(plasmaBolt(26, 14, [
-  { rx: 11.5, ry: 6.2, col: hex(0x35e0ff), a: 0.32 },
-  { rx: 7.6, ry: 4.1, col: hex(0x9df2ff) },
-  { rx: 4.4, ry: 2.5, col: hex(0xffffff) },
-]), 'bullet-mid.png')
-const bigBolt = plasmaBolt(38, 22, [
-  { rx: 17, ry: 10, col: hex(0x35e0ff), a: 0.3 },
-  { rx: 12.5, ry: 7.4, col: hex(0x9df2ff) },
-  { rx: 8, ry: 4.9, col: hex(0xeafcff) },
-  { rx: 3.6, ry: 2.3, col: hex(0xffffff) },
-])
-save(bigBolt, 'bullet-big.png')
-savePreview(bigBolt, 'bullet-big.png', 6)
-
-// energy orb (white core + soft halo, tinted in-game: green = HP, red = boss power)
-{
-  const d = 30
-  const c = C(d, d)
-  glow(c, d / 2, d / 2, d / 2 - 1, hex(0xffffff), 0.85)
-  el(c, d / 2, d / 2, 6.4, 6.4, solid(hex(0xf4ffff)))
-  el(c, d / 2, d / 2, 3, 3, solid(hex(0xffffff)))
-  save(c, 'orb.png')
-  savePreview(c, 'orb.png', 6)
-}
-
-// ============================ FLYER DRONE (40x26, 2 frames) ============================
-function flyerFrame(rotorPhase) {
-  const c = C(40, 26)
-  // rotor blur on top
-  el(c, 20, 3.6 + (rotorPhase ? 0.5 : 0), rotorPhase ? 11 : 13, 1.6, solid(hex(0x9fb4d8)))
-  // body capsule
-  rr(c, 20, 13, 12, 6.5, 6, (x, y) => {
-    const t = clamp01((y - 6.5) / 13)
-    const spec = Math.max(0, 1 - Math.hypot((x - 15) / 8, (y - 10) / 5))
-    return mix(mix(hex(0x5b6b85), hex(0x232c40), t), hex(0xd7e2f2), spec * 0.5)
-  })
+// ============================ FLYER 20x14 x2 ============================
+function flyerFrame(phase) {
+  const c = C(20, 14)
+  // rotor
+  rect(c, 4 + phase, 1, 16 - phase, 1, hex(0x9fb4d8))
+  px(c, 10, 2, B.lo)
+  // body
+  ell(c, 10, 7, 7, 3.5, B.mid)
+  ell(c, 10, 6, 6, 2.6, B.top)
+  px(c, 7, 5, B.hi)
   // eye
-  el(c, 30, 12, 3, 2.6, solid(rotorPhase ? hex(0x9df2ff) : hex(0x35e0ff)))
-  glow(c, 30, 12, 7, hex(0x35e0ff), 0.5)
-  // tail fins
-  seg(c, 9, 12, 5, 9, 1.6, solid(hex(0x232c40)))
-  seg(c, 9, 15, 5, 18, 1.6, solid(hex(0x232c40)))
-  outline(c, [8, 10, 22], 2)
+  px(c, 15, 6, A.gem); px(c, 15, 7, A.gem)
+  // fins
+  px(c, 3, 7, B.lo); px(c, 2, 8, B.lo)
+  px(c, 3, 9, B.lo); px(c, 2, 10, B.lo)
+  outline(c, B.outline)
   return c
 }
 save(stitch([flyerFrame(0), flyerFrame(1)]), 'flyer.png')
-savePreview(stitch([flyerFrame(0), flyerFrame(1)]), 'flyer.png', 5)
 
-// ============================ TURRET (40x40, 1 frame) ============================
+// ============================ TURRET 18x20 ============================
 {
-  const c = C(40, 40)
-  rr(c, 20, 33, 14, 5, 3, (x, y) => mix(hex(0x3c4a63), hex(0x161d2c), clamp01((y - 28) / 10)))
-  el(c, 20, 24, 11, 9, (x, y) => {
-    const t = clamp01((y - 15) / 18)
-    const spec = Math.max(0, 1 - Math.hypot((x - 16) / 6, (y - 19) / 5))
-    return mix(mix(hex(0x64748b), hex(0x232c42), t), hex(0xd7e2f2), spec * 0.5)
-  })
-  rr(c, 30, 22, 7, 2.6, 2, solid(hex(0x2b3448)))
-  el(c, 36, 22, 1.6, 1.6, solid(hex(0xff6b5e)))
-  glow(c, 36, 22, 5, hex(0xff5546), 0.5)
-  el(c, 20, 18, 1.8, 1.8, solid(hex(0xffc857)))
-  outline(c, [7, 9, 16], 2)
+  const c = C(18, 20)
+  rect(c, 3, 16, 15, 19, B.lo)
+  rect(c, 4, 15, 14, 16, B.mid)
+  ell(c, 9, 11, 6, 5, B.top)
+  ell(c, 8, 10, 3, 2, B.hi)
+  rect(c, 12, 10, 16, 12, B.lo)
+  px(c, 16, 11, hex(0xff6b5e))
+  px(c, 9, 8, B.amber)
+  outline(c, B.outline)
   save(c, 'turret.png')
-  savePreview(c, 'turret.png', 5)
 }
 
-// ============================ CHECKPOINT BEACON (26x64) ============================
+// ============================ CHECKPOINT 10x28 ============================
 {
-  const c = C(26, 64)
-  rr(c, 13, 59, 11, 3.5, 2, solid(hex(0x2b3448)))
-  rr(c, 13, 34, 2.6, 24, 2, solid(hex(0x39465e)))
-  const dcx = 13, dcy = 16, r = 8
-  fillB(c, dcx - r - 1, dcy - r - 1, dcx + r + 1, dcy + r + 1,
-    (x, y) => clamp01(r - (Math.abs(x - dcx) + Math.abs(y - dcy)) + 0.5),
-    (x, y) => {
-      const spec = Math.max(0, 1 - Math.hypot((x - dcx + 2) / 6, (y - dcy + 2) / 6))
-      return mix(hex(0x35e0ff), hex(0xeafcff), spec * 0.7)
-    })
-  glow(c, dcx, dcy, 10, hex(0x35e0ff), 0.4)
+  const c = C(10, 28)
+  rect(c, 2, 25, 8, 27, B.lo)
+  rect(c, 4, 8, 6, 25, B.mid)
+  px(c, 4, 9, B.hi)
+  // diamond
+  const dcx = 5, dcy = 4
+  for (let d = 0; d <= 3; d++) {
+    for (let x = dcx - (3 - d); x <= dcx + (3 - d); x++) {
+      px(c, x, dcy - 3 + d, A.gem)
+      px(c, x, dcy + 3 - d, A.gem)
+    }
+  }
+  px(c, dcx, dcy - 3, A.gemHi); px(c, dcx - 1, dcy - 2, A.gemHi)
   save(c, 'checkpoint.png')
-  savePreview(c, 'checkpoint.png', 5)
 }
 
-// ============================ GLOW BLOB (64x64, additive) ============================
+// ============================ BULLETS / ORB ============================
 {
-  const c = C(64, 64)
-  glow(c, 32, 32, 30, hex(0xffffff), 1.0)
+  const c = C(8, 5)
+  rect(c, 1, 1, 7, 3, hex(0x35e0ff))
+  rect(c, 2, 1, 6, 3, hex(0x9df2ff))
+  rect(c, 3, 2, 5, 2, hex(0xffffff))
+  save(c, 'bullet.png')
+  const m = C(10, 7)
+  ell(m, 5, 3.5, 4.5, 2.8, hex(0x35e0ff))
+  ell(m, 5, 3.5, 3, 1.8, hex(0x9df2ff))
+  rect(m, 4, 3, 6, 4, hex(0xffffff))
+  save(m, 'bullet-mid.png')
+  const g = C(14, 10)
+  ell(g, 7, 5, 6.5, 4.5, hex(0x35e0ff))
+  ell(g, 7, 5, 5, 3.4, hex(0x9df2ff))
+  ell(g, 7, 5, 3, 2, hex(0xeafcff))
+  rect(g, 6, 4, 8, 6, hex(0xffffff))
+  save(g, 'bullet-big.png')
+  const o = C(8, 8)
+  ell(o, 4, 4, 3.4, 3.4, hex(0xbffcff))
+  ell(o, 4, 4, 1.8, 1.8, hex(0xffffff))
+  save(o, 'orb.png')
+}
+
+// ============================ GLOW 16x16 (additive) ============================
+{
+  const c = CF(16, 16)
+  for (let y = 0; y < 16; y++)
+    for (let x = 0; x < 16; x++) {
+      const dx = x + 0.5 - 8, dy = y + 0.5 - 8
+      const d = Math.sqrt(dx * dx + dy * dy) / 8
+      if (d < 1) fOver(c, x, y, 255, 255, 255, (1 - d) * (1 - d))
+    }
   save(c, 'glow.png')
 }
 
-// ============================ VIGNETTE (960x540) ============================
+// ============================ VIGNETTE 256x224 ============================
 {
-  const w = 960, h = 540
-  const c = C(w, h)
+  const w = 256, h = 224
+  const c = CF(w, h)
   for (let y = 0; y < h; y++)
     for (let x = 0; x < w; x++) {
       const dx = (x - w / 2) / (w / 2), dy = (y - h / 2) / (h / 2)
       const r = Math.sqrt(dx * dx + dy * dy) / Math.SQRT2
-      const a = clamp01((r - 0.55) / 0.45)
-      over(c, x, y, 4, 5, 12, a * a * 0.72)
+      const a = clamp01((r - 0.6) / 0.4)
+      fOver(c, x, y, 4, 5, 12, a * a * 0.6)
     }
   save(c, 'vignette.png')
 }
 
-// ============================ TILESET (4 x 80x80) ============================
+// ============================ HAZE 256x64 ============================
 {
-  const T = 80
-  const speckle = (c, rnd, amt, density) => {
-    for (let y = 0; y < c.h; y++)
-      for (let x = 0; x < c.w; x++)
-        if (rnd() < density) {
-          const n = (rnd() - 0.5) * amt
-          const i = (y * c.w + x) * 4
-          if (c.d[i + 3] > 0) {
-            c.d[i] = clamp(c.d[i] + n, 0, 255); c.d[i + 1] = clamp(c.d[i + 1] + n, 0, 255); c.d[i + 2] = clamp(c.d[i + 2] + n, 0, 255)
-          }
-        }
-  }
-  const bolt = (c, x, y) => {
-    el(c, x, y, 3, 3, solid(hex(0x1c2434)))
-    el(c, x - 0.7, y - 0.7, 2, 2, solid(hex(0x8fa3c4)))
-    el(c, x - 0.9, y - 0.9, 0.9, 0.9, solid(hex(0xd7e2f2)))
-  }
-  const seam = (c, y) => rr(c, c.w / 2, y, c.w / 2, 1.1, 1, solid(hex(0x1a2130)))
+  const c = CF(256, 64)
+  for (let y = 0; y < 64; y++)
+    for (let x = 0; x < 256; x++)
+      fOver(c, x, y, 255, 255, 255, clamp01(1 - y / 64) * 0.5)
+  save(c, 'haze.png')
+}
 
-  // tile 1: ground top
-  const t1 = C(T, T)
-  fillB(t1, 0, 0, T - 1, T - 1, () => 1, (x, y) => {
-    const bevel = clamp01(1 - y / 9)
-    const base = mix(hex(0x8fa3c4), hex(0x4b5a74), clamp01(y / T))
-    return mix(base, hex(0xd7e2f2), bevel * 0.8)
-  })
-  rr(t1, T / 2, 1.2, T / 2, 1.2, 1, solid(hex(0xeef4fc)))
-  seam(t1, 30); seam(t1, 58)
-  bolt(t1, 12, 16); bolt(t1, 68, 16); bolt(t1, 12, 44); bolt(t1, 68, 44)
-  speckle(t1, mulberry32(42), 14, 0.06)
-  // tile 2: ground body
-  const t2 = C(T, T)
-  fillB(t2, 0, 0, T - 1, T - 1, () => 1, (x, y) => mix(hex(0x3c4a63), hex(0x1a2130), clamp01(y / T)))
-  seam(t2, 22); seam(t2, 54)
-  bolt(t2, 24, 12); bolt(t2, 56, 12); bolt(t2, 24, 40); bolt(t2, 56, 40); bolt(t2, 40, 68)
-  speckle(t2, mulberry32(7), 12, 0.05)
-  // tile 3: floating platform slab
-  const t3 = C(T, T)
-  rr(t3, T / 2, T / 2 - 6, T / 2, 30, 6, (x, y) => {
-    const t = clamp01((y - 6) / 60)
-    const light = Math.max(0, 1 - Math.hypot((x - T / 2) / 44, (y - 10) / 12))
-    return mix(mix(hex(0x8fa3c4), hex(0x2b3448), t), hex(0xd7e2f2), light * 0.5)
-  })
-  rr(t3, T / 2, 5, T / 2 - 2, 2.4, 2, solid(hex(0xeef4fc)))
-  rr(t3, T / 2, 66, T / 2 - 3, 6, 4, solid(hex(0x10141f)))
-  rr(t3, T / 2, 61, T / 2 - 4, 1.4, 1.2, solid(hex(0x35e0ff)))
-  bolt(t3, 14, 20); bolt(t3, 66, 20); bolt(t3, 14, 44); bolt(t3, 66, 44)
-  speckle(t3, mulberry32(99), 12, 0.05)
-  // tile 0: empty
+// ============================ TILESET 4x16px ============================
+{
+  const T = 16
+  const rnd = mulberry32(42)
   const t0 = C(T, T)
+  // t1 ground top
+  const t1 = C(T, T)
+  rect(t1, 0, 0, 15, 0, hex(0xd7e2f2))
+  rect(t1, 0, 1, 15, 2, hex(0x9db1d4))
+  rect(t1, 0, 3, 15, 9, hex(0x6b7fa3))
+  rect(t1, 0, 10, 15, 15, hex(0x42536f))
+  rect(t1, 0, 5, 15, 5, hex(0x54688a))
+  rect(t1, 0, 10, 15, 10, hex(0x36455e))
+  // bolts
+  px(t1, 3, 7, hex(0x2c3850)); px(t1, 12, 7, hex(0x2c3850))
+  px(t1, 2, 6, hex(0xc3d2ea)); px(t1, 11, 6, hex(0xc3d2ea))
+  // t2 ground body
+  const t2 = C(T, T)
+  rect(t2, 0, 0, 15, 7, hex(0x54688a))
+  rect(t2, 0, 8, 15, 15, hex(0x3a4a66))
+  rect(t2, 0, 7, 15, 7, hex(0x2c3850))
+  rect(t2, 0, 15, 15, 15, hex(0x232d42))
+  px(t2, 4, 3, hex(0x6b7fa3)); px(t2, 11, 11, hex(0x4a5a7a))
+  px(t2, 8, 5, hex(0x2c3850)); px(t2, 3, 12, hex(0x2c3850))
+  // t3 platform slab
+  const t3 = C(T, T)
+  rect(t3, 0, 0, 15, 0, hex(0xeef4fc))
+  rect(t3, 0, 1, 15, 8, hex(0x8fa3c4))
+  rect(t3, 0, 9, 15, 12, hex(0x42536f))
+  rect(t3, 0, 13, 15, 14, hex(0x10141f))
+  rect(t3, 0, 12, 15, 12, hex(0x35e0ff))
+  px(t3, 3, 4, hex(0x2c3850)); px(t3, 12, 4, hex(0x2c3850))
+  px(t3, 2, 3, hex(0xc3d2ea)); px(t3, 13, 3, hex(0xc3d2ea))
   const sheet = stitch([t0, t1, t2, t3])
   save(sheet, 'tileset.png')
-  savePreview(sheet, 'tileset.png', 3)
+  savePreview(sheet, 'tileset.png', 6)
 }
 
-// ============================ STAGE BACKGROUNDS (1920x540, tileable) ============================
+// ============================ STAGE BACKGROUNDS 512x224 (pixel skylines) ============================
 const STAGE_ART = {
-  'neon-city': {
-    far: [0x2a2150, 0x191536], mid: [0x1b1638, 0x100d24],
-    window: 0xffd166, windowAlt: 0x7dd3fc, sign: [0xf472b6, 0x22d3ee],
-  },
-  'toxic-plant': {
-    far: [0x14301f, 0x0a1a10], mid: [0x0e2416, 0x071409],
-    window: 0xa3e635, windowAlt: 0x4ade80, sign: [0x4ade80, 0xa3e635],
-  },
-  'scorched-desert': {
-    far: [0x3a1f0e, 0x1f1006], mid: [0x291508, 0x170b04],
-    window: 0xfbbf24, windowAlt: 0xf59e0b, sign: [0xfb923c, 0xfbbf24],
-  },
-  'frost-lab': {
-    far: [0x16325c, 0x0b1a30], mid: [0x102640, 0x081426],
-    window: 0xbae6fd, windowAlt: 0x60a5fa, sign: [0x60a5fa, 0xbae6fd],
-  },
-  'sky-fortress': {
-    far: [0x401a33, 0x200a18], mid: [0x2a1122, 0x170812],
-    window: 0xf9a8d4, windowAlt: 0xf472b6, sign: [0xf472b6, 0xf9a8d4],
-  },
+  'neon-city': { far: [0x2a2150, 0x191536], mid: [0x1b1638, 0x100d24], window: 0xffd166, windowAlt: 0x7dd3fc, sign: [0xf472b6, 0x22d3ee] },
+  'toxic-plant': { far: [0x14301f, 0x0a1a10], mid: [0x0e2416, 0x071409], window: 0xa3e635, windowAlt: 0x4ade80, sign: [0x4ade80, 0xa3e635] },
+  'scorched-desert': { far: [0x3a1f0e, 0x1f1006], mid: [0x291508, 0x170b04], window: 0xfbbf24, windowAlt: 0xf59e0b, sign: [0xfb923c, 0xfbbf24] },
+  'frost-lab': { far: [0x16325c, 0x0b1a30], mid: [0x102640, 0x081426], window: 0xbae6fd, windowAlt: 0x60a5fa, sign: [0x60a5fa, 0xbae6fd] },
+  'sky-fortress': { far: [0x401a33, 0x200a18], mid: [0x2a1122, 0x170812], window: 0xf9a8d4, windowAlt: 0xf472b6, sign: [0xf472b6, 0xf9a8d4] },
 }
+const BW = 512, BH = 224
 
-const BW = 1920, BH = 540
-
-/** One tileable skyline layer. */
 function skyline(seed, { top, bottom, windows, windowAlt, signs, winDensity, minH, maxH }) {
   const c = C(BW, BH)
   const rnd = mulberry32(seed)
+  const topC = hex(top), botC = hex(bottom)
   const drawBuilding = (bx, bw, bh, shade) => {
     for (const ox of [0, -BW]) {
-      const x0 = bx + ox
-      // body with vertical gradient
-      rr(c, x0 + bw / 2, BH - bh / 2, bw / 2, bh / 2, 2, (x, y) => mix(top, bottom, clamp01((y - (BH - bh)) / bh) * 0.9 + shade * 0.1))
-      // roof lip
-      rr(c, x0 + bw / 2, BH - bh + 1.5, bw / 2 - 1, 1.5, 1, solid(mix(top, hex(0xffffff), 0.14)))
-      // windows
+      const x0 = Math.round(bx + ox)
+      const body = mix(topC, botC, 0.35 + shade * 0.4)
+      rect(c, x0, BH - bh, x0 + bw - 1, BH - 1, body)
+      rect(c, x0, BH - bh, x0 + bw - 1, BH - bh, mix(body, hex(0xffffff), 0.18))
+      rect(c, x0 + bw - 1, BH - bh, x0 + bw - 1, BH - 1, mix(body, hex(0x000000), 0.25))
       if (windows) {
-        for (let wy = BH - bh + 12; wy < BH - 14; wy += 20) {
-          for (let wx = x0 + 8; wx < x0 + bw - 10; wx += 14) {
+        for (let wy = BH - bh + 4; wy < BH - 5; wy += 6) {
+          for (let wx = x0 + 2; wx < x0 + bw - 3; wx += 4) {
             if (rnd() > winDensity) continue
-            const col = rnd() > 0.72 ? windowAlt : windows
+            const col = rnd() > 0.72 ? hex(windowAlt) : hex(windows)
             const bright = 0.35 + rnd() * 0.65
-            rr(c, wx + 3, wy + 4, 3, 4.5, 1, solid(mix(col, hex(0x000000), 1 - bright)))
-            if (bright > 0.8) glow(c, wx + 3, wy + 4, 6, col, 0.25)
+            rect(c, wx, wy, wx + 1, wy + 1, mix(col, hex(0x000000), 1 - bright))
           }
         }
       }
-      // antenna
-      if (rnd() > 0.55) {
-        const ax = x0 + bw * (0.25 + rnd() * 0.5)
-        const ah = 10 + rnd() * 22
-        seg(c, ax, BH - bh, ax, BH - bh - ah, 1.2, solid(mix(top, hex(0xffffff), 0.2)))
-        const [sr, sg, sb] = hex(signs ? signs[0] : 0xff5566)
-        el(c, ax, BH - bh - ah, 1.6, 1.6, solid([sr, sg, sb]))
-        glow(c, ax, BH - bh - ah, 6, [sr, sg, sb], 0.5)
+      if (rnd() > 0.6) {
+        const ax = Math.round(x0 + bw * (0.25 + rnd() * 0.5))
+        const ah = 4 + Math.floor(rnd() * 10)
+        rect(c, ax, BH - bh - ah, ax, BH - bh - 1, mix(topC, hex(0xffffff), 0.2))
+        px(c, ax, BH - bh - ah - 1, hex(signs ? signs[0] : 0xff5566))
       }
-      // neon sign strips on mid layer
-      if (signs && rnd() > 0.62) {
+      if (signs && rnd() > 0.68) {
         const [sr, sg, sb] = hex(signs[Math.floor(rnd() * signs.length)])
-        const sx = x0 + 6 + rnd() * (bw - 16)
-        const sy = BH - bh + 16 + rnd() * (bh * 0.4)
-        const sh = 14 + rnd() * 26
-        rr(c, sx, sy + sh / 2, 2.2, sh / 2, 2, solid([sr, sg, sb]))
-        glow(c, sx, sy + sh / 2, 12, [sr, sg, sb], 0.4)
+        const sx = Math.round(x0 + 3 + rnd() * (bw - 8))
+        const sy = Math.round(BH - bh + 4 + rnd() * bh * 0.4)
+        const sh = 5 + Math.floor(rnd() * 10)
+        for (let yy = sy; yy < sy + sh; yy++) px(c, sx, yy, [sr, sg, sb])
       }
     }
   }
-  let x = -10
-  while (x < BW + 40) {
-    const bw = 70 + rnd() * 150
-    const bh = minH + rnd() * (maxH - minH)
+  let x = -6
+  while (x < BW + 20) {
+    const bw = 24 + Math.floor(rnd() * 46)
+    const bh = minH + Math.floor(rnd() * (maxH - minH))
     drawBuilding(x, bw, bh, rnd())
-    x += bw + 6 + rnd() * 26
+    x += bw + 2 + Math.floor(rnd() * 8)
   }
   return c
 }
 
 for (const [id, art] of Object.entries(STAGE_ART)) {
-  const far = skyline(id.length * 1337 + 11, {
-    top: hex(art.far[0]), bottom: hex(art.far[1]),
-    windows: null, signs: null, minH: 150, maxH: 400,
-  })
-  save(far, `bg-far-${id}.png`)
-
-  const mid = skyline(id.length * 7331 + 97, {
-    top: hex(art.mid[0]), bottom: hex(art.mid[1]),
-    windows: hex(art.window), windowAlt: hex(art.windowAlt),
-    signs: art.sign, winDensity: 0.3, minH: 90, maxH: 280,
-  })
-  save(mid, `bg-mid-${id}.png`)
+  save(skyline(id.length * 1337 + 11, {
+    top: art.far[0], bottom: art.far[1], windows: null, signs: null, minH: 60, maxH: 165,
+  }), `bg-far-${id}.png`)
+  save(skyline(id.length * 7331 + 97, {
+    top: art.mid[0], bottom: art.mid[1], windows: art.window, windowAlt: art.windowAlt,
+    signs: art.sign, winDensity: 0.3, minH: 40, maxH: 120,
+  }), `bg-mid-${id}.png`)
 }
 
-// haze band (white -> transparent, tinted in-game)
-{
-  const c = C(960, 180)
-  for (let y = 0; y < 180; y++)
-    for (let x = 0; x < 960; x++)
-      over(c, x, y, 255, 255, 255, clamp01(1 - y / 180) * 0.5)
-  save(c, 'haze.png')
-}
-
-// ============================ LEVEL JSON PATCH (x2.5 scale) ============================
+// ============================ LEVEL JSON PATCH (16px tiles) ============================
 {
   const levelPath = join(outDir, 'level.json')
   const level = JSON.parse(readFileSync(levelPath, 'utf8'))
-  level.tilewidth = 80
-  level.tileheight = 80
+  level.tilewidth = 16
+  level.tileheight = 16
   for (const ts of level.tilesets) {
-    ts.tilewidth = 80
-    ts.tileheight = 80
-    ts.imagewidth = 320
-    ts.imageheight = 80
+    ts.tilewidth = 16
+    ts.tileheight = 16
+    ts.imagewidth = 64
+    ts.imageheight = 16
   }
-  // Extend the ground fill to the very bottom of the world (row 19) so no void
-  // shows below the floor and nothing can slip under the last tile row.
+  // keep the ground fill down to the last row (row 19)
   const ground = level.layers.find((l) => l.name === 'ground')
   const W = level.width
   for (let x = 0; x < W; x++) ground.data[19 * W + x] = 3
   writeFileSync(levelPath, JSON.stringify(level))
 }
 
-// preview composite: sky + far + mid for neon-city
-{
-  const w = 960, h = 540
-  const c = C(w, h)
-  for (let y = 0; y < h; y++)
-    for (let x = 0; x < w; x++) {
-      const [r1, g1, b1] = hex(0x2b1e4e), [r2, g2, b2] = hex(0x0d0e15)
-      const t = y / h
-      over(c, x, y, r1 + (r2 - r1) * t, g1 + (g2 - g1) * t, b1 + (b2 - b1) * t, 1)
-    }
-  const far = skyline(1, { top: hex(0x2a2150), bottom: hex(0x191536), windows: null, signs: null, minH: 150, maxH: 400 })
-  const mid = skyline(2, { top: hex(0x1b1638), bottom: hex(0x100d24), windows: hex(0xffd166), windowAlt: hex(0x7dd3fc), signs: [0xf472b6, 0x22d3ee], winDensity: 0.3, minH: 90, maxH: 280 })
-  for (const layer of [far, mid]) {
-    for (let y = 0; y < h; y++)
-      for (let x = 0; x < w; x++) {
-        const i = (y * BW + x) * 4
-        if (layer.d[i + 3] > 0) over(c, x, y, layer.d[i], layer.d[i + 1], layer.d[i + 2], layer.d[i + 3] / 255)
-      }
-  }
-  const png = new PNG({ width: w, height: h })
-  for (let i = 0; i < w * h; i++) {
-    png.data[i * 4] = clamp(Math.round(c.d[i * 4]), 0, 255)
-    png.data[i * 4 + 1] = clamp(Math.round(c.d[i * 4 + 1]), 0, 255)
-    png.data[i * 4 + 2] = clamp(Math.round(c.d[i * 4 + 2]), 0, 255)
-    png.data[i * 4 + 3] = 255
-  }
-  writeFileSync(join(previewDir, 'bg-neon-city.png'), PNG.sync.write(png))
-}
-
-console.log('HD assets generated in', outDir)
+console.log('SNES-style pixel assets generated in', outDir)

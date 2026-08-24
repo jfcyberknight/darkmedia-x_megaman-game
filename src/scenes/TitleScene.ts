@@ -23,15 +23,15 @@ export class TitleScene extends Phaser.Scene {
     drawSkyline(this, 'bg-far', -6)
 
     // Big title logo with glow
-    const titleY = height * 0.34
+    const titleY = height * 0.3
     const title = this.add.text(width / 2, titleY, 'MEGA BLASTER', {
-      fontSize: '84px',
+      fontSize: '30px',
       color: '#e8f1ff',
       fontFamily: 'monospace',
       fontStyle: 'bold',
     }).setOrigin(0.5)
-    title.setStroke('#0a0512', 10)
-    title.setShadow(0, 0, '#35e0ff', 26, true, true)
+    title.setStroke('#0a0512', 4)
+    title.setShadow(0, 0, '#35e0ff', 10, true, true)
     this.tweens.add({
       targets: title,
       alpha: { from: 0, to: 1 },
@@ -40,29 +40,29 @@ export class TitleScene extends Phaser.Scene {
       ease: 'Back.Out',
     })
 
-    const subtitle = this.add.text(width / 2, titleY + 64, 'A  MODERN  ACTION  PLATFORMER', {
-      fontSize: '17px',
+    const subtitle = this.add.text(width / 2, titleY + 26, 'A  MODERN  ACTION  PLATFORMER', {
+      fontSize: '9px',
       color: '#8b93a8',
       fontFamily: 'monospace',
-      letterSpacing: 8,
+      letterSpacing: 3,
     }).setOrigin(0.5)
 
     // Prompt blinking
     const prompt = this.add.text(width / 2, height * 0.66, 'PRESS  Z  TO START', {
-      fontSize: '21px',
+      fontSize: '11px',
       color: '#ffffff',
       fontFamily: 'monospace',
       letterSpacing: 3,
     }).setOrigin(0.5)
-    prompt.setShadow(0, 0, '#35e0ff', 12, true, true)
+    prompt.setShadow(0, 0, '#35e0ff', 5, true, true)
     this.tweens.add({ targets: prompt, alpha: { from: 1, to: 0.15 }, duration: 700, yoyo: true, repeat: -1 })
     void subtitle
 
     this.add.text(width / 2, height * 0.78, '← → MOVE     ↑ JUMP     Z SHOOT', {
-      fontSize: '14px',
+      fontSize: '8px',
       color: '#5a6280',
       fontFamily: 'monospace',
-      letterSpacing: 2,
+      letterSpacing: 1,
     }).setOrigin(0.5)
 
     drawVignette(this, 0.5)

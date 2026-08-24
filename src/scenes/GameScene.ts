@@ -9,8 +9,8 @@ import { drawVignette } from '../ui'
 import { sfx, startMusic, stopMusic } from '../audio'
 import { STAGES, DEFAULT_STAGE, type StageDef } from '../stages'
 
-const WORLD_W = 4000
-const WORLD_H = 1600
+const WORLD_W = 800
+const WORLD_H = 320
 
 export class GameScene extends Phaser.Scene {
   private player!: Player
@@ -57,14 +57,14 @@ export class GameScene extends Phaser.Scene {
   preload() {
     this.load.image('tileset', 'assets/tileset.png')
     this.load.tilemapTiledJSON('level', 'assets/level.json')
-    this.load.spritesheet('player', 'assets/player.png', { frameWidth: 40, frameHeight: 60 })
-    this.load.spritesheet('enemy', 'assets/enemy.png', { frameWidth: 45, frameHeight: 45 })
-    this.load.spritesheet('boss', 'assets/boss.png', { frameWidth: 80, frameHeight: 80 })
+    this.load.spritesheet('player', 'assets/player.png', { frameWidth: 22, frameHeight: 30 })
+    this.load.spritesheet('enemy', 'assets/enemy.png', { frameWidth: 22, frameHeight: 22 })
+    this.load.spritesheet('boss', 'assets/boss.png', { frameWidth: 44, frameHeight: 44 })
     this.load.image('bullet', 'assets/bullet.png')
     this.load.image('bullet-mid', 'assets/bullet-mid.png')
     this.load.image('bullet-big', 'assets/bullet-big.png')
     this.load.image('orb', 'assets/orb.png')
-    this.load.spritesheet('flyer', 'assets/flyer.png', { frameWidth: 40, frameHeight: 26 })
+    this.load.spritesheet('flyer', 'assets/flyer.png', { frameWidth: 20, frameHeight: 14 })
     this.load.image('turret', 'assets/turret.png')
     this.load.image('checkpoint', 'assets/checkpoint.png')
     this.load.image(`bg-far-${this.stage.id}`, `assets/bg-far-${this.stage.id}.png`)
@@ -106,7 +106,7 @@ export class GameScene extends Phaser.Scene {
       collideWorldBounds: true,
     })
 
-    this.player = new Player(this, this.cpActive ? 2000 : 160, this.cpActive ? 1330 : 1330, this.bullets)
+    this.player = new Player(this, this.cpActive ? 400 : 32, 256, this.bullets)
     this.player.powerUp = this.registry.get('power') === true
 
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1)
@@ -161,33 +161,33 @@ export class GameScene extends Phaser.Scene {
     // Top-right placement so it never covers the player.
     this.bossBar = this.add.graphics().setScrollFactor(0).setDepth(200)
     this.bossName = this.add.text(536, 4, 'WAR MACHINE', {
-      fontSize: '15px', color: '#ff9d9d', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 4,
+      fontSize: '8px', color: '#ff9d9d', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
     }).setScrollFactor(0).setDepth(200).setVisible(false)
     this.spawnBoss()
 
     // HUD
     this.hpBar = this.add.graphics().setScrollFactor(0).setDepth(200)
-    this.add.text(24, 16, 'HP', {
-      fontSize: '16px', color: '#9fb4d8', fontFamily: 'monospace', fontStyle: 'bold',
+    this.add.text(6, 3, 'HP', {
+      fontSize: '7px', color: '#9fb4d8', fontFamily: 'monospace', fontStyle: 'bold',
     }).setScrollFactor(0).setDepth(200)
-    this.add.text(24, 46, this.stage.name, {
-      fontSize: '15px', color: '#a9b3cf', fontFamily: 'monospace', letterSpacing: 3,
-    }).setScrollFactor(0).setDepth(200)
-
-    this.add.text(24, 72, '← → : move   |   ↑ : jump   |   Z : hold to charge', {
-      fontSize: '12px', color: '#5a6280', fontFamily: 'monospace',
+    this.add.text(6, 14, this.stage.name, {
+      fontSize: '8px', color: '#a9b3cf', fontFamily: 'monospace', letterSpacing: 1,
     }).setScrollFactor(0).setDepth(200)
 
-    this.powerText = this.add.text(24, 96, 'WAR POWER +', {
-      fontSize: '13px', color: '#ff9d8a', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 3,
+    this.add.text(6, 24, '←→:move ↑:jump Z:hold=charge', {
+      fontSize: '7px', color: '#5a6280', fontFamily: 'monospace',
+    }).setScrollFactor(0).setDepth(200)
+
+    this.powerText = this.add.text(6, 34, 'WAR POWER +', {
+      fontSize: '7px', color: '#ff9d8a', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 3,
     }).setScrollFactor(0).setDepth(200).setVisible(this.player.powerUp)
     this.powerText.setShadow(0, 0, '#ff5546', 10, true, true)
 
     // Lives (mini hero icons)
     const lives = (this.registry.get('lives') as number) ?? 3
     for (let i = 0; i < lives; i++) {
-      this.add.image(36 + i * 30, 128, 'player', 0)
-        .setScale(0.6).setScrollFactor(0).setDepth(200)
+      this.add.image(8 + i * 13, 44, "player", 0)
+        .setScale(0.5).setScrollFactor(0).setDepth(200)
     }
 
     // Audio: music loop + mute toggle (M)
@@ -236,7 +236,7 @@ export class GameScene extends Phaser.Scene {
       const dx = this.player.x - orb.x
       const dy = this.player.y - orb.y
       const d = Math.hypot(dx, dy)
-      if (d < 140 && d > 1) body.setVelocity((dx / d) * 320, (dy / d) * 320)
+      if (d < 56 && d > 1) body.setVelocity((dx / d) * 64, (dy / d) * 64)
       else body.setVelocity(0, 0)
       return true
     })
@@ -342,16 +342,16 @@ export class GameScene extends Phaser.Scene {
       .setScrollFactor(0).setDepth(-10)
       .setTint(this.stage.accent).setAlpha(0.22)
       .setBlendMode(Phaser.BlendModes.ADD)
-      .setScale(2.2, 1.8)
+      .setScale(1, 1)
 
     // Slow ambient light motes drifting upward (screen space).
     this.add.particles(0, 0, 'glow', {
       x: { min: 0, max: width },
       y: { min: 0, max: height },
       lifespan: 8000,
-      speedY: { min: -20, max: -6 },
-      speedX: { min: -8, max: 8 },
-      scale: { start: 0.04, end: 0.11 },
+      speedY: { min: -5, max: -1.5 },
+      speedX: { min: -2, max: 2 },
+      scale: { start: 0.015, end: 0.045 },
       alpha: { start: 0.16, end: 0 },
       frequency: 550,
       blendMode: Phaser.BlendModes.ADD,
@@ -363,53 +363,53 @@ export class GameScene extends Phaser.Scene {
   private drawHpBar() {
     const hp = this.player.getHealth()
     const max = 10
-    const x = 58, y = 16, w = 210, h = 16
+    const x = 20, y = 5, w = 84, h = 6
     const frac = Math.max(0, hp / max)
     this.hpBar.clear()
-    this.hpBar.fillStyle(0x0a0d16, 0.75).fillRoundedRect(x - 3, y - 3, w + 6, h + 6, 6)
-    this.hpBar.lineStyle(1.5, 0x3a4358, 1).strokeRoundedRect(x - 3, y - 3, w + 6, h + 6, 6)
-    this.hpBar.fillStyle(0x1a2030, 1).fillRoundedRect(x, y, w, h, 4)
+    this.hpBar.fillStyle(0x0a0d16, 0.75).fillRoundedRect(x - 2, y - 2, w + 4, h + 4, 3)
+    this.hpBar.lineStyle(1, 0x3a4358, 1).strokeRoundedRect(x - 2, y - 2, w + 4, h + 4, 3)
+    this.hpBar.fillStyle(0x1a2030, 1).fillRoundedRect(x, y, w, h, 3)
     if (frac > 0) {
       const fw = Math.max(10, w * frac)
       this.hpBar.fillGradientStyle(0x8df2ff, 0x35e0ff, 0x2b6bcb, 0x1d3f8f, 1)
       this.hpBar.fillRoundedRect(x, y, fw, h, 4)
-      this.hpBar.fillStyle(0xffffff, 0.28).fillRoundedRect(x + 2, y + 2, Math.max(4, fw - 4), 4, 3)
+      this.hpBar.fillStyle(0xffffff, 0.28).fillRoundedRect(x + 1, y + 1, Math.max(2, fw - 2), 2, 1)
     }
     this.hpBar.fillStyle(0x0a0d16, 0.5)
-    for (let i = 1; i < 10; i++) this.hpBar.fillRect(x + (w / 10) * i, y, 1.5, h)
+    for (let i = 1; i < 10; i++) this.hpBar.fillRect(x + (w / 10) * i, y, 1, h)
   }
 
   /** Yellow-white impact sparks at a world position. */
   spawnSparks(x: number, y: number) {
     const p = this.add.particles(x, y, 'glow', {
-      speed: { min: 150, max: 350 },
-      scale: { start: 0.14, end: 0 },
+      speed: { min: 30, max: 70 },
+      scale: { start: 0.05, end: 0 },
       lifespan: 260,
       tint: [0xffffff, 0xfacc15, 0xfb923c],
       blendMode: Phaser.BlendModes.ADD,
       emitting: false,
     })
-    p.explode(9)
+    p.explode(8)
     this.time.delayedCall(320, () => p.destroy())
   }
 
   /** Orange explosion burst + shockwave ring at a world position. */
   spawnExplosion(x: number, y: number, big = false) {
     const p = this.add.particles(x, y, 'glow', {
-      speed: { min: big ? 150 : 100, max: big ? 450 : 300 },
-      scale: { start: big ? 0.5 : 0.3, end: 0 },
+      speed: { min: big ? 30 : 20, max: big ? 90 : 60 },
+      scale: { start: big ? 0.15 : 0.1, end: 0 },
       lifespan: big ? 620 : 420,
       tint: [0xfbbf24, 0xf97316, 0xef4444],
       blendMode: Phaser.BlendModes.ADD,
       emitting: false,
     })
-    p.explode(big ? 34 : 18)
+    p.explode(big ? 24 : 12)
     this.time.delayedCall(big ? 680 : 480, () => p.destroy())
 
-    const ring = this.add.circle(x, y, big ? 20 : 10).setStrokeStyle(3, 0xffffff, 1)
+    const ring = this.add.circle(x, y, big ? 6 : 3).setStrokeStyle(1.5, 0xffffff, 1)
     this.tweens.add({
       targets: ring,
-      radius: big ? 120 : 56,
+      radius: big ? 48 : 22,
       alpha: 0,
       duration: big ? 380 : 240,
       ease: 'Cubic.Out',
@@ -421,23 +421,23 @@ export class GameScene extends Phaser.Scene {
   /** Gray dust puff at the player's feet on hard landings. */
   spawnLandingDust(x: number, y: number) {
     const p = this.add.particles(x, y, 'glow', {
-      speed: { min: 50, max: 140 },
+      speed: { min: 10, max: 28 },
       angle: { min: 200, max: 340 },
-      scale: { start: 0.16, end: 0 },
+      scale: { start: 0.05, end: 0 },
       lifespan: 280,
       alpha: { start: 0.5, end: 0 },
       tint: [0x94a3b8, 0xcbd5e1],
       emitting: false,
     })
-    p.explode(6)
+    p.explode(5)
     this.time.delayedCall(340, () => p.destroy())
   }
 
   /** One-frame muzzle flash at the buster tip. */
-  spawnMuzzleFlash(x: number, y: number, scale = 0.28, flame = false) {
+  spawnMuzzleFlash(x: number, y: number, scale = 0.1, flame = false) {
     const halo = this.add.image(x, y, 'glow')
       .setTint(flame ? 0xffb37a : 0x9df2ff).setBlendMode(Phaser.BlendModes.ADD).setScale(scale).setDepth(50)
-    const core = this.add.circle(x, y, 4 + scale * 10, 0xffffff).setBlendMode(Phaser.BlendModes.ADD).setDepth(51)
+    const core = this.add.circle(x, y, 1.5 + scale * 8, 0xffffff).setBlendMode(Phaser.BlendModes.ADD).setDepth(51)
     this.tweens.add({
       targets: [halo, core], alpha: 0, scale: 1.9, duration: 80,
       onComplete: () => { halo.destroy(); core.destroy() },
@@ -448,12 +448,12 @@ export class GameScene extends Phaser.Scene {
 
   private spawnEnergyPickups() {
     const spots = [
-      { x: 760, y: 1080 },
-      { x: 1200, y: 920 },
-      { x: 1800, y: 760 },
-      { x: 2960, y: 680 },
-      { x: 3560, y: 840 },
-      { x: 2100, y: 1310 },
+      { x: 152, y: 216 },
+      { x: 240, y: 184 },
+      { x: 360, y: 152 },
+      { x: 592, y: 136 },
+      { x: 712, y: 168 },
+      { x: 420, y: 260 },
     ]
     for (const s of spots) this.spawnOrb(s.x, s.y, 'hp')
   }
@@ -463,13 +463,13 @@ export class GameScene extends Phaser.Scene {
     orb.setDepth(30)
     orb.setData('kind', kind)
     if (kind === 'core') {
-      orb.setScale(2.2).setTint(0xff6b5e)
-      orb.body!.setSize(22, 22)
-      this.tweens.add({ targets: orb, scale: 2.6, duration: 550, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
+      orb.setScale(1.4).setTint(0xff6b5e)
+      orb.body!.setSize(8, 8)
+      this.tweens.add({ targets: orb, scale: 1.6, duration: 550, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
       this.tweens.add({ targets: orb, alpha: { from: 0.7, to: 1 }, duration: 300, yoyo: true, repeat: -1 })
     } else {
       orb.setScale(1).setTint(0x7dfca2)
-      orb.body!.setSize(18, 18)
+      orb.body!.setSize(6, 6)
       this.tweens.add({ targets: orb, alpha: { from: 0.7, to: 1 }, duration: 650, yoyo: true, repeat: -1 })
     }
     return orb
@@ -477,14 +477,14 @@ export class GameScene extends Phaser.Scene {
 
   private spawnCollectBurst(x: number, y: number, tint: number) {
     const p = this.add.particles(x, y, 'glow', {
-      speed: { min: 90, max: 240 },
-      scale: { start: 0.16, end: 0 },
+      speed: { min: 18, max: 48 },
+      scale: { start: 0.05, end: 0 },
       lifespan: 300,
       tint: [tint, 0xffffff],
       blendMode: Phaser.BlendModes.ADD,
       emitting: false,
     })
-    p.explode(10)
+    p.explode(8)
     this.time.delayedCall(360, () => p.destroy())
   }
 
@@ -518,11 +518,11 @@ export class GameScene extends Phaser.Scene {
     this.spawnExplosion(x, y, false)
 
     const { width } = this.cameras.main
-    const t = this.add.text(width / 2, 150, 'WAR MACHINE POWER ABSORBED', {
-      fontSize: '30px', color: '#ffb3a8', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 4,
+    const t = this.add.text(width / 2, 58, 'WAR MACHINE POWER ABSORBED', {
+      fontSize: '12px', color: '#ffb3a8', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(300).setAlpha(0).setScale(0.8)
-    t.setStroke('#1a0505', 8)
-    t.setShadow(0, 0, '#ff5546', 22, true, true)
+    t.setStroke('#1a0505', 3)
+    t.setShadow(0, 0, '#ff5546', 9, true, true)
     this.tweens.add({ targets: t, alpha: 1, scale: 1, duration: 400, ease: 'Back.Out' })
 
     this.powerText.setVisible(true)
@@ -535,24 +535,24 @@ export class GameScene extends Phaser.Scene {
 
   private showAllTargetsDown() {
     const { width } = this.cameras.main
-    const t = this.add.text(width / 2, 190, 'ALL TARGETS DOWN', {
-      fontSize: '24px', color: '#9df2ff', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 6,
+    const t = this.add.text(width / 2, 76, 'ALL TARGETS DOWN', {
+      fontSize: '10px', color: '#9df2ff', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 2,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(300).setAlpha(0)
-    t.setShadow(0, 0, '#35e0ff', 16, true, true)
+    t.setShadow(0, 0, '#35e0ff', 6, true, true)
     this.tweens.add({ targets: t, alpha: 1, duration: 350, yoyo: true, hold: 900,
       onComplete: () => t.destroy() })
   }
 
   private spawnEnemies() {
     const defs: Array<{ kind: 'walker' | 'flyer' | 'turret'; x: number; y: number }> = [
-      { kind: 'walker', x: 640, y: 1075 },
-      { kind: 'walker', x: 1080, y: 915 },
-      { kind: 'flyer', x: 1520, y: 640 },
-      { kind: 'walker', x: 2360, y: 915 },
-      { kind: 'flyer', x: 2620, y: 560 },
-      { kind: 'turret', x: 2260, y: 1342 },
-      { kind: 'turret', x: 3150, y: 1342 },
-      { kind: 'walker', x: 3480, y: 835 },
+      { kind: 'walker', x: 128, y: 212 },
+      { kind: 'walker', x: 216, y: 180 },
+      { kind: 'flyer', x: 304, y: 128 },
+      { kind: 'walker', x: 472, y: 180 },
+      { kind: 'flyer', x: 524, y: 112 },
+      { kind: 'turret', x: 452, y: 262 },
+      { kind: 'turret', x: 630, y: 262 },
+      { kind: 'walker', x: 696, y: 164 },
     ]
     for (const d of defs) {
       let enemy: StageEnemy
@@ -566,12 +566,12 @@ export class GameScene extends Phaser.Scene {
 
   /** Mid-level holographic checkpoint: touching it moves the respawn point here. */
   private spawnCheckpoint() {
-    const x = 2000, y = 1322
+    const x = 400, y = 264
     this.checkpoint = this.add.image(x, y, 'checkpoint').setDepth(10)
     this.physics.add.existing(this.checkpoint)
     const body = (this.checkpoint as Phaser.Physics.Arcade.Image).body as Phaser.Physics.Arcade.Body
     body.setAllowGravity(false)
-    body.setSize(56, 90)
+    body.setSize(20, 32)
     if (this.cpActive) this.activateCheckpointVisual()
     this.physics.add.overlap(
       this.player,
@@ -582,11 +582,11 @@ export class GameScene extends Phaser.Scene {
           this.registry.set('cp', true)
           this.activateCheckpointVisual()
           sfx.checkpoint()
-          this.spawnCollectBurst(x, y - 16, 0x35e0ff)
-          const t = this.add.text(x, y - 90, 'CHECKPOINT', {
-            fontSize: '17px', color: '#9df2ff', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 4,
+          this.spawnCollectBurst(x, y - 8, 0x35e0ff)
+          const t = this.add.text(x, y - 34, 'CHECKPOINT', {
+            fontSize: '8px', color: '#9df2ff', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
           }).setOrigin(0.5).setDepth(120).setAlpha(0)
-          this.tweens.add({ targets: t, alpha: 1, y: y - 104, duration: 500, ease: 'Cubic.Out',
+          this.tweens.add({ targets: t, alpha: 1, y: y - 40, duration: 500, ease: 'Cubic.Out',
             onComplete: () => this.tweens.add({ targets: t, alpha: 0, delay: 900, duration: 400, onComplete: () => t.destroy() }) })
         }
       },
@@ -606,8 +606,8 @@ export class GameScene extends Phaser.Scene {
     b.setTexture('orb')
     b.setActive(true).setVisible(true)
     b.body!.enable = true
-    b.setTint(tint).setScale(0.75).setDepth(45)
-    b.body!.setSize(18, 18)
+    b.setTint(tint).setScale(1).setDepth(45)
+    b.body!.setSize(6, 6)
     const ang = Math.atan2(ty - y, tx - x)
     b.setVelocity(Math.cos(ang) * speed, Math.sin(ang) * speed)
     const token = this.time.now + Math.random()
@@ -625,8 +625,8 @@ export class GameScene extends Phaser.Scene {
     b.setActive(true).setVisible(true)
     b.body!.enable = true
     b.setTint(0xffb347).setScale(1).setDepth(45)
-    b.body!.setSize(18, 18)
-    b.setVelocity(dir * 400, 0)
+    b.body!.setSize(6, 6)
+    b.setVelocity(dir * 80, 0)
     const token = this.time.now + Math.random()
     b.setData('token', token)
     this.time.delayedCall(1500, () => {
@@ -647,7 +647,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private spawnBoss() {
-    const boss = new Boss(this, 3700, 1320, this.player, (hp, max) => this.drawBossBar(hp, max))
+    const boss = new Boss(this, 740, 262, this.player, (hp, max) => this.drawBossBar(hp, max))
     this.boss = boss
     this.bossActive = true
     this.physics.add.collider(this.boss, this.platforms)
@@ -669,7 +669,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawBossBar(hp?: number, max?: number) {
-    const x = 536, y = 26, barW = 400, barH = 14
+    const x = 124, y = 10, barW = 120, barH = 6
     this.bossBar.clear()
     if (!this.bossActive) {
       this.bossName.setVisible(false)
@@ -686,7 +686,7 @@ export class GameScene extends Phaser.Scene {
       const fw = Math.max(12, barW * frac)
       this.bossBar.fillGradientStyle(0xff8a7a, 0xff5566, 0xc81e3c, 0x8f1029, 1)
       this.bossBar.fillRoundedRect(x, y, fw, barH, 5)
-      this.bossBar.fillStyle(0xffffff, 0.3).fillRoundedRect(x + 2, y + 2, Math.max(4, fw - 4), 4, 3)
+      this.bossBar.fillStyle(0xffffff, 0.3).fillRoundedRect(x + 1, y + 1, Math.max(2, fw - 2), 2, 1)
     }
     this.bossBar.fillStyle(0x0a0d16, 0.55)
     for (let i = 1; i < 10; i++) this.bossBar.fillRect(x + (barW / 10) * i, y, 1.5, barH)
@@ -694,11 +694,11 @@ export class GameScene extends Phaser.Scene {
 
   private showStageClear() {
     const { width } = this.cameras.main
-    const t = this.add.text(width / 2, 130, 'STAGE CLEAR', {
-      fontSize: '46px', color: '#7dfca2', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 8,
+    const t = this.add.text(width / 2, 52, 'STAGE CLEAR', {
+      fontSize: '18px', color: '#7dfca2', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 3,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(300).setAlpha(0).setScale(0.7)
-    t.setStroke('#05130b', 8)
-    t.setShadow(0, 0, '#34d399', 26, true, true)
+    t.setStroke('#05130b', 3)
+    t.setShadow(0, 0, '#34d399', 10, true, true)
     this.tweens.add({ targets: t, alpha: 1, scale: 1, duration: 450, ease: 'Back.Out' })
   }
 
@@ -724,15 +724,15 @@ export class GameScene extends Phaser.Scene {
       .setScrollFactor(0).setDepth(400)
     this.tweens.add({ targets: veil, fillAlpha: 0.85, duration: 600 })
 
-    const t = this.add.text(width / 2, height / 2 - 26, 'GAME OVER', {
-      fontSize: '58px', color: '#ff6b5e', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 10,
+    const t = this.add.text(width / 2, height / 2 - 10, 'GAME OVER', {
+      fontSize: '22px', color: '#ff6b5e', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 10,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(401).setAlpha(0).setScale(0.8)
-    t.setStroke('#160404', 10)
-    t.setShadow(0, 0, '#ff3524', 26, true, true)
+    t.setStroke('#160404', 4)
+    t.setShadow(0, 0, '#ff3524', 10, true, true)
     this.tweens.add({ targets: t, alpha: 1, scale: 1, duration: 500, ease: 'Back.Out' })
 
-    const sub = this.add.text(width / 2, height / 2 + 34, 'RETURNING TO STAGE SELECT', {
-      fontSize: '15px', color: '#8b93a8', fontFamily: 'monospace', letterSpacing: 3,
+    const sub = this.add.text(width / 2, height / 2 + 13, 'RETURNING TO STAGE SELECT', {
+      fontSize: '8px', color: '#8b93a8', fontFamily: 'monospace', letterSpacing: 1,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(401)
     this.tweens.add({ targets: sub, alpha: { from: 1, to: 0.25 }, duration: 600, yoyo: true, repeat: -1 })
 

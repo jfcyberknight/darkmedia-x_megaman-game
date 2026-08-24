@@ -18,8 +18,8 @@ export class Flyer extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
     scene.physics.add.existing(this)
 
     ;(this.body as Phaser.Physics.Arcade.Body).allowGravity = false
-    this.body!.setSize(30, 16)
-    this.body!.setOffset(5, 5)
+    this.body!.setSize(12, 7)
+    this.body!.setOffset(4, 4)
     this.play('flyer-fly')
   }
 
@@ -27,10 +27,10 @@ export class Flyer extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
     if (!this.active) return
     this.t += delta
     const dx = this.target.x - this.x
-    const chase = Math.abs(dx) < 300 && Math.abs(this.target.y - this.y) < 280
-    this.setVelocityX(chase ? Math.sign(dx) * 115 : Math.cos(this.t / 900) * 55)
+    const chase = Math.abs(dx) < 120 && Math.abs(this.target.y - this.y) < 110
+    this.setVelocityX(chase ? Math.sign(dx) * 23 : Math.cos(this.t / 900) * 11)
     this.setFlipX(this.body!.velocity.x < 0)
-    this.setY(this.baseY + Math.sin(this.t / 430) * 13)
+    this.setY(this.baseY + Math.sin(this.t / 430) * 3)
   }
 
   takeDamage(amount: number) {
