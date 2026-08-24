@@ -1,6 +1,8 @@
 import Phaser from 'phaser'
 import { Player } from '../entities/Player'
-import { Enemy } from '../entities/Enemy'
+import { Enemy, type StageEnemy } from '../entities/Enemy'
+import { Flyer } from '../entities/Flyer'
+import { Turret } from '../entities/Turret'
 import { Boss } from '../entities/Boss'
 import { Bullet } from '../objects/Bullet'
 import { drawVignette } from '../ui'
@@ -17,6 +19,9 @@ export class GameScene extends Phaser.Scene {
   private enemies!: Phaser.Physics.Arcade.Group
   private bullets!: Phaser.Physics.Arcade.Group
   private orbs!: Phaser.Physics.Arcade.Group
+  private enemyBullets!: Phaser.Physics.Arcade.Group
+  private checkpoint!: Phaser.GameObjects.Image
+  private cpActive = false
   private boss?: Boss
   private bossBar!: Phaser.GameObjects.Graphics
   private bossName!: Phaser.GameObjects.Text
@@ -38,10 +43,15 @@ export class GameScene extends Phaser.Scene {
 
   init(data: { stage?: string; fresh?: boolean }) {
     this.stage = STAGES.find(s => s.id === data.stage) ?? DEFAULT_STAGE
-    // A fresh entry from the stage select resets lives; a death-restart keeps them.
-    if (data.fresh || this.registry.get('lives') === undefined) {
+    // A fresh entry from the stage select resets lives and checkpoint; a death-restart keeps them.
+    if (data.fresh) {
+      this.registry.set('lives', 3)
+      this.registry.set('cp', false)
+    }
+    if (this.registry.get('lives') === undefined) {
       this.registry.set('lives', 3)
     }
+    this.cpActive = this.registry.get('cp') === true
   }
 
   preload() {
@@ -54,6 +64,9 @@ export class GameScene extends Phaser.Scene {
     this.load.image('bullet-mid', 'assets/bullet-mid.png')
     this.load.image('bullet-big', 'assets/bullet-big.png')
     this.load.image('orb', 'assets/orb.png')
+    this.load.spritesheet('flyer', 'assets/flyer.png', { frameWidth: 40, frameHeight: 26 })
+    this.load.image('turret', 'assets/turret.png')
+    this.load.image('checkpoint', 'assets/checkpoint.png')
     this.load.image(`bg-far-${this.stage.id}`, `assets/bg-far-${this.stage.id}.png`)
     this.load.image(`bg-mid-${this.stage.id}`, `assets/bg-mid-${this.stage.id}.png`)
     this.load.image('haze', 'assets/haze.png')
@@ -82,16 +95,23 @@ export class GameScene extends Phaser.Scene {
       immovable: true,
     })
 
+    this.enemyBullets = this.physics.add.group({
+      allowGravity: false,
+      immovable: true,
+      maxSize: 30,
+    })
+
     this.enemies = this.physics.add.group({
       allowGravity: true,
       collideWorldBounds: true,
     })
 
-    this.player = new Player(this, 160, 1330, this.bullets)
+    this.player = new Player(this, this.cpActive ? 2000 : 160, this.cpActive ? 1330 : 1330, this.bullets)
     this.player.powerUp = this.registry.get('power') === true
 
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1)
 
+    this.spawnCheckpoint()
     this.spawnEnemies()
     this.spawnEnergyPickups()
 
@@ -127,6 +147,15 @@ export class GameScene extends Phaser.Scene {
       undefined,
       this,
     )
+    this.physics.add.overlap(
+      this.player,
+      this.enemyBullets,
+      this.handlePlayerHitByEnemyBullet as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+      undefined,
+      this,
+    )
+    this.physics.add.collider(this.enemyBullets, this.ground)
+    this.physics.add.collider(this.enemyBullets, this.platforms)
 
     // Boss HP bar must exist before the boss spawns (spawn draws it once).
     // Top-right placement so it never covers the player.
@@ -213,13 +242,13 @@ export class GameScene extends Phaser.Scene {
     })
 
     this.enemies.children.iterate((child) => {
-      const enemy = child as Enemy
-      if (enemy.active) enemy.update()
+      const enemy = child as unknown as StageEnemy
+      if (enemy.active) enemy.update(delta)
       return true
     })
 
     if (this.bossActive && this.boss?.active) {
-      this.boss.update()
+      this.boss.update(delta)
       this.drawBossBar()
     }
   }
@@ -262,6 +291,14 @@ export class GameScene extends Phaser.Scene {
         key: 'enemy-walk',
         frames: this.anims.generateFrameNumbers('enemy', { start: 0, end: 1 }),
         frameRate: 6,
+        repeat: -1,
+      })
+    }
+    if (!this.anims.exists('flyer-fly')) {
+      this.anims.create({
+        key: 'flyer-fly',
+        frames: this.anims.generateFrameNumbers('flyer', { start: 0, end: 1 }),
+        frameRate: 10,
         repeat: -1,
       })
     }
@@ -507,25 +544,110 @@ export class GameScene extends Phaser.Scene {
   }
 
   private spawnEnemies() {
-    // Spawns aligned with the tilemap platforms (top surface - 40px)
-    const positions = [
-      { x: 640, y: 1075 },
-      { x: 1080, y: 915 },
-      { x: 1640, y: 755 },
-      { x: 2360, y: 915 },
-      { x: 2880, y: 675 },
-      { x: 3480, y: 835 },
+    const defs: Array<{ kind: 'walker' | 'flyer' | 'turret'; x: number; y: number }> = [
+      { kind: 'walker', x: 640, y: 1075 },
+      { kind: 'walker', x: 1080, y: 915 },
+      { kind: 'flyer', x: 1520, y: 640 },
+      { kind: 'walker', x: 2360, y: 915 },
+      { kind: 'flyer', x: 2620, y: 560 },
+      { kind: 'turret', x: 2260, y: 1342 },
+      { kind: 'turret', x: 3150, y: 1342 },
+      { kind: 'walker', x: 3480, y: 835 },
     ]
-
-    for (const pos of positions) {
-      const enemy = new Enemy(this, pos.x, pos.y)
-      this.enemies.add(enemy)
+    for (const d of defs) {
+      let enemy: StageEnemy
+      if (d.kind === 'flyer') enemy = new Flyer(this, d.x, d.y, this.player)
+      else if (d.kind === 'turret') enemy = new Turret(this, d.x, d.y, this.player)
+      else enemy = new Enemy(this, d.x, d.y)
+      this.enemies.add(enemy as unknown as Phaser.Physics.Arcade.Sprite)
       this.enemyCount++
     }
   }
 
+  /** Mid-level holographic checkpoint: touching it moves the respawn point here. */
+  private spawnCheckpoint() {
+    const x = 2000, y = 1322
+    this.checkpoint = this.add.image(x, y, 'checkpoint').setDepth(10)
+    this.physics.add.existing(this.checkpoint)
+    const body = (this.checkpoint as Phaser.Physics.Arcade.Image).body as Phaser.Physics.Arcade.Body
+    body.setAllowGravity(false)
+    body.setSize(56, 90)
+    if (this.cpActive) this.activateCheckpointVisual()
+    this.physics.add.overlap(
+      this.player,
+      this.checkpoint,
+      () => {
+        if (!this.cpActive) {
+          this.cpActive = true
+          this.registry.set('cp', true)
+          this.activateCheckpointVisual()
+          sfx.checkpoint()
+          this.spawnCollectBurst(x, y - 16, 0x35e0ff)
+          const t = this.add.text(x, y - 90, 'CHECKPOINT', {
+            fontSize: '17px', color: '#9df2ff', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 4,
+          }).setOrigin(0.5).setDepth(120).setAlpha(0)
+          this.tweens.add({ targets: t, alpha: 1, y: y - 104, duration: 500, ease: 'Cubic.Out',
+            onComplete: () => this.tweens.add({ targets: t, alpha: 0, delay: 900, duration: 400, onComplete: () => t.destroy() }) })
+        }
+      },
+      undefined,
+      this,
+    )
+  }
+
+  private activateCheckpointVisual() {
+    this.checkpoint.setTint(0x7dfca2)
+  }
+
+  /** Aimed enemy projectile (boss volleys, turrets). */
+  spawnEnemyBullet(x: number, y: number, tx: number, ty: number, speed = 350, tint = 0xff5546) {
+    const b = this.enemyBullets.get(x, y, 'orb') as Phaser.Physics.Arcade.Image | null
+    if (!b) return
+    b.setTexture('orb')
+    b.setActive(true).setVisible(true)
+    b.body!.enable = true
+    b.setTint(tint).setScale(0.75).setDepth(45)
+    b.body!.setSize(18, 18)
+    const ang = Math.atan2(ty - y, tx - x)
+    b.setVelocity(Math.cos(ang) * speed, Math.sin(ang) * speed)
+    const token = this.time.now + Math.random()
+    b.setData('token', token)
+    this.time.delayedCall(3200, () => {
+      if (b.active && b.getData('token') === token) b.disableBody(true, true)
+    })
+  }
+
+  /** Ground shockwave from the boss slam. */
+  spawnShockwave(x: number, y: number, dir: number) {
+    const b = this.enemyBullets.get(x, y, 'orb') as Phaser.Physics.Arcade.Image | null
+    if (!b) return
+    b.setTexture('orb')
+    b.setActive(true).setVisible(true)
+    b.body!.enable = true
+    b.setTint(0xffb347).setScale(1).setDepth(45)
+    b.body!.setSize(18, 18)
+    b.setVelocity(dir * 400, 0)
+    const token = this.time.now + Math.random()
+    b.setData('token', token)
+    this.time.delayedCall(1500, () => {
+      if (b.active && b.getData('token') === token) b.disableBody(true, true)
+    })
+  }
+
+  private handlePlayerHitByEnemyBullet(
+    player: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+    bulletObj: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+  ) {
+    const p = player as Player
+    const b = bulletObj as Phaser.Physics.Arcade.Image
+    if (!b.active) return
+    b.disableBody(true, true)
+    this.spawnSparks(b.x, b.y)
+    p.takeDamage(2, b.body!.velocity.x >= 0 ? -1 : 1)
+  }
+
   private spawnBoss() {
-    const boss = new Boss(this, 3700, 1320, (hp, max) => this.drawBossBar(hp, max))
+    const boss = new Boss(this, 3700, 1320, this.player, (hp, max) => this.drawBossBar(hp, max))
     this.boss = boss
     this.bossActive = true
     this.physics.add.collider(this.boss, this.platforms)
@@ -657,10 +779,10 @@ export class GameScene extends Phaser.Scene {
 
   private handleBulletHitEnemy(
     bullet: Phaser.Types.Physics.Arcade.GameObjectWithBody,
-    enemy: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+    enemyObj: Phaser.Types.Physics.Arcade.GameObjectWithBody,
   ) {
     const b = bullet as Bullet
-    const e = enemy as Enemy
+    const e = enemyObj as unknown as StageEnemy
     if (!b.active || !e.active) return
     if (!b.canHit(e)) return
 
@@ -669,7 +791,6 @@ export class GameScene extends Phaser.Scene {
 
     if (!e.active) {
       this.enemyCount--
-      sfx.explode()
       if (Math.random() < 0.6) this.spawnOrb(e.x, e.y, 'hp')
       if (this.enemyCount <= 0) this.showAllTargetsDown()
     }

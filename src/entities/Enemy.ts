@@ -1,6 +1,16 @@
 import Phaser from 'phaser'
+import { sfx } from '../audio'
 
-export class Enemy extends Phaser.Physics.Arcade.Sprite {
+/** Structural type shared by every hostile in the stage (walker, flyer, turret, boss). */
+export interface StageEnemy {
+  active: boolean
+  x: number
+  y: number
+  update(delta?: number): void
+  takeDamage(amount: number): void
+}
+
+export class Enemy extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
   private patrolSpeed = 100
   private patrolDistance = 150
   private startX = 0
@@ -20,7 +30,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.play('enemy-walk')
   }
 
-  update() {
+  update(_delta = 16.67) {
     const body = this.body as Phaser.Physics.Arcade.Body
 
     if (this.active && body.blocked.right) {
@@ -44,6 +54,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   takeDamage(amount: number) {
     this.health -= amount
     if (this.health <= 0) {
+      sfx.explode()
       ;(this.scene as Phaser.Scene & { spawnExplosion(x: number, y: number): void })
         .spawnExplosion(this.x, this.y)
       this.disableBody(true, true)

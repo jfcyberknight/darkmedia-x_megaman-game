@@ -172,4 +172,14 @@ export const sfx = {
   },
   gameOver: () => [440, 349.23, 293.66, 220].forEach((f, i) =>
     tone({ f, dur: 0.44, vol: 0.38, delay: i * 0.34, type: 'triangle' })),
+  bossShot: () => tone({ f: 320, to: 120, dur: 0.14, type: 'square', vol: 0.32 }),
+  turretShot: () => tone({ f: 540, to: 180, dur: 0.1, vol: 0.28 }),
+  slam: () => {
+    noise({ dur: 0.32, vol: 0.6, freq: 300 })
+    tone({ f: 75, to: 26, dur: 0.34, type: 'triangle', vol: 0.6 })
+  },
+  dash: () => noise({ dur: 0.26, vol: 0.35, freq: 1500 }),
+  telegraph: () => tone({ f: 180, to: 240, dur: 0.3, type: 'sawtooth', vol: 0.3 }),
+  checkpoint: () => [523.25, 783.99, 1046.5].forEach((f, i) =>
+    tone({ f, dur: 0.12, vol: 0.34, delay: i * 0.08 })),
 }

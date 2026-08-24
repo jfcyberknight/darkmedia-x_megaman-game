@@ -484,6 +484,64 @@ savePreview(bigBolt, 'bullet-big.png', 6)
   savePreview(c, 'orb.png', 6)
 }
 
+// ============================ FLYER DRONE (40x26, 2 frames) ============================
+function flyerFrame(rotorPhase) {
+  const c = C(40, 26)
+  // rotor blur on top
+  el(c, 20, 3.6 + (rotorPhase ? 0.5 : 0), rotorPhase ? 11 : 13, 1.6, solid(hex(0x9fb4d8)))
+  // body capsule
+  rr(c, 20, 13, 12, 6.5, 6, (x, y) => {
+    const t = clamp01((y - 6.5) / 13)
+    const spec = Math.max(0, 1 - Math.hypot((x - 15) / 8, (y - 10) / 5))
+    return mix(mix(hex(0x5b6b85), hex(0x232c40), t), hex(0xd7e2f2), spec * 0.5)
+  })
+  // eye
+  el(c, 30, 12, 3, 2.6, solid(rotorPhase ? hex(0x9df2ff) : hex(0x35e0ff)))
+  glow(c, 30, 12, 7, hex(0x35e0ff), 0.5)
+  // tail fins
+  seg(c, 9, 12, 5, 9, 1.6, solid(hex(0x232c40)))
+  seg(c, 9, 15, 5, 18, 1.6, solid(hex(0x232c40)))
+  outline(c, [8, 10, 22], 2)
+  return c
+}
+save(stitch([flyerFrame(0), flyerFrame(1)]), 'flyer.png')
+savePreview(stitch([flyerFrame(0), flyerFrame(1)]), 'flyer.png', 5)
+
+// ============================ TURRET (40x40, 1 frame) ============================
+{
+  const c = C(40, 40)
+  rr(c, 20, 33, 14, 5, 3, (x, y) => mix(hex(0x3c4a63), hex(0x161d2c), clamp01((y - 28) / 10)))
+  el(c, 20, 24, 11, 9, (x, y) => {
+    const t = clamp01((y - 15) / 18)
+    const spec = Math.max(0, 1 - Math.hypot((x - 16) / 6, (y - 19) / 5))
+    return mix(mix(hex(0x64748b), hex(0x232c42), t), hex(0xd7e2f2), spec * 0.5)
+  })
+  rr(c, 30, 22, 7, 2.6, 2, solid(hex(0x2b3448)))
+  el(c, 36, 22, 1.6, 1.6, solid(hex(0xff6b5e)))
+  glow(c, 36, 22, 5, hex(0xff5546), 0.5)
+  el(c, 20, 18, 1.8, 1.8, solid(hex(0xffc857)))
+  outline(c, [7, 9, 16], 2)
+  save(c, 'turret.png')
+  savePreview(c, 'turret.png', 5)
+}
+
+// ============================ CHECKPOINT BEACON (26x64) ============================
+{
+  const c = C(26, 64)
+  rr(c, 13, 59, 11, 3.5, 2, solid(hex(0x2b3448)))
+  rr(c, 13, 34, 2.6, 24, 2, solid(hex(0x39465e)))
+  const dcx = 13, dcy = 16, r = 8
+  fillB(c, dcx - r - 1, dcy - r - 1, dcx + r + 1, dcy + r + 1,
+    (x, y) => clamp01(r - (Math.abs(x - dcx) + Math.abs(y - dcy)) + 0.5),
+    (x, y) => {
+      const spec = Math.max(0, 1 - Math.hypot((x - dcx + 2) / 6, (y - dcy + 2) / 6))
+      return mix(hex(0x35e0ff), hex(0xeafcff), spec * 0.7)
+    })
+  glow(c, dcx, dcy, 10, hex(0x35e0ff), 0.4)
+  save(c, 'checkpoint.png')
+  savePreview(c, 'checkpoint.png', 5)
+}
+
 // ============================ GLOW BLOB (64x64, additive) ============================
 {
   const c = C(64, 64)

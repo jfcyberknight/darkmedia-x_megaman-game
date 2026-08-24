@@ -10,6 +10,7 @@ const BULLET_DEF: Record<BulletType, { key: string; damage: number; speed: numbe
 
 export class Bullet extends Phaser.Physics.Arcade.Image {
   private lifetime = 1400
+  private shotToken = 0
   bulletType: BulletType = 'normal'
   damage = 1
   pierce = false
@@ -38,8 +39,10 @@ export class Bullet extends Phaser.Physics.Arcade.Image {
     this.body!.enable = true
     this.setVelocityX(direction * def.speed)
 
+    // Token guards against stale timers firing after the bullet was recycled.
+    const token = ++this.shotToken
     this.scene.time.delayedCall(this.lifetime, () => {
-      this.disableBody(true, true)
+      if (this.shotToken === token) this.disableBody(true, true)
     })
   }
 
