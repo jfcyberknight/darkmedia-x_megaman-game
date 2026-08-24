@@ -258,33 +258,53 @@ writeFileSync(join(outDir, 'bullet.png'), PNG.sync.write(gridToPng(bullet, 6, 4)
 // --- Tileset (conservé procédural, déjà validé) ---
 function seededRand(seed) { let s = seed; return () => (s = (s * 1103515245 + 12345) % 2147483648) / 2147483648 }
 const TP = { T: [148, 163, 184, 255], U: [71, 85, 105, 255], V: [30, 41, 59, 255], P: [148, 163, 184, 255], Q: [51, 65, 85, 255], _: [0, 0, 0, 0] }
+
+// Clean SNES-style surfaces: smooth vertical gradient + a few deliberate details,
+// no dense per-pixel noise.
 function tileGroundTop() {
   const c = makeCanvas(32, 32); const rnd = seededRand(42)
   for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) {
-    let ch = 'U'
-    if (y === 0) ch = 'T'
-    else if (y <= 2) ch = rnd() > 0.3 ? 'T' : 'U'
-    else ch = rnd() > 0.78 ? 'V' : 'U'
-    if ((y === 10 || y === 22) && x > 3 && x < 28 && rnd() > 0.35) ch = 'V'
+    // top edge highlight (light rows 0-1), then smooth body
+    if (y === 0) { px(c, x, y, 'T'); continue }
+    if (y === 1) { px(c, x, y, rnd() > 0.5 ? 'T' : 'U'); continue }
+    // subtle shading: lighter near top, darker near bottom
+    const shade = y / 32
+    const ch = shade > 0.62 ? 'V' : (shade > 0.3 ? 'U' : 'U')
     px(c, x, y, ch)
   }
+  // sparse intentional pebbles/cracks
+  for (const [px_, py_] of [[7, 8], [19, 12], [26, 20], [5, 24]]) px(c, px_, py_, 'V')
+  for (const [px_, py_] of [[13, 6], [30, 5]]) px(c, px_, py_, 'T')
+  // occasional horizontal crack
+  rect(c, 3, 15, 9, 15, 'V'); rect(c, 20, 25, 26, 25, 'V')
   return c
 }
 function tileGroundBody() {
   const c = makeCanvas(32, 32); const rnd = seededRand(7)
   for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) {
-    const darkBias = y / 32 * 0.35
-    px(c, x, y, rnd() > 0.72 - darkBias * 0.5 ? 'V' : 'U')
+    const shade = y / 32
+    const ch = shade > 0.7 ? 'V' : (shade > 0.35 ? 'U' : 'U')
+    // horizontal bands every ~8px for a layered look
+    const banded = (y % 8 === 0 && x > 2 && x < 29) ? 'V' : ch
+    px(c, x, y, banded)
   }
+  for (const [px_, py_] of [[6, 5], [24, 4], [14, 13], [28, 16], [9, 22]]) px(c, px_, py_, 'V')
   return c
 }
 function tilePlatform() {
   const c = makeCanvas(32, 32); const rnd = seededRand(99)
-  rect(c, 0, 0, 31, 1, 'P')
-  for (let y = 2; y < 29; y++) for (let x = 0; x < 32; x++) px(c, x, y, rnd() > 0.82 ? 'V' : 'Q')
-  rect(c, 0, 29, 31, 31, 'V')
-  rect(c, 0, 0, 0, 31, 'V'); rect(c, 31, 0, 31, 31, 'V')
-  for (const [rx, ry] of [[4, 5], [27, 5], [4, 25], [27, 25]]) px(c, rx, ry, 'T')
+  rect(c, 0, 0, 31, 1, 'P')                 // bright top edge
+  rect(c, 0, 2, 31, 3, 'Q')                 // under-edge
+  for (let y = 4; y < 28; y++) for (let x = 0; x < 32; x++) {
+    // smooth metal body with subtle shade
+    const half = x < 16
+    const ch = half ? 'Q' : (rnd() > 0.9 ? 'V' : 'Q')
+    px(c, x, y, ch)
+  }
+  rect(c, 0, 28, 31, 30, 'V')               // dark underside
+  rect(c, 0, 0, 0, 30, 'V'); rect(c, 31, 0, 31, 30, 'V')  // side borders
+  // rivets
+  px(c, 4, 6, 'T'); px(c, 27, 6, 'T'); px(c, 4, 22, 'T'); px(c, 27, 22, 'T')
   return c
 }
 const t0 = makeCanvas(32, 32)

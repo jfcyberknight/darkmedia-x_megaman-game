@@ -203,11 +203,11 @@ export class GameScene extends Phaser.Scene {
     const W = 1600
     const H = 640
 
-    // Sky gradient (static, tinted per stage)
+    // Sky gradient (static, tinted per stage). Lowest depth so layers draw over it.
     const sky = this.add.graphics()
     sky.fillGradientStyle(this.stage.skyTop, this.stage.skyTop, this.stage.skyBottom, this.stage.skyBottom, 1)
     sky.fillRect(0, 0, W + 400, H)
-    sky.setScrollFactor(0)
+    sky.setScrollFactor(0).setDepth(-30)
 
     // Far layer: jagged skyline silhouettes (parallax 0.15)
     const far = this.add.graphics()
@@ -221,7 +221,7 @@ export class GameScene extends Phaser.Scene {
       x += w + 8
     }
     far.setScrollFactor(0.15)
-    far.setDepth(-10)
+    far.setDepth(-20)
 
     // Mid layer: closer structures with window lights (parallax 0.4)
     const mid = this.add.graphics()
@@ -241,7 +241,7 @@ export class GameScene extends Phaser.Scene {
       x += w + 14
     }
     mid.setScrollFactor(0.4)
-    mid.setDepth(-9)
+    mid.setDepth(-12)
   }
 
   /** Subtle CRT scanlines overlay (screen-fixed). */
