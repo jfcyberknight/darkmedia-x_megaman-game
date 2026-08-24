@@ -18,6 +18,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private coyoteTimer = 0
   private jumpBufferTimer = 0
 
+  // Landing / hurt feedback
+  private wasOnGround = true
+  private prevVy = 0
+
   constructor(scene: Phaser.Scene, x: number, y: number, bullets: Phaser.Physics.Arcade.Group) {
     super(scene, x, y, 'player')
     this.bullets = bullets
@@ -34,6 +38,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   update(left: boolean, right: boolean, jumpPressed: boolean, jumpHeld: boolean, shootPressed: boolean) {
     const body = this.body as Phaser.Physics.Arcade.Body
     const onGround = body.blocked.down || body.touching.down
+
+    // Hard landing -> dust puff
+    if (onGround && !this.wasOnGround && this.prevVy > 260) {
+      ;(this.scene as Phaser.Scene & { spawnLandingDust(x: number, y: number): void })
+        .spawnLandingDust(this.x, this.y + 10)
+    }
+    this.wasOnGround = onGround
+    this.prevVy = body.velocity.y
 
     // Coyote time & jump buffer
     if (onGround) {
@@ -61,11 +73,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.setVelocityX(0)
     }
 
-    // Animation
+    // Animation state machine (SNES-style frames)
     const moving = left || right
-    if (onGround && moving) {
+    if (!onGround) {
+      this.anims.play(body.velocity.y < 0 ? 'player-jump' : 'player-fall', true)
+    } else if (moving) {
       this.anims.play('player-run', true)
-    } else if (onGround) {
+    } else {
       this.anims.play('player-idle', true)
     }
 
@@ -99,10 +113,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (now - this.lastShot < this.shootCooldown) return
     this.lastShot = now
 
-    const bullet = this.bullets.get(this.x, this.y - 4) as Bullet
+    const bullet = this.bullets.get(this.x + (this.facingRight ? 12 : -12), this.y - 2) as Bullet
     if (!bullet) return
 
     bullet.activate(this.facingRight ? 1 : -1)
+
+    // Muzzle flash at the buster tip + tiny recoil shake
+    ;(this.scene as Phaser.Scene & { spawnMuzzleFlash(x: number, y: number): void })
+      .spawnMuzzleFlash(this.x + (this.facingRight ? 16 : -16), this.y - 2)
+    this.scene.cameras.main.shake(30, 0.0015)
   }
 
   takeDamage(amount: number, knockbackDir: number) {
@@ -113,6 +132,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     this.setVelocityX(knockbackDir * 120)
     this.setVelocityY(-180)
+
+    // Red hit flash + camera kick
+    this.setTintFill(0xff5050)
+    this.scene.time.delayedCall(90, () => this.clearTint())
+    this.scene.cameras.main.shake(130, 0.004)
 
     this.scene.time.delayedCall(1000, () => {
       this.invulnerable = false

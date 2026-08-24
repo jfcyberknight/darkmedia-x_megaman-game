@@ -44,24 +44,15 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   takeDamage(amount: number) {
     this.health -= amount
     if (this.health <= 0) {
+      ;(this.scene as Phaser.Scene & { spawnExplosion(x: number, y: number): void })
+        .spawnExplosion(this.x, this.y)
       this.disableBody(true, true)
-      this.createExplosion()
     } else {
-      this.setTint(0xff8080)
-      this.scene.time.delayedCall(100, () => {
+      // Full white hit-flash, classic SNES damage feedback
+      this.setTintFill(0xffffff)
+      this.scene.time.delayedCall(70, () => {
         if (this.active) this.clearTint()
       })
     }
-  }
-
-  private createExplosion() {
-    const particles = this.scene.add.particles(this.x, this.y, '', {
-      speed: { min: 30, max: 80 },
-      scale: { start: 0.6, end: 0 },
-      lifespan: 300,
-      quantity: 8,
-      tint: [0xffaa00, 0xff4400, 0xffff00],
-    })
-    this.scene.time.delayedCall(350, () => particles.destroy())
   }
 }
