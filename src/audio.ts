@@ -75,38 +75,113 @@ function noise(opt: { dur: number; vol?: number; freq?: number; delay?: number }
 }
 
 // --------------------------- Music (lookahead sequencer) ---------------------------
+// Stage theme in the spirit of Mega Man X (fast, hopping melodies, octave bass),
+// with one modern touch: a dotted-eighth delay on the lead voice.
 
 let musicTimer: ReturnType<typeof setInterval> | null = null
 let step = 0
 let nextTime = 0
-const BPM = 132
+const BPM = 158
 const STEP = 60 / BPM / 4
 
-// Am / F / C / G — 16 sixteenth-notes per 2 bars
-const BASS = [
-  110, 0, 110, 0, 110, 0, 164.81, 0,
-  87.31, 0, 87.31, 0, 130.81, 0, 130.81, 0,
-  130.81, 0, 130.81, 0, 196, 0, 130.81, 0,
-  98, 0, 98, 0, 146.83, 0, 98, 0,
+let leadBus: GainNode | null = null
+function getLeadBus(): GainNode | null {
+  const c = ctx
+  if (!c) return null
+  if (!leadBus) {
+    leadBus = c.createGain()
+    leadBus.gain.value = 1
+    leadBus.connect(master!)
+    // the modern touch: dotted-eighth echo on the lead
+    const delay = c.createDelay(1)
+    delay.delayTime.value = STEP * 3
+    const feedback = c.createGain()
+    feedback.gain.value = 0.26
+    const wet = c.createGain()
+    wet.gain.value = 0.22
+    leadBus.connect(delay)
+    delay.connect(feedback)
+    feedback.connect(delay)
+    delay.connect(wet)
+    wet.connect(musicBus!)
+  }
+  return leadBus
+}
+
+const N = {
+  A2: 110, C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196, A3: 220, B3: 246.94,
+  C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392, A4: 440, B4: 493.88,
+  C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880, B5: 987.77,
+  C6: 1046.5, D6: 1174.66, E6: 1318.51,
+}
+
+// Two 2-bar sections (32 sixteenths each): A = bouncy theme, B = soaring answer.
+const LEAD_A = [
+  N.E5, 0, N.G5, 0, N.A5, 0, N.G5, N.E5,
+  0, N.C5, 0, N.D5, N.E5, 0, N.D5, N.C5,
+  N.E5, 0, N.G5, 0, N.A5, 0, N.B5, N.C6,
+  0, N.B5, N.G5, N.A5, 0, N.E5, 0, 0,
 ]
-const LEAD = [
-  440, 0, 523.25, 0, 659.25, 0, 523.25, 659.25,
-  0, 0, 349.23, 0, 440, 0, 523.25, 0,
-  523.25, 0, 659.25, 0, 783.99, 0, 659.25, 523.25,
-  0, 0, 392, 0, 493.88, 0, 587.33, 0,
+const LEAD_A2 = [
+  N.E5, 0, N.G5, 0, N.A5, 0, N.G5, N.E5,
+  0, N.C5, 0, N.D5, N.E5, 0, N.G5, N.A5,
+  N.B5, 0, N.C6, 0, N.D6, 0, N.C6, N.B5,
+  0, N.A5, N.G5, N.A5, 0, N.E5, 0, 0,
+]
+const LEAD_B = [
+  N.F5, 0, N.A5, 0, N.C6, 0, N.A5, N.F5,
+  0, N.G5, 0, N.A5, N.B5, 0, N.C6, 0,
+  N.D6, 0, N.C6, 0, N.B5, 0, N.G5, 0,
+  N.A5, 0, N.G5, 0, N.E5, 0, N.C5, 0,
+]
+const LEAD_B2 = [
+  N.F5, 0, N.A5, 0, N.C6, 0, N.E6, N.D6,
+  0, N.C6, 0, N.B5, N.C6, 0, N.D6, 0,
+  N.E6, 0, N.D6, 0, N.C6, 0, N.B5, 0,
+  N.C6, 0, N.G5, 0, N.E5, 0, N.C5, 0,
+]
+const BASS_A = [
+  N.C3, 0, N.C4, 0, N.C3, 0, N.C4, N.C3,
+  0, N.C4, 0, N.C3, N.C4, 0, N.C3, 0,
+  N.A2, 0, N.A3, 0, N.A2, 0, N.E3, N.A2,
+  0, N.A3, 0, N.E3, N.A3, 0, N.E3, 0,
+]
+const BASS_B = [
+  N.F3, 0, N.F3, 0, N.F3, 0, N.C4, N.F3,
+  0, N.C4, 0, N.F3, N.C4, 0, N.F3, 0,
+  N.G3, 0, N.D4, 0, N.G3, 0, N.D4, N.G3,
+  0, N.D4, 0, N.G3, N.D4, 0, N.G3, 0,
+]
+const KICK = [
+  1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0,
+  1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0,
+]
+const SNARE = [
+  0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1,
+  0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0,
+]
+const HAT = [
+  1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0,
+  1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0,
 ]
 
 function schedule() {
   const c = ctx
   if (!c || !musicBus) return
+  const lead = getLeadBus()
+  const bar = Math.floor(step / 32) % 4
+  const i = step % 32
   while (nextTime < c.currentTime + 0.35) {
-    const i = step % 32
     const delay = Math.max(0, nextTime - c.currentTime)
-    const b = BASS[i]
-    if (b) tone({ f: b, dur: STEP * 1.6, type: 'triangle', vol: 0.5, delay, bus: musicBus })
-    const l = LEAD[i]
-    if (l) tone({ f: l, dur: STEP * 0.85, type: 'square', vol: 0.14, delay, bus: musicBus })
-    if (i % 4 === 2) noise({ dur: 0.03, vol: 0.1, freq: 6000, delay })
+    const leadPat = bar === 0 ? LEAD_A : bar === 1 ? LEAD_A2 : bar === 2 ? LEAD_B : LEAD_B2
+    const bassPat = bar < 2 ? BASS_A : BASS_B
+    const li = leadPat[i]
+    if (li) tone({ f: li, dur: STEP * 0.9, type: 'square', vol: 0.13, delay, bus: lead })
+    const b = bassPat[i]
+    if (b) tone({ f: b, dur: STEP * 1.5, type: 'triangle', vol: 0.5, delay, bus: musicBus })
+    if (KICK[i]) tone({ f: 150, to: 45, dur: 0.1, type: 'sine', vol: 0.75, delay, bus: musicBus })
+    if (SNARE[i]) noise({ dur: 0.09, vol: 0.3, freq: 2400, delay })
+    if (HAT[i]) noise({ dur: 0.03, vol: 0.12, freq: 7000, delay })
     nextTime += STEP
     step++
   }

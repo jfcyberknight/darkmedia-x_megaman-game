@@ -172,75 +172,83 @@ function mulberry32(seed) {
 }
 
 // ---------------------------------------------------------------------------
-// Palette — modern armored hero
+// Palette — Mega Man X spirit: vivid blue/white armor, crystal gems, expressive eye
 // ---------------------------------------------------------------------------
 const P = {
-  armorHi: hex(0x7db2ff),
-  armorTop: hex(0x3f7bdb),
-  armorLo: hex(0x1d3f8f),
-  armorDeep: hex(0x122457),
-  joint: hex(0x131a30),
-  gunTop: hex(0x5b6b85),
-  gunLo: hex(0x232c40),
-  visor: hex(0x35e0ff),
-  visorDeep: hex(0x0e7fa8),
-  core: hex(0x66f0ff),
-  white: hex(0xf4faff),
-  bootTop: hex(0x2c4a9e),
-  bootLo: hex(0x152252),
-  skin: hex(0xf3c9a0),
+  armorHi: hex(0x8ab8ff),
+  armorTop: hex(0x3b7dff),
+  armorLo: hex(0x1c40a8),
+  armorDeep: hex(0x122a6e),
+  whiteArmor: hex(0xeef3fc),
+  whiteLo: hex(0xb9cbe6),
+  joint: hex(0x18203a),
+  gunTop: hex(0x93a2bd),
+  gunLo: hex(0x3a435c),
+  visor: hex(0x4de3ff),
+  visorDeep: hex(0x0f86c8),
+  core: hex(0x6df0ff),
+  white: hex(0xffffff),
+  bootTop: hex(0x2f5fd0),
+  bootLo: hex(0x16265e),
+  skin: hex(0xf6cfa4),
+  eye: hex(0x1c2c50),
 }
 
 // ============================ PLAYER (40x60, 8 frames) ============================
 // Sleek armored hero facing right: glowing visor, chest core, buster cannon.
 
 function drawHead(c, ox, oy) {
-  // skull dome (profile: back of helmet at left, face at right)
+  // skull dome (vivid X blue, strong rim light)
   el(c, ox + 17, oy + 12.5, 9.5, 9.2, (x, y) => {
     const t = clamp01((y - (oy + 4)) / 17)
     const light = Math.max(0, 1 - Math.hypot((x - (ox + 13)) / 10, (y - (oy + 8)) / 9))
-    return mix(mix(P.armorTop, P.armorLo, t), P.armorHi, light * 0.55)
+    return mix(mix(P.armorTop, P.armorLo, t), P.armorHi, light * 0.6)
   })
   // helmet back rim
-  el(c, ox + 11, oy + 14.5, 4.2, 5.8, (x, y) => mix(P.armorLo, P.armorDeep, clamp01((y - (oy + 9)) / 11)))
-  // face plate (front)
-  rr(c, ox + 22.5, oy + 13, 4.8, 5.4, 3.2, (x, y) => {
-    const t = clamp01((y - (oy + 8)) / 10)
-    return mix(mix(P.armorHi, P.armorTop, 0.35), P.armorLo, t * 0.55)
-  })
-  // glowing visor lens (on the face front only)
-  rr(c, ox + 23.5, oy + 12, 3.3, 2.6, 2.2, (x, y) => {
-    const spec = Math.max(0, 1 - Math.hypot((x - (ox + 22.6)) / 3.2, (y - (oy + 10.9)) / 1.6))
-    return mix(P.visor, P.white, spec * 0.55)
-  })
-  glow(c, ox + 24, oy + 12, 7, P.visor, 0.4)
+  el(c, ox + 10.5, oy + 14.5, 4, 5.6, (x, y) => mix(P.armorLo, P.armorDeep, clamp01((y - (oy + 9)) / 11)))
+  // face (skin, front of profile)
+  rr(c, ox + 22.3, oy + 13.2, 4.8, 6, 3, solid(P.skin))
+  // big expressive eye
+  el(c, ox + 23.8, oy + 13, 2.6, 2, solid(P.white))
+  el(c, ox + 24.7, oy + 13.2, 1.25, 1.6, solid(P.eye))
+  el(c, ox + 24.2, oy + 12.4, 0.55, 0.55, solid(P.white))
+  // helmet brow overhang above the eye
+  rr(c, ox + 22.6, oy + 9.8, 4.9, 1.8, 1.7, (x, y) => mix(P.armorHi, P.armorTop, clamp01((y - (oy + 8)) / 4)))
   // jaw
-  rr(c, ox + 22.5, oy + 19.3, 3.4, 2, 1.8, solid(mix(P.skin, [180, 130, 95], 0.25)))
-  // ear pod (back-center of skull)
-  el(c, ox + 12, oy + 13.5, 2.9, 3.3, solid(mix(P.armorLo, P.joint, 0.45)))
-  el(c, ox + 12, oy + 13.5, 1.2, 1.5, solid(P.visor))
-  // crest fin (swept back)
-  seg(c, ox + 17.5, oy + 3.6, ox + 13.5, oy + 1.8, 1.7, solid(P.visor))
-  glow(c, ox + 15.5, oy + 2.6, 6, P.visor, 0.5)
+  rr(c, ox + 22.8, oy + 19.6, 3.2, 1.8, 1.6, solid(mix(P.skin, [190, 140, 100], 0.3)))
+  // ear pod with crystal center
+  el(c, ox + 12, oy + 13.5, 2.9, 3.3, solid(mix(P.armorLo, P.joint, 0.4)))
+  el(c, ox + 12, oy + 13.5, 1.4, 1.7, solid(P.visor))
+  glow(c, ox + 12, oy + 13.5, 4.5, P.visor, 0.35)
+  // crystal crest gem on top
+  const cx = ox + 16.5, cy = oy + 3, r = 4.2
+  fillB(c, cx - r - 1, cy - r - 1, cx + r + 1, cy + r + 1,
+    (x, y) => clamp01(r - (Math.abs(x - cx) * 0.75 + Math.abs(y - cy) * 1.5) + 0.5),
+    (x, y) => {
+      const spec = Math.max(0, 1 - Math.hypot((x - cx - 1.2) / 4, (y - cy - 1) / 3))
+      return mix(P.visor, P.white, spec * 0.75)
+    })
+  glow(c, cx, cy, 7, P.visor, 0.5)
 }
 
 function drawTorso(c, ox, oy) {
   // neck
   rr(c, ox + 20, oy + 21.5, 2.6, 2, 1.5, solid(P.joint))
-  // torso (profile: chest at right, back at left)
+  // torso base (blue armor)
   rr(c, ox + 20, oy + 29.5, 7, 8.5, 5, (x, y) => {
     const t = clamp01((y - (oy + 21)) / 17)
     const light = Math.max(0, 1 - Math.hypot((x - (ox + 16)) / 9, (y - (oy + 25)) / 10))
-    return mix(mix(P.armorTop, P.armorLo, t), P.armorHi, light * 0.4)
+    return mix(mix(P.armorTop, P.armorLo, t), P.armorHi, light * 0.45)
   })
-  // chest plate (front edge)
-  rr(c, ox + 24.5, oy + 28.5, 3.2, 5, 2.8, (x, y) => {
-    const t = clamp01((y - (oy + 23.5)) / 10)
-    return mix(mix(P.armorHi, P.armorTop, 0.4), P.armorLo, t * 0.6)
+  // white chest plate (front)
+  rr(c, ox + 22.3, oy + 27.5, 5.4, 6.6, 3.6, (x, y) => {
+    const t = clamp01((y - (oy + 21)) / 13)
+    const spec = Math.max(0, 1 - Math.hypot((x - (ox + 20.8)) / 5, (y - (oy + 25)) / 4))
+    return mix(mix(P.whiteArmor, P.whiteLo, t), P.white, spec * 0.6)
   })
-  // core glow near the front
-  el(c, ox + 24, oy + 29, 1.9, 1.9, solid(P.white))
-  glow(c, ox + 24, oy + 29, 6, P.core, 0.5)
+  // core gem on the chest
+  el(c, ox + 24.5, oy + 29.5, 1.9, 1.9, solid(P.white))
+  glow(c, ox + 24.5, oy + 29.5, 6, P.core, 0.55)
   // back pack hump
   rr(c, ox + 14, oy + 27, 3, 5.2, 2.5, (x, y) => mix(P.armorLo, P.armorDeep, clamp01((y - (oy + 22)) / 10)))
   // belt
@@ -341,34 +349,37 @@ savePreview(playerSheet, 'player.png', 4)
 function enemyFrame(step) {
   const c = C(45, 45)
   const bob = step === 1 ? -1.2 : 0
-  // shell dome
+  // glossy golden shell (X-style mech colors)
   el(c, 22.5, 20 + bob, 15, 12.5, (x, y) => {
     const t = clamp01((y - (8 + bob)) / 25)
     const spec = Math.max(0, 1 - Math.hypot((x - 16) / 8, (y - (13 + bob)) / 6))
-    return mix(mix(hex(0xf0655a), hex(0x8f1d1d), t), hex(0xffd0c4), spec * 0.75)
+    return mix(mix(hex(0xffd34d), hex(0xb87808), t), hex(0xfff3c8), spec * 0.85)
   })
-  // shell seam
-  seg(c, 22.5, 8.5 + bob, 22.5, 30 + bob, 0.7, solid(hex(0x6b1414)))
-  // visor slit + eyes
-  rr(c, 22.5, 25 + bob, 12, 3.2, 3, solid(hex(0x140608)))
+  // shell seam + rivets
+  seg(c, 22.5, 8.5 + bob, 22.5, 30 + bob, 0.7, solid(hex(0x9a6a08)))
+  for (const [rx, ry] of [[14, 15], [31, 15], [22.5, 11]]) el(c, rx, ry + bob, 1.2, 1.2, solid(hex(0x8a5a06)))
+  // visor slit + big expressive eyes
+  rr(c, 22.5, 25 + bob, 12, 3.4, 3, solid(hex(0x241505)))
   for (const ex of [16.5, 28.5]) {
-    el(c, ex, 25 + bob, 2, 1.8, solid(hex(0xffd166)))
-    glow(c, ex, 25 + bob, 5.5, hex(0xffb347), 0.8)
+    el(c, ex, 25 + bob, 2.3, 2.1, solid(hex(0xffffff)))
+    el(c, ex + 0.7, 25.2 + bob, 1.1, 1.4, solid(hex(0x1c2c50)))
+    el(c, ex + 0.2, 24.5 + bob, 0.5, 0.5, solid(hex(0xffffff)))
+    glow(c, ex, 25 + bob, 5, hex(0xffe9a8), 0.45)
   }
   // antenna
-  seg(c, 22.5, 9 + bob, 22.5, 4 + bob, 1.1, solid(hex(0x5e1010)))
+  seg(c, 22.5, 9 + bob, 22.5, 4 + bob, 1.1, solid(hex(0x8a5a06)))
   el(c, 22.5, 3.4 + bob, 1.5, 1.5, solid(hex(0xfff3c4)))
   glow(c, 22.5, 3.4 + bob, 5, hex(0xffd166), 0.7)
   // underside
-  rr(c, 22.5, 33.5 + bob, 10, 3, 2.5, solid(hex(0x2a0c0e)))
+  rr(c, 22.5, 33.5 + bob, 10, 3, 2.5, solid(hex(0x4a3008)))
   // legs (alternate pairs)
   const legsA = [[[12, 34], [7, 41]], [[33, 34], [38, 41]]]
   const legsB = [[[14, 34], [11, 42]], [[31, 34], [34, 42]]]
   for (const [[x1, y1], [x2, y2]] of step === 0 ? legsA : legsB) {
-    seg(c, x1, y1 + bob, x2, y2 + bob, 2.3, solid(hex(0x6b2024)))
-    el(c, x2, y2 + bob, 2.5, 1.8, solid(hex(0x2e0a0c)))
+    seg(c, x1, y1 + bob, x2, y2 + bob, 2.3, solid(hex(0x7a4e0a)))
+    el(c, x2, y2 + bob, 2.5, 1.8, solid(hex(0x3a2604)))
   }
-  outline(c, [16, 6, 10], 2)
+  outline(c, [40, 26, 4], 2)
   return c
 }
 const enemySheet = stitch([enemyFrame(0), enemyFrame(1)])
@@ -390,13 +401,16 @@ function bossFrame(pulse) {
     const light = Math.max(0, 1 - Math.hypot((x - 30) / 16, (y - 48) / 12))
     return mix(mix(hex(0x4b5a74), hex(0x1c2436), t), hex(0x8fa3c4), light * 0.4)
   })
-  // hull dome
+  // hull dome (cool steel-blue with orange Maverick accents)
   el(c, 40, 33, 28, 21, (x, y) => {
     const t = clamp01((y - 12) / 42)
     const rim = Math.max(0, 1 - Math.hypot((x - 30) / 22, (y - 20) / 14))
     const spec = Math.max(0, 1 - Math.hypot((x - 28) / 10, (y - 22) / 8))
-    return mix(mix(mix(hex(0x5d6f8d), hex(0x232c42), t), hex(0x93a7c9), rim * 0.5), hex(0xd7e2f2), spec * 0.5)
+    return mix(mix(mix(hex(0x6f86b8), hex(0x27304a), t), hex(0xa9c2e8), rim * 0.55), hex(0xe4edfa), spec * 0.5)
   })
+  // orange accent stripes on the hull
+  seg(c, 22, 46, 30, 42, 1.6, solid(hex(0xff9a3c)))
+  seg(c, 50, 42, 58, 46, 1.6, solid(hex(0xff9a3c)))
   // top plate + warning lights
   rr(c, 40, 12, 15, 4.5, 4, solid(hex(0x2b3448)))
   for (const lx of [32, 40, 48]) {
