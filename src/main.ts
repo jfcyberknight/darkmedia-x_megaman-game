@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { BootScene } from './scenes/BootScene'
+import { IntroScene } from './scenes/IntroScene'
 import { TitleScene } from './scenes/TitleScene'
 import { StageSelectScene } from './scenes/StageSelectScene'
 import { GameScene } from './scenes/GameScene'
@@ -21,7 +22,7 @@ const config: Phaser.Types.Core.GameConfig = {
       debug: false,
     },
   },
-  scene: [BootScene, TitleScene, StageSelectScene, GameScene],
+  scene: [BootScene, IntroScene, TitleScene, StageSelectScene, GameScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,

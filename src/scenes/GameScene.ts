@@ -22,6 +22,7 @@ export class GameScene extends Phaser.Scene {
   private enemyBullets!: Phaser.Physics.Arcade.Group
   private checkpoint!: Phaser.GameObjects.Image
   private cpActive = false
+  private bossIntroDone = false
   private boss?: Boss
   private bossBar!: Phaser.GameObjects.Graphics
   private bossName!: Phaser.GameObjects.Text
@@ -47,6 +48,7 @@ export class GameScene extends Phaser.Scene {
     if (data.fresh) {
       this.registry.set('lives', 3)
       this.registry.set('cp', false)
+      this.registry.set('briefed', false)
     }
     if (this.registry.get('lives') === undefined) {
       this.registry.set('lives', 3)
@@ -195,6 +197,11 @@ export class GameScene extends Phaser.Scene {
     startMusic('stage')
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => stopMusic())
 
+    if (!this.registry.get('briefed')) {
+      this.registry.set('briefed', true)
+      this.time.delayedCall(600, () => this.showBriefing())
+    }
+
     drawVignette(this, 0.45)
     this.cameras.main.fadeIn(300, 0, 0, 0)
   }
@@ -205,6 +212,8 @@ export class GameScene extends Phaser.Scene {
     this.bgFar.tilePositionY = cam.scrollY * 0.06
     this.bgMid.tilePositionX = cam.scrollX * 0.35
     this.bgMid.tilePositionY = cam.scrollY * 0.12
+
+    if (!this.bossIntroDone && this.player.x > 660) this.bossWarning()
 
     const left = this.cursors.left!.isDown
     const right = this.cursors.right!.isDown
@@ -526,6 +535,12 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: t, alpha: 1, scale: 1, duration: 400, ease: 'Back.Out' })
 
     this.powerText.setVisible(true)
+    this.time.delayedCall(1000, () => {
+      const epi = this.add.text(width / 2, 84, 'Le cœur de la machine est à vous...', {
+        fontSize: '9px', color: '#c7d2e8', fontFamily: 'monospace', fontStyle: 'italic',
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(300).setAlpha(0)
+      this.tweens.add({ targets: epi, alpha: 1, duration: 500 })
+    })
     this.time.delayedCall(1800, () => this.showStageClear())
     this.time.delayedCall(3800, () => {
       this.cameras.main.fadeOut(400, 0, 0, 0)
@@ -690,6 +705,57 @@ export class GameScene extends Phaser.Scene {
     }
     this.bossBar.fillStyle(0x0a0d16, 0.55)
     for (let i = 1; i < 10; i++) this.bossBar.fillRect(x + (barW / 10) * i, y, 1.5, barH)
+  }
+
+  /** Mission briefing shown once at stage start — who, where, why. */
+  private showBriefing() {
+    const { width, height } = this.cameras.main
+    const strip = this.add.rectangle(width / 2, height - 22, width, 34, 0x05060c, 0)
+      .setScrollFactor(0).setDepth(240)
+    const t1 = this.add.text(width / 2, height - 32, 'MISSION 01 — NÉON CITY', {
+      fontSize: '8px', color: '#9df2ff', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(241).setAlpha(0)
+    const t2 = this.add.text(width / 2, height - 18, 'Libérez le secteur. Détruisez le WAR MACHINE.', {
+      fontSize: '8px', color: '#e2e8f0', fontFamily: 'monospace',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(241).setAlpha(0)
+    this.tweens.add({ targets: strip, fillAlpha: 0.78, duration: 350 })
+    this.tweens.add({ targets: [t1, t2], alpha: 1, duration: 350, delay: 200 })
+    sfx.checkpoint()
+    this.time.delayedCall(4200, () => {
+      this.tweens.add({
+        targets: [strip, t1, t2], alpha: 0, duration: 400,
+        onComplete: () => { strip.destroy(); t1.destroy(); t2.destroy() },
+      })
+    })
+  }
+
+  /** Classic boss encounter intro: letterbox + WARNING flash. */
+  private bossWarning() {
+    this.bossIntroDone = true
+    const { width, height } = this.cameras.main
+    const top = this.add.rectangle(width / 2, 0, width, 0, 0x000000, 0.85).setScrollFactor(0).setDepth(240)
+    const bottom = this.add.rectangle(width / 2, height, width, 0, 0x000000, 0.85).setScrollFactor(0).setDepth(240)
+    this.tweens.add({ targets: top, height: 26, duration: 260 })
+    this.tweens.add({ targets: bottom, height: 26, duration: 260 })
+    sfx.telegraph()
+    this.time.delayedCall(300, () => sfx.bossShot())
+
+    const warn = this.add.text(width / 2, height / 2 - 14, 'WARNING', {
+      fontSize: '20px', color: '#ff3524', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 6,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(241).setAlpha(0)
+    warn.setShadow(0, 0, '#ff3524', 10, true, true)
+    const name = this.add.text(width / 2, height / 2 + 8, 'WAR MACHINE — GARDIEN CORROMPU', {
+      fontSize: '9px', color: '#ffb3a8', fontFamily: 'monospace', letterSpacing: 1,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(241).setAlpha(0)
+    this.tweens.add({ targets: warn, alpha: 1, duration: 200, yoyo: true, repeat: 3 })
+    this.tweens.add({ targets: name, alpha: 1, duration: 300, delay: 500 })
+
+    this.time.delayedCall(2600, () => {
+      this.tweens.add({
+        targets: [top, bottom, warn, name], alpha: 0, duration: 350,
+        onComplete: () => { top.destroy(); bottom.destroy(); warn.destroy(); name.destroy() },
+      })
+    })
   }
 
   private showStageClear() {

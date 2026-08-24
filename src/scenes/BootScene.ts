@@ -40,7 +40,7 @@ export class BootScene extends Phaser.Scene {
     this.drawVignette()
 
     this.tweens.add({ targets: [studio, presents], alpha: { from: 0, to: 1 }, duration: 700 })
-    const go = () => this.scene.start('TitleScene')
+    const go = () => this.scene.start('IntroScene')
     this.input.keyboard!.on('keydown-Z', go)
     this.input.keyboard!.on('keydown-ENTER', go)
     // Browsers block audio until the first gesture: the boot fanfare plays on

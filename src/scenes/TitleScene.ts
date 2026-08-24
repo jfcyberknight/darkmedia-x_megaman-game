@@ -40,7 +40,7 @@ export class TitleScene extends Phaser.Scene {
       ease: 'Back.Out',
     })
 
-    const subtitle = this.add.text(width / 2, titleY + 26, 'A  MODERN  ACTION  PLATFORMER', {
+    const subtitle = this.add.text(width / 2, titleY + 26, 'LE DERNIER GARDIEN FIDÈLE', {
       fontSize: '9px',
       color: '#8b93a8',
       fontFamily: 'monospace',
