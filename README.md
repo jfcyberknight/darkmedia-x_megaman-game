@@ -49,12 +49,23 @@ Le résultat est dans `dist/`.
 
 Le déploiement est automatisé via GitHub Actions sur Cloudflare Pages.
 
+**URL de production : <https://mega-blaster.darkmedia-x.com>** (alias `megaman-game.pages.dev`)
+
 ### Prérequis
 
 1. Créer un projet Cloudflare Pages nommé **megaman-game**.
 2. Ajouter ces secrets dans le repo GitHub :
    - `CF_API_TOKEN` — token Cloudflare avec permission `Cloudflare Pages:Edit`
    - `CF_ACCOUNT_ID` — ID du compte Cloudflare
+
+### Domaine personnalisé
+
+`mega-blaster.darkmedia-x.com` est attaché au projet Pages. Pour le (re)configurer :
+
+- **Automatique** : GitHub → Actions → *Setup custom domain* → *Run workflow*
+  (attache le domaine au projet Pages + crée le CNAME proxifié ; nécessite `DNS:Edit` sur le token)
+- **Manuel** : Cloudflare → Pages → *megaman-game* → *Custom domains* → ajouter
+  `mega-blaster.darkmedia-x.com` (le CNAME est créé automatiquement si la zone est sur le même compte).
 
 À chaque push sur `main`, le workflow build et déploie automatiquement.
 
