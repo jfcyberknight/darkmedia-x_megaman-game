@@ -15,7 +15,14 @@ Jeu de plateforme 2D au style moderne (rendu 960×540 lisse, dégradés, glow, p
 |--------|--------|
 | ← → | Déplacement |
 | ↑ | Saut |
-| Z | Tir |
+| Z (tap) | Tir rapide |
+| Z (maintenu) | Charge l'énergie — relâcher : tir moyen (0,4 s) ou gros tir perforant (1 s) |
+
+## Boucle de jeu
+
+- 6 ennemis patrouilleurs + un boss **WAR MACHINE** en fin de niveau.
+- Les ennemis vaincus lâchent parfois des **orbes d'énergie** (+2 HP) ; d'autres sont placées sur les plateformes (aimantées quand on approche).
+- Vaincre le boss laisse tomber son **noyau de pouvoir** : en le collectant, le héros absorbe son pouvoir (+1 dégât sur tous les tirs, teinte flamme, charge maximale cyclée) puis le stage est terminé.
 
 ## Développement local
 
@@ -84,5 +91,6 @@ Des aperçus agrandis sont écrits dans `scripts/preview/` (ignoré par git).
 - [x] Tilemap externe (Tiled, `public/assets/level.json`)
 - [x] Écran-titre et sélection de stage
 - [x] Boss de fin de niveau avec barre de vie
+- [x] Tir chargé (maintenir Z) + orbes d'énergie + pouvoir de boss absorbable
 - [ ] Sons et musique
 - [ ] Système de vies / game over

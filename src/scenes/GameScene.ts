@@ -15,11 +15,13 @@ export class GameScene extends Phaser.Scene {
   private platforms!: Phaser.Tilemaps.TilemapLayer
   private enemies!: Phaser.Physics.Arcade.Group
   private bullets!: Phaser.Physics.Arcade.Group
+  private orbs!: Phaser.Physics.Arcade.Group
   private boss?: Boss
   private bossBar!: Phaser.GameObjects.Graphics
   private bossName!: Phaser.GameObjects.Text
   private bossActive = false
   private hpBar!: Phaser.GameObjects.Graphics
+  private powerText!: Phaser.GameObjects.Text
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
   private shootKey!: Phaser.Input.Keyboard.Key
   private bgFar!: Phaser.GameObjects.TileSprite
@@ -42,6 +44,9 @@ export class GameScene extends Phaser.Scene {
     this.load.spritesheet('enemy', 'assets/enemy.png', { frameWidth: 45, frameHeight: 45 })
     this.load.spritesheet('boss', 'assets/boss.png', { frameWidth: 80, frameHeight: 80 })
     this.load.image('bullet', 'assets/bullet.png')
+    this.load.image('bullet-mid', 'assets/bullet-mid.png')
+    this.load.image('bullet-big', 'assets/bullet-big.png')
+    this.load.image('orb', 'assets/orb.png')
     this.load.image(`bg-far-${this.stage.id}`, `assets/bg-far-${this.stage.id}.png`)
     this.load.image(`bg-mid-${this.stage.id}`, `assets/bg-mid-${this.stage.id}.png`)
     this.load.image('haze', 'assets/haze.png')
@@ -59,8 +64,13 @@ export class GameScene extends Phaser.Scene {
     this.bullets = this.physics.add.group({
       classType: Bullet,
       defaultKey: 'bullet',
-      maxSize: 20,
+      maxSize: 24,
       runChildUpdate: true,
+      allowGravity: false,
+      immovable: true,
+    })
+
+    this.orbs = this.physics.add.group({
       allowGravity: false,
       immovable: true,
     })
@@ -75,6 +85,7 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1)
 
     this.spawnEnemies()
+    this.spawnEnergyPickups()
 
     this.cursors = this.input.keyboard!.createCursorKeys()
     this.shootKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.Z)
@@ -100,6 +111,13 @@ export class GameScene extends Phaser.Scene {
       undefined,
       this,
     )
+    this.physics.add.overlap(
+      this.player,
+      this.orbs,
+      this.handlePlayerCollectOrb as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+      undefined,
+      this,
+    )
 
     // Boss HP bar must exist before the boss spawns (spawn draws it once).
     // Top-right placement so it never covers the player.
@@ -118,15 +136,20 @@ export class GameScene extends Phaser.Scene {
       fontSize: '15px', color: '#a9b3cf', fontFamily: 'monospace', letterSpacing: 3,
     }).setScrollFactor(0).setDepth(200)
 
-    this.add.text(24, 72, '← → : move   |   ↑ : jump   |   Z : shoot', {
+    this.add.text(24, 72, '← → : move   |   ↑ : jump   |   Z : hold to charge', {
       fontSize: '12px', color: '#5a6280', fontFamily: 'monospace',
     }).setScrollFactor(0).setDepth(200)
+
+    this.powerText = this.add.text(24, 96, 'WAR POWER +', {
+      fontSize: '13px', color: '#ff9d8a', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 3,
+    }).setScrollFactor(0).setDepth(200).setVisible(false)
+    this.powerText.setShadow(0, 0, '#ff5546', 10, true, true)
 
     drawVignette(this, 0.45)
     this.cameras.main.fadeIn(300, 0, 0, 0)
   }
 
-  update() {
+  update(_time: number, delta: number) {
     const cam = this.cameras.main
     this.bgFar.tilePositionX = cam.scrollX * 0.15
     this.bgFar.tilePositionY = cam.scrollY * 0.06
@@ -137,10 +160,25 @@ export class GameScene extends Phaser.Scene {
     const right = this.cursors.right!.isDown
     const jump = Phaser.Input.Keyboard.JustDown(this.cursors.up!)
     const jumpHeld = this.cursors.up!.isDown
-    const shoot = Phaser.Input.Keyboard.JustDown(this.shootKey)
+    const shootPressed = Phaser.Input.Keyboard.JustDown(this.shootKey)
+    const shootHeld = this.shootKey.isDown
+    const shootReleased = Phaser.Input.Keyboard.JustUp(this.shootKey)
 
-    this.player.update(left, right, jump, jumpHeld, shoot)
+    this.player.update(left, right, jump, jumpHeld, shootPressed, shootHeld, shootReleased, delta)
     this.drawHpBar()
+
+    // Energy orbs: gentle magnet toward the player when close.
+    this.orbs.children.iterate((child) => {
+      const orb = child as Phaser.Physics.Arcade.Image
+      if (!orb?.active) return true
+      const body = orb.body as Phaser.Physics.Arcade.Body
+      const dx = this.player.x - orb.x
+      const dy = this.player.y - orb.y
+      const d = Math.hypot(dx, dy)
+      if (d < 140 && d > 1) body.setVelocity((dx / d) * 320, (dy / d) * 320)
+      else body.setVelocity(0, 0)
+      return true
+    })
 
     this.enemies.children.iterate((child) => {
       const enemy = child as Enemy
@@ -327,14 +365,110 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** One-frame muzzle flash at the buster tip. */
-  spawnMuzzleFlash(x: number, y: number) {
+  spawnMuzzleFlash(x: number, y: number, scale = 0.28, flame = false) {
     const halo = this.add.image(x, y, 'glow')
-      .setTint(0x9df2ff).setBlendMode(Phaser.BlendModes.ADD).setScale(0.28).setDepth(50)
-    const core = this.add.circle(x, y, 6, 0xffffff).setBlendMode(Phaser.BlendModes.ADD).setDepth(51)
+      .setTint(flame ? 0xffb37a : 0x9df2ff).setBlendMode(Phaser.BlendModes.ADD).setScale(scale).setDepth(50)
+    const core = this.add.circle(x, y, 4 + scale * 10, 0xffffff).setBlendMode(Phaser.BlendModes.ADD).setDepth(51)
     this.tweens.add({
       targets: [halo, core], alpha: 0, scale: 1.9, duration: 80,
       onComplete: () => { halo.destroy(); core.destroy() },
     })
+  }
+
+  // ------------------------- Energy orbs -------------------------
+
+  private spawnEnergyPickups() {
+    const spots = [
+      { x: 760, y: 1080 },
+      { x: 1200, y: 920 },
+      { x: 1800, y: 760 },
+      { x: 2960, y: 680 },
+      { x: 3560, y: 840 },
+      { x: 2100, y: 1310 },
+    ]
+    for (const s of spots) this.spawnOrb(s.x, s.y, 'hp')
+  }
+
+  spawnOrb(x: number, y: number, kind: 'hp' | 'core') {
+    const orb = this.orbs.create(x, y, 'orb') as Phaser.Physics.Arcade.Image
+    orb.setDepth(30)
+    orb.setData('kind', kind)
+    if (kind === 'core') {
+      orb.setScale(2.2).setTint(0xff6b5e)
+      orb.body!.setSize(22, 22)
+      this.tweens.add({ targets: orb, scale: 2.6, duration: 550, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
+      this.tweens.add({ targets: orb, alpha: { from: 0.7, to: 1 }, duration: 300, yoyo: true, repeat: -1 })
+    } else {
+      orb.setScale(1).setTint(0x7dfca2)
+      orb.body!.setSize(18, 18)
+      this.tweens.add({ targets: orb, alpha: { from: 0.7, to: 1 }, duration: 650, yoyo: true, repeat: -1 })
+    }
+    return orb
+  }
+
+  private spawnCollectBurst(x: number, y: number, tint: number) {
+    const p = this.add.particles(x, y, 'glow', {
+      speed: { min: 90, max: 240 },
+      scale: { start: 0.16, end: 0 },
+      lifespan: 300,
+      tint: [tint, 0xffffff],
+      blendMode: Phaser.BlendModes.ADD,
+      emitting: false,
+    })
+    p.explode(10)
+    this.time.delayedCall(360, () => p.destroy())
+  }
+
+  private handlePlayerCollectOrb(
+    player: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+    orbObj: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+  ) {
+    const p = player as Player
+    const orb = orbObj as Phaser.Physics.Arcade.Image
+    if (!orb.active) return
+    const kind = orb.getData('kind') as 'hp' | 'core'
+    const ox = orb.x, oy = orb.y
+    orb.disableBody(true, true)
+
+    if (kind === 'core') {
+      this.absorbBossPower(ox, oy)
+      return
+    }
+    p.heal(2)
+    this.spawnCollectBurst(ox, oy, 0x7dfca2)
+  }
+
+  /** Boss power absorbed: +1 damage on every shot, flame tint, cycling max-charge. */
+  private absorbBossPower(x: number, y: number) {
+    this.player.powerUp = true
+    this.cameras.main.flash(320, 255, 128, 96)
+    this.spawnCollectBurst(x, y, 0xff6b5e)
+    this.spawnExplosion(x, y, false)
+
+    const { width } = this.cameras.main
+    const t = this.add.text(width / 2, 150, 'WAR MACHINE POWER ABSORBED', {
+      fontSize: '30px', color: '#ffb3a8', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 4,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(300).setAlpha(0).setScale(0.8)
+    t.setStroke('#1a0505', 8)
+    t.setShadow(0, 0, '#ff5546', 22, true, true)
+    this.tweens.add({ targets: t, alpha: 1, scale: 1, duration: 400, ease: 'Back.Out' })
+
+    this.powerText.setVisible(true)
+    this.time.delayedCall(1800, () => this.showStageClear())
+    this.time.delayedCall(3800, () => {
+      this.cameras.main.fadeOut(400, 0, 0, 0)
+      this.time.delayedCall(450, () => this.scene.start('StageSelectScene'))
+    })
+  }
+
+  private showAllTargetsDown() {
+    const { width } = this.cameras.main
+    const t = this.add.text(width / 2, 190, 'ALL TARGETS DOWN', {
+      fontSize: '24px', color: '#9df2ff', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 6,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(300).setAlpha(0)
+    t.setShadow(0, 0, '#35e0ff', 16, true, true)
+    this.tweens.add({ targets: t, alpha: 1, duration: 350, yoyo: true, hold: 900,
+      onComplete: () => t.destroy() })
   }
 
   private spawnEnemies() {
@@ -415,12 +549,14 @@ export class GameScene extends Phaser.Scene {
     bullet: Phaser.Types.Physics.Arcade.GameObjectWithBody,
     boss: Phaser.Types.Physics.Arcade.GameObjectWithBody,
   ) {
-    const b = bullet as Phaser.Physics.Arcade.Image
+    const b = bullet as Bullet
     const bo = boss as Boss
     if (!b.active || !bo.active) return
+    if (!b.canHit(bo)) return
     this.spawnSparks(b.x, b.y)
-    b.disableBody(true, true)
-    bo.takeDamage(1)
+    bo.takeDamage(b.damage)
+    if (b.pierce) b.markHit(bo)
+    else b.disableBody(true, true)
   }
 
   private handlePlayerHitBoss(
@@ -433,30 +569,36 @@ export class GameScene extends Phaser.Scene {
     p.takeDamage(1, bo.x < p.x ? 1 : -1)
   }
 
-  /** Called by the Boss when its HP reaches zero. */
+  /** Called by the Boss when its HP reaches zero: drops its power core. */
   bossDefeated() {
     this.bossActive = false
     this.bossBar.clear()
     this.bossName.setVisible(false)
-    this.showStageClear()
+    if (this.boss) {
+      this.spawnOrb(this.boss.x, this.boss.y - 10, 'core')
+    }
   }
 
   private handleBulletHitEnemy(
     bullet: Phaser.Types.Physics.Arcade.GameObjectWithBody,
     enemy: Phaser.Types.Physics.Arcade.GameObjectWithBody,
   ) {
-    const b = bullet as Phaser.Physics.Arcade.Image
+    const b = bullet as Bullet
     const e = enemy as Enemy
     if (!b.active || !e.active) return
+    if (!b.canHit(e)) return
 
     this.spawnSparks(b.x, b.y)
-    b.disableBody(true, true)
-    e.takeDamage(1)
-    this.enemyCount--
+    e.takeDamage(b.damage)
 
-    if (this.enemyCount <= 0) {
-      this.showStageClear()
+    if (!e.active) {
+      this.enemyCount--
+      if (Math.random() < 0.6) this.spawnOrb(e.x, e.y, 'hp')
+      if (this.enemyCount <= 0) this.showAllTargetsDown()
     }
+
+    if (b.pierce) b.markHit(e)
+    else b.disableBody(true, true)
   }
 
   private handlePlayerHitEnemy(

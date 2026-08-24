@@ -1,5 +1,8 @@
 import Phaser from 'phaser'
-import { Bullet } from '../objects/Bullet'
+import { Bullet, BulletType } from '../objects/Bullet'
+
+const CHARGE_MID = 400
+const CHARGE_BIG = 1000
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
   private speed = 350
@@ -10,7 +13,17 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private facingRight = true
   private bullets: Phaser.Physics.Arcade.Group
   private lastShot = 0
-  private shootCooldown = 250
+  private shootCooldown = 220
+
+  // Charge shot (hold Z) — timestamp-based so it is framerate-independent
+  private charging = false
+  private chargeStart = 0
+  private chargeTime = 0
+  private chargeGlow?: Phaser.GameObjects.Image
+  private chargeHalo?: Phaser.GameObjects.Image
+
+  // Boss power absorbed
+  powerUp = false
 
   // Platformer feel
   private coyoteTime = 100
@@ -35,7 +48,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setDrag(0, 0)
   }
 
-  update(left: boolean, right: boolean, jumpPressed: boolean, jumpHeld: boolean, shootPressed: boolean) {
+  update(
+    left: boolean,
+    right: boolean,
+    jumpPressed: boolean,
+    jumpHeld: boolean,
+    shootPressed: boolean,
+    shootHeld: boolean,
+    shootReleased: boolean,
+    _delta: number,
+  ) {
     const body = this.body as Phaser.Physics.Arcade.Body
     const onGround = body.blocked.down || body.touching.down
 
@@ -95,9 +117,24 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.body!.velocity.y *= 0.7
     }
 
-    // Shoot
-    if (shootPressed) {
-      this.shoot()
+    // --- Charge shot: tap = normal shot, hold = charge, release = charged shot ---
+    if (shootPressed && !this.charging) {
+      this.shoot('normal')
+      this.charging = true
+      this.chargeStart = this.scene.time.now
+      this.chargeTime = 0
+    }
+    if (this.charging && shootHeld) {
+      this.chargeTime = this.scene.time.now - this.chargeStart
+      this.updateChargeVisual()
+    }
+    if (this.charging && shootReleased) {
+      this.chargeTime = this.scene.time.now - this.chargeStart
+      const level = this.chargeLevel()
+      if (level >= 2) this.shoot('big')
+      else if (level === 1) this.shoot('mid')
+      this.charging = false
+      this.hideChargeVisual()
     }
 
     // Blink during invulnerability
@@ -108,21 +145,60 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
-  private shoot() {
-    const now = this.scene.time.now
-    if (now - this.lastShot < this.shootCooldown) return
-    this.lastShot = now
+  private chargeLevel(): 0 | 1 | 2 {
+    return this.chargeTime >= CHARGE_BIG ? 2 : this.chargeTime >= CHARGE_MID ? 1 : 0
+  }
 
+  private updateChargeVisual() {
+    const level = this.chargeLevel()
+    if (!this.chargeGlow || !this.chargeHalo) {
+      this.chargeGlow = this.scene.add.image(this.x, this.y, 'glow')
+        .setBlendMode(Phaser.BlendModes.ADD).setDepth(40)
+      this.chargeHalo = this.scene.add.image(this.x, this.y, 'glow')
+        .setBlendMode(Phaser.BlendModes.ADD).setDepth(39)
+    }
+    const pulse = Math.sin(this.scene.time.now / 70) * 0.06
+    const base = 0.16 + level * 0.3
+    this.chargeGlow.setPosition(this.x, this.y).setScale(base + 0.12 + pulse).setAlpha(0.55 + level * 0.15)
+    this.chargeHalo.setPosition(this.x, this.y).setScale(base * 1.9 + pulse).setAlpha(0.2 + level * 0.14)
+    let tint: number
+    if (level >= 2) {
+      const cycle = this.powerUp
+        ? [0xff6b5e, 0xffd166, 0xffffff]
+        : [0xffffff, 0xffd166, 0x66f0ff]
+      tint = cycle[Math.floor(this.scene.time.now / 90) % 3]
+    } else {
+      tint = level === 1 ? 0x66f0ff : 0x35e0ff
+    }
+    this.chargeGlow.setTint(tint)
+    this.chargeHalo.setTint(tint)
+  }
+
+  private hideChargeVisual() {
+    this.chargeGlow?.destroy()
+    this.chargeHalo?.destroy()
+    this.chargeGlow = undefined
+    this.chargeHalo = undefined
+  }
+
+  private shoot(type: BulletType) {
     const dir = this.facingRight ? 1 : -1
-    const bullet = this.bullets.get(this.x + dir * 16, this.y - 1) as Bullet
+    const now = this.scene.time.now
+    if (type === 'normal') {
+      if (now - this.lastShot < this.shootCooldown) return
+      this.lastShot = now
+    }
+
+    const key = type === 'normal' ? 'bullet' : type === 'mid' ? 'bullet-mid' : 'bullet-big'
+    const bullet = this.bullets.get(this.x + dir * 20, this.y - 1, key) as Bullet
     if (!bullet) return
+    bullet.activate(dir, type, this.powerUp ? 1 : 0, this.powerUp)
 
-    bullet.activate(dir)
-
-    // Muzzle flash at the buster tip + tiny recoil shake
-    ;(this.scene as Phaser.Scene & { spawnMuzzleFlash(x: number, y: number): void })
-      .spawnMuzzleFlash(this.x + dir * 19, this.y - 1)
-    this.scene.cameras.main.shake(30, 0.0012)
+    const flashScale = type === 'big' ? 0.6 : type === 'mid' ? 0.4 : 0.26
+    ;(this.scene as Phaser.Scene & {
+      spawnMuzzleFlash(x: number, y: number, scale?: number, flame?: boolean): void
+    }).spawnMuzzleFlash(this.x + dir * 20, this.y - 1, flashScale, this.powerUp)
+    this.scene.cameras.main.shake(type === 'normal' ? 25 : 60, type === 'normal' ? 0.001 : 0.0025)
   }
 
   takeDamage(amount: number, knockbackDir: number) {
@@ -130,6 +206,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     this.health = Math.max(0, Math.min(this.maxHealth, this.health - amount))
     this.invulnerable = true
+
+    // Getting hit cancels the charge
+    this.charging = false
+    this.hideChargeVisual()
 
     this.setVelocityX(knockbackDir * 300)
     this.setVelocityY(-450)
@@ -146,6 +226,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.health <= 0) {
       this.scene.scene.restart()
     }
+  }
+
+  heal(amount: number) {
+    if (this.health >= this.maxHealth) return
+    this.health = Math.min(this.maxHealth, this.health + amount)
+    this.setTintFill(0x9dfcb8)
+    this.scene.time.delayedCall(110, () => this.clearTint())
   }
 
   getHealth() {

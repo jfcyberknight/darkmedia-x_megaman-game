@@ -446,6 +446,44 @@ savePreview(bossSheet, 'boss.png', 4)
   savePreview(c, 'bullet.png', 8)
 }
 
+// ============================ CHARGED BULLETS + ENERGY ORB ============================
+function plasmaBolt(w, h, layers) {
+  const c = C(w, h)
+  const cx = w / 2, cy = h / 2
+  const [haloDef, ...cores] = layers
+  const halo = C(w, h)
+  el(halo, cx, cy, haloDef.rx, haloDef.ry, solid(haloDef.col))
+  for (let i = 3; i < halo.d.length; i += 4) halo.d[i] *= (haloDef.a ?? 0.35)
+  for (let i = 0; i < halo.d.length; i += 4)
+    if (halo.d[i + 3] > 0) over(c, (i / 4) % w, Math.floor(i / 4 / w), halo.d[i], halo.d[i + 1], halo.d[i + 2], halo.d[i + 3] / 255)
+  for (const L of cores) el(c, cx, cy, L.rx, L.ry, solid(L.col))
+  return c
+}
+save(plasmaBolt(26, 14, [
+  { rx: 11.5, ry: 6.2, col: hex(0x35e0ff), a: 0.32 },
+  { rx: 7.6, ry: 4.1, col: hex(0x9df2ff) },
+  { rx: 4.4, ry: 2.5, col: hex(0xffffff) },
+]), 'bullet-mid.png')
+const bigBolt = plasmaBolt(38, 22, [
+  { rx: 17, ry: 10, col: hex(0x35e0ff), a: 0.3 },
+  { rx: 12.5, ry: 7.4, col: hex(0x9df2ff) },
+  { rx: 8, ry: 4.9, col: hex(0xeafcff) },
+  { rx: 3.6, ry: 2.3, col: hex(0xffffff) },
+])
+save(bigBolt, 'bullet-big.png')
+savePreview(bigBolt, 'bullet-big.png', 6)
+
+// energy orb (white core + soft halo, tinted in-game: green = HP, red = boss power)
+{
+  const d = 30
+  const c = C(d, d)
+  glow(c, d / 2, d / 2, d / 2 - 1, hex(0xffffff), 0.85)
+  el(c, d / 2, d / 2, 6.4, 6.4, solid(hex(0xf4ffff)))
+  el(c, d / 2, d / 2, 3, 3, solid(hex(0xffffff)))
+  save(c, 'orb.png')
+  savePreview(c, 'orb.png', 6)
+}
+
 // ============================ GLOW BLOB (64x64, additive) ============================
 {
   const c = C(64, 64)
