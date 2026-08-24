@@ -3,6 +3,7 @@ import { Player } from '../entities/Player'
 import { Enemy } from '../entities/Enemy'
 import { Boss } from '../entities/Boss'
 import { Bullet } from '../objects/Bullet'
+import { STAGES, DEFAULT_STAGE, type StageDef } from '../stages'
 
 export class GameScene extends Phaser.Scene {
   private player!: Player
@@ -15,10 +16,16 @@ export class GameScene extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
   private shootKey!: Phaser.Input.Keyboard.Key
   private healthText!: Phaser.GameObjects.Text
+  private stageText!: Phaser.GameObjects.Text
   private enemyCount = 0
+  private stage: StageDef = DEFAULT_STAGE
 
   constructor() {
     super({ key: 'GameScene' })
+  }
+
+  init(data: { stage?: string }) {
+    this.stage = STAGES.find(s => s.id === data.stage) ?? DEFAULT_STAGE
   }
 
   preload() {
@@ -92,11 +99,19 @@ export class GameScene extends Phaser.Scene {
     this.healthText.setScrollFactor(0)
     this.healthText.setDepth(100)
 
+    this.stageText = this.add.text(10, 22, this.stage.name, {
+      fontSize: '7px',
+      color: '#a9b3cf',
+      fontFamily: 'monospace',
+    })
+    this.stageText.setScrollFactor(0)
+    this.stageText.setDepth(100)
+
     this.createScanlines()
 
-    this.add.text(10, 22, '← → : move  |  ↑ : jump  |  Z : shoot', {
+    this.add.text(10, 34, '← → : move  |  ↑ : jump  |  Z : shoot', {
       fontSize: '6px',
-      color: '#aabbcc',
+      color: '#5a6280',
       fontFamily: 'monospace',
     }).setScrollFactor(0).setDepth(100)
   }
@@ -188,15 +203,15 @@ export class GameScene extends Phaser.Scene {
     const W = 1600
     const H = 640
 
-    // Sky gradient (static)
+    // Sky gradient (static, tinted per stage)
     const sky = this.add.graphics()
-    sky.fillGradientStyle(0x2b1e4e, 0x2b1e4e, 0x0d0e15, 0x0d0e15, 1)
+    sky.fillGradientStyle(this.stage.skyTop, this.stage.skyTop, this.stage.skyBottom, this.stage.skyBottom, 1)
     sky.fillRect(0, 0, W + 400, H)
     sky.setScrollFactor(0)
 
     // Far layer: jagged skyline silhouettes (parallax 0.15)
     const far = this.add.graphics()
-    far.fillStyle(0x241d3f, 1)
+    far.fillStyle(this.stage.farColor, 1)
     let x = -200
     while (x < W + 400) {
       const w = 60 + Math.random() * 90
@@ -210,7 +225,7 @@ export class GameScene extends Phaser.Scene {
 
     // Mid layer: closer structures with window lights (parallax 0.4)
     const mid = this.add.graphics()
-    mid.fillStyle(0x191530, 1)
+    mid.fillStyle(this.stage.midColor, 1)
     x = -150
     while (x < W + 400) {
       const w = 40 + Math.random() * 70
