@@ -4,6 +4,7 @@ import { Enemy } from '../entities/Enemy'
 import { Boss } from '../entities/Boss'
 import { Bullet } from '../objects/Bullet'
 import { drawVignette } from '../ui'
+import { sfx, startMusic, stopMusic } from '../audio'
 import { STAGES, DEFAULT_STAGE, type StageDef } from '../stages'
 
 const WORLD_W = 4000
@@ -24,6 +25,8 @@ export class GameScene extends Phaser.Scene {
   private powerText!: Phaser.GameObjects.Text
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
   private shootKey!: Phaser.Input.Keyboard.Key
+  private muteKey!: Phaser.Input.Keyboard.Key
+  private muteToast?: Phaser.GameObjects.Text
   private bgFar!: Phaser.GameObjects.TileSprite
   private bgMid!: Phaser.GameObjects.TileSprite
   private enemyCount = 0
@@ -33,8 +36,12 @@ export class GameScene extends Phaser.Scene {
     super({ key: 'GameScene' })
   }
 
-  init(data: { stage?: string }) {
+  init(data: { stage?: string; fresh?: boolean }) {
     this.stage = STAGES.find(s => s.id === data.stage) ?? DEFAULT_STAGE
+    // A fresh entry from the stage select resets lives; a death-restart keeps them.
+    if (data.fresh || this.registry.get('lives') === undefined) {
+      this.registry.set('lives', 3)
+    }
   }
 
   preload() {
@@ -81,6 +88,7 @@ export class GameScene extends Phaser.Scene {
     })
 
     this.player = new Player(this, 160, 1330, this.bullets)
+    this.player.powerUp = this.registry.get('power') === true
 
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1)
 
@@ -89,6 +97,7 @@ export class GameScene extends Phaser.Scene {
 
     this.cursors = this.input.keyboard!.createCursorKeys()
     this.shootKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.Z)
+    this.muteKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.M)
 
     // Collide with BOTH layers: ground is the walkable floor, platforms the floating slabs.
     this.physics.add.collider(this.player, this.ground)
@@ -142,8 +151,20 @@ export class GameScene extends Phaser.Scene {
 
     this.powerText = this.add.text(24, 96, 'WAR POWER +', {
       fontSize: '13px', color: '#ff9d8a', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 3,
-    }).setScrollFactor(0).setDepth(200).setVisible(false)
+    }).setScrollFactor(0).setDepth(200).setVisible(this.player.powerUp)
     this.powerText.setShadow(0, 0, '#ff5546', 10, true, true)
+
+    // Lives (mini hero icons)
+    const lives = (this.registry.get('lives') as number) ?? 3
+    for (let i = 0; i < lives; i++) {
+      this.add.image(36 + i * 30, 128, 'player', 0)
+        .setScale(0.6).setScrollFactor(0).setDepth(200)
+    }
+
+    // Audio: music loop + mute toggle (M)
+    sfx.unlock()
+    startMusic()
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => stopMusic())
 
     drawVignette(this, 0.45)
     this.cameras.main.fadeIn(300, 0, 0, 0)
@@ -163,6 +184,17 @@ export class GameScene extends Phaser.Scene {
     const shootPressed = Phaser.Input.Keyboard.JustDown(this.shootKey)
     const shootHeld = this.shootKey.isDown
     const shootReleased = Phaser.Input.Keyboard.JustUp(this.shootKey)
+
+    if (Phaser.Input.Keyboard.JustDown(this.muteKey)) {
+      const m = sfx.toggleMute()
+      if (!this.muteToast) {
+        this.muteToast = this.add.text(this.cameras.main.width - 30, 60, '', {
+          fontSize: '14px', color: '#9fb4d8', fontFamily: 'monospace',
+        }).setOrigin(1, 0).setScrollFactor(0).setDepth(300)
+      }
+      this.muteToast.setText(m ? 'SOUND OFF' : 'SOUND ON').setAlpha(1)
+      this.tweens.add({ targets: this.muteToast, alpha: 0, duration: 900, delay: 500 })
+    }
 
     this.player.update(left, right, jump, jumpHeld, shootPressed, shootHeld, shootReleased, delta)
     this.drawHpBar()
@@ -435,12 +467,15 @@ export class GameScene extends Phaser.Scene {
       return
     }
     p.heal(2)
+    sfx.collect()
     this.spawnCollectBurst(ox, oy, 0x7dfca2)
   }
 
   /** Boss power absorbed: +1 damage on every shot, flame tint, cycling max-charge. */
   private absorbBossPower(x: number, y: number) {
     this.player.powerUp = true
+    this.registry.set('power', true)
+    sfx.powerup()
     this.cameras.main.flash(320, 255, 128, 96)
     this.spawnCollectBurst(x, y, 0xff6b5e)
     this.spawnExplosion(x, y, false)
@@ -545,6 +580,46 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: t, alpha: 1, scale: 1, duration: 450, ease: 'Back.Out' })
   }
 
+  /** Called by the Player when its HP reaches zero: life lost, respawn or game over. */
+  onPlayerDeath() {
+    sfx.explode()
+    this.spawnExplosion(this.player.x, this.player.y, false)
+    const lives = ((this.registry.get('lives') as number) ?? 1) - 1
+    this.registry.set('lives', lives)
+    if (lives > 0) {
+      // Respawn: restart the stage but keep the remaining lives (no `fresh` flag).
+      this.time.delayedCall(650, () => this.scene.restart({ stage: this.stage.id }))
+    } else {
+      this.gameOver()
+    }
+  }
+
+  private gameOver() {
+    stopMusic()
+    sfx.gameOver()
+    const { width, height } = this.cameras.main
+    const veil = this.add.rectangle(width / 2, height / 2, width, height, 0x05060c, 0)
+      .setScrollFactor(0).setDepth(400)
+    this.tweens.add({ targets: veil, fillAlpha: 0.85, duration: 600 })
+
+    const t = this.add.text(width / 2, height / 2 - 26, 'GAME OVER', {
+      fontSize: '58px', color: '#ff6b5e', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 10,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(401).setAlpha(0).setScale(0.8)
+    t.setStroke('#160404', 10)
+    t.setShadow(0, 0, '#ff3524', 26, true, true)
+    this.tweens.add({ targets: t, alpha: 1, scale: 1, duration: 500, ease: 'Back.Out' })
+
+    const sub = this.add.text(width / 2, height / 2 + 34, 'RETURNING TO STAGE SELECT', {
+      fontSize: '15px', color: '#8b93a8', fontFamily: 'monospace', letterSpacing: 3,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(401)
+    this.tweens.add({ targets: sub, alpha: { from: 1, to: 0.25 }, duration: 600, yoyo: true, repeat: -1 })
+
+    this.time.delayedCall(2800, () => {
+      this.cameras.main.fadeOut(400, 0, 0, 0)
+      this.time.delayedCall(450, () => this.scene.start('StageSelectScene'))
+    })
+  }
+
   private handleBulletHitBoss(
     bullet: Phaser.Types.Physics.Arcade.GameObjectWithBody,
     boss: Phaser.Types.Physics.Arcade.GameObjectWithBody,
@@ -574,6 +649,7 @@ export class GameScene extends Phaser.Scene {
     this.bossActive = false
     this.bossBar.clear()
     this.bossName.setVisible(false)
+    sfx.bigExplode()
     if (this.boss) {
       this.spawnOrb(this.boss.x, this.boss.y - 10, 'core')
     }
@@ -593,6 +669,7 @@ export class GameScene extends Phaser.Scene {
 
     if (!e.active) {
       this.enemyCount--
+      sfx.explode()
       if (Math.random() < 0.6) this.spawnOrb(e.x, e.y, 'hp')
       if (this.enemyCount <= 0) this.showAllTargetsDown()
     }

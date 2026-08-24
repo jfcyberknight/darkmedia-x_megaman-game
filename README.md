@@ -17,12 +17,15 @@ Jeu de plateforme 2D au style moderne (rendu 960×540 lisse, dégradés, glow, p
 | ↑ | Saut |
 | Z (tap) | Tir rapide |
 | Z (maintenu) | Charge l'énergie — relâcher : tir moyen (0,4 s) ou gros tir perforant (1 s) |
+| M | Son on/off |
 
 ## Boucle de jeu
 
+- **3 vies** : à mort, le stage recommence avec une vie en moins ; à 0, écran **GAME OVER** puis retour à la sélection.
 - 6 ennemis patrouilleurs + un boss **WAR MACHINE** en fin de niveau.
 - Les ennemis vaincus lâchent parfois des **orbes d'énergie** (+2 HP) ; d'autres sont placées sur les plateformes (aimantées quand on approche).
 - Vaincre le boss laisse tomber son **noyau de pouvoir** : en le collectant, le héros absorbe son pouvoir (+1 dégât sur tous les tirs, teinte flamme, charge maximale cyclée) puis le stage est terminé.
+- **Sons et musique** 100 % synthétisés en Web Audio (aucun asset) : tirs, charge, impacts, explosions, collecte, jingles de pouvoir/game over et boucle musicale chiptune.
 
 ## Développement local
 
@@ -92,5 +95,5 @@ Des aperçus agrandis sont écrits dans `scripts/preview/` (ignoré par git).
 - [x] Écran-titre et sélection de stage
 - [x] Boss de fin de niveau avec barre de vie
 - [x] Tir chargé (maintenir Z) + orbes d'énergie + pouvoir de boss absorbable
-- [ ] Sons et musique
-- [ ] Système de vies / game over
+- [x] Sons et musique (Web Audio procédural, touche M)
+- [x] Système de vies / game over

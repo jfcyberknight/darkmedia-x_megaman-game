@@ -114,6 +114,6 @@ export class StageSelectScene extends Phaser.Scene {
   private confirm() {
     const stage = STAGES[this.selected]
     this.cameras.main.fadeOut(220, 0, 0, 0)
-    this.time.delayedCall(240, () => this.scene.start('GameScene', { stage: stage.id }))
+    this.time.delayedCall(240, () => this.scene.start('GameScene', { stage: stage.id, fresh: true }))
   }
 }

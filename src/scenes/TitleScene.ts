@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { drawStarfield, drawSkyline, drawVignette } from '../ui'
+import { sfx } from '../audio'
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -66,7 +67,10 @@ export class TitleScene extends Phaser.Scene {
 
     drawVignette(this, 0.5)
 
-    const start = () => this.scene.start('StageSelectScene')
+    const start = () => {
+      sfx.unlock()
+      this.scene.start('StageSelectScene')
+    }
     this.input.keyboard!.on('keydown-Z', start)
     this.input.keyboard!.on('keydown-ENTER', start)
     this.input.keyboard!.on('keydown-SPACE', start)

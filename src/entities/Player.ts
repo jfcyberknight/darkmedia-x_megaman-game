@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { Bullet, BulletType } from '../objects/Bullet'
+import { sfx } from '../audio'
 
 const CHARGE_MID = 400
 const CHARGE_BIG = 1000
@@ -24,6 +25,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   // Boss power absorbed
   powerUp = false
+
+  // Death sequence
+  private dead = false
+  private lastChargeLevel: 0 | 1 | 2 = 0
 
   // Platformer feel
   private coyoteTime = 100
@@ -60,6 +65,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   ) {
     const body = this.body as Phaser.Physics.Arcade.Body
     const onGround = body.blocked.down || body.touching.down
+
+    if (this.dead) return
 
     // Hard landing -> dust puff
     if (onGround && !this.wasOnGround && this.prevVy > 650) {
@@ -110,6 +117,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.setVelocityY(this.jumpVelocity)
       this.jumpBufferTimer = 0
       this.coyoteTimer = 0
+      sfx.jump()
     }
 
     // Variable jump height
@@ -151,6 +159,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   private updateChargeVisual() {
     const level = this.chargeLevel()
+    if (level !== this.lastChargeLevel) {
+      sfx.charge(level)
+      this.lastChargeLevel = level
+    }
     if (!this.chargeGlow || !this.chargeHalo) {
       this.chargeGlow = this.scene.add.image(this.x, this.y, 'glow')
         .setBlendMode(Phaser.BlendModes.ADD).setDepth(40)
@@ -195,6 +207,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     bullet.activate(dir, type, this.powerUp ? 1 : 0, this.powerUp)
 
     const flashScale = type === 'big' ? 0.6 : type === 'mid' ? 0.4 : 0.26
+    if (type === 'normal') sfx.shoot()
+    else if (type === 'mid') sfx.shootMid()
+    else sfx.shootBig()
     ;(this.scene as Phaser.Scene & {
       spawnMuzzleFlash(x: number, y: number, scale?: number, flame?: boolean): void
     }).spawnMuzzleFlash(this.x + dir * 20, this.y - 1, flashScale, this.powerUp)
@@ -202,10 +217,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   takeDamage(amount: number, knockbackDir: number) {
-    if (this.invulnerable) return
+    if (this.invulnerable || this.dead) return
 
     this.health = Math.max(0, Math.min(this.maxHealth, this.health - amount))
     this.invulnerable = true
+    sfx.hurt()
 
     // Getting hit cancels the charge
     this.charging = false
@@ -224,8 +240,27 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     })
 
     if (this.health <= 0) {
-      this.scene.scene.restart()
+      this.die(knockbackDir)
     }
+  }
+
+  /** Death: knock into the air, blink out, then hand over to the scene (lives/game over). */
+  private die(knockbackDir: number) {
+    this.dead = true
+    this.charging = false
+    this.hideChargeVisual()
+    this.setVelocityX(-knockbackDir * 150)
+    this.setVelocityY(-520)
+    this.scene.tweens.add({
+      targets: this,
+      alpha: { from: 1, to: 0.15 },
+      duration: 110,
+      yoyo: true,
+      repeat: 6,
+    })
+    this.scene.time.delayedCall(950, () => {
+      ;(this.scene as Phaser.Scene & { onPlayerDeath(): void }).onPlayerDeath()
+    })
   }
 
   heal(amount: number) {
