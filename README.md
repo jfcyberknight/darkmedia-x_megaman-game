@@ -63,9 +63,17 @@ src/
 
 ## Prochaines améliorations
 
-- [ ] Sprites pixel-art (remplacer les rectangles colorés)
-- [ ] Tilemap externe (Tiled)
+- [x] Sprites pixel-art (générés par `scripts/generate-assets.mjs`)
+- [x] Tilemap externe (Tiled, `public/assets/level.json`)
 - [ ] Sons et musique chiptune
 - [ ] Boss de fin de niveau
 - [ ] Système de vies / game over
 - [ ] Écran-titre et sélection de stage
+
+## Génération des assets
+
+Les sprites et la tilemap sont générés par script (regénérer après modification) :
+
+```bash
+node scripts/generate-assets.mjs
+```

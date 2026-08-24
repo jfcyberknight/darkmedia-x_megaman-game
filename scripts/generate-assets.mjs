@@ -273,10 +273,10 @@ function set(layer, x, y, gid) {
   }
 }
 
-// Ground
+// Ground (gid 2 = ground top, gid 3 = ground body)
 for (let x = 0; x < mapWidth; x++) {
-  set(groundLayer, x, mapHeight - 2, 2)
-  set(groundLayer, x, mapHeight - 3, 1)
+  set(groundLayer, x, mapHeight - 2, 3)
+  set(groundLayer, x, mapHeight - 3, 2)
 }
 
 // Platforms

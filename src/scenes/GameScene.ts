@@ -5,7 +5,7 @@ import { Bullet } from '../objects/Bullet'
 
 export class GameScene extends Phaser.Scene {
   private player!: Player
-  private platforms!: Phaser.Physics.Arcade.StaticGroup
+  private platforms!: Phaser.Tilemaps.TilemapLayer
   private enemies!: Phaser.Physics.Arcade.Group
   private bullets!: Phaser.Physics.Arcade.Group
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
@@ -17,14 +17,22 @@ export class GameScene extends Phaser.Scene {
     super({ key: 'GameScene' })
   }
 
-  create() {
-    this.generateTextures()
+  preload() {
+    this.load.image('tileset', 'assets/tileset.png')
+    this.load.tilemapTiledJSON('level', 'assets/level.json')
+    this.load.spritesheet('player', 'assets/player.png', { frameWidth: 16, frameHeight: 24 })
+    this.load.spritesheet('enemy', 'assets/enemy.png', { frameWidth: 18, frameHeight: 18 })
+    this.load.image('bullet', 'assets/bullet.png')
+  }
 
-    this.cameras.main.setBounds(0, 0, 1600, 600)
-    this.physics.world.setBounds(0, 0, 1600, 600)
+  create() {
+    this.createAnimations()
+
+    this.cameras.main.setBounds(0, 0, 1600, 640)
+    this.physics.world.setBounds(0, 0, 1600, 640)
 
     this.createBackground()
-    this.createPlatforms()
+    this.createTilemap()
 
     this.bullets = this.physics.add.group({
       classType: Bullet,
@@ -40,9 +48,7 @@ export class GameScene extends Phaser.Scene {
       collideWorldBounds: true,
     })
 
-    this.player = new Player(this, 80, 400, this.bullets)
-    this.add.existing(this.player)
-    this.physics.add.existing(this.player)
+    this.player = new Player(this, 64, 500, this.bullets)
 
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1)
     this.cameras.main.setZoom(2)
@@ -54,6 +60,7 @@ export class GameScene extends Phaser.Scene {
 
     this.physics.add.collider(this.player, this.platforms)
     this.physics.add.collider(this.enemies, this.platforms)
+    this.physics.add.collider(this.bullets, this.platforms)
     this.physics.add.overlap(
       this.bullets,
       this.enemies,
@@ -96,86 +103,74 @@ export class GameScene extends Phaser.Scene {
 
     this.enemies.children.iterate((child) => {
       const enemy = child as Enemy
-      enemy.update()
+      if (enemy.active) enemy.update()
       return true
     })
   }
 
-  private generateTextures() {
-    const g = this.add.graphics()
+  private createAnimations() {
+    if (!this.anims.exists('player-idle')) {
+      this.anims.create({
+        key: 'player-idle',
+        frames: this.anims.generateFrameNumbers('player', { start: 0, end: 0 }),
+        frameRate: 4,
+        repeat: -1,
+      })
+    }
+    if (!this.anims.exists('player-run')) {
+      this.anims.create({
+        key: 'player-run',
+        frames: this.anims.generateFrameNumbers('player', { start: 1, end: 3 }),
+        frameRate: 12,
+        repeat: -1,
+      })
+    }
+    if (!this.anims.exists('enemy-walk')) {
+      this.anims.create({
+        key: 'enemy-walk',
+        frames: this.anims.generateFrameNumbers('enemy', { start: 0, end: 1 }),
+        frameRate: 6,
+        repeat: -1,
+      })
+    }
+  }
 
-    g.fillStyle(0x3b82f6)
-    g.fillRect(0, 0, 16, 24)
-    g.generateTexture('player', 16, 24)
-    g.clear()
+  private createTilemap() {
+    const map = this.make.tilemap({ key: 'level' })
+    const tileset = map.addTilesetImage('tileset', 'tileset')
+    const ground = map.createLayer('ground', tileset!)
+    this.platforms = map.createLayer('platforms', tileset!)!
 
-    g.fillStyle(0xef4444)
-    g.fillRect(0, 0, 18, 18)
-    g.generateTexture('enemy', 18, 18)
-    g.clear()
-
-    g.fillStyle(0xfacc15)
-    g.fillRect(0, 0, 6, 4)
-    g.generateTexture('bullet', 6, 4)
-    g.destroy()
+    ground!.setCollisionByExclusion([-1])
+    this.platforms.setCollisionByExclusion([-1])
   }
 
   private createBackground() {
     const graphics = this.add.graphics()
     graphics.fillGradientStyle(0x1a1c29, 0x1a1c29, 0x0d0e15, 0x0d0e15, 1)
-    graphics.fillRect(0, 0, 1600, 600)
+    graphics.fillRect(0, 0, 1600, 640)
     graphics.setScrollFactor(0.2)
 
     for (let x = 0; x < 1600; x += 64) {
       const h = 40 + Math.random() * 60
       graphics.fillStyle(0x252736, 1)
-      graphics.fillRect(x, 600 - h, 64, h)
+      graphics.fillRect(x, 640 - h, 64, h)
     }
-  }
-
-  private createPlatforms() {
-    this.platforms = this.physics.add.staticGroup()
-
-    const groundY = 560
-    for (let x = 0; x < 1600; x += 32) {
-      this.addPlatformTile(x, groundY)
-    }
-
-    const layout = [
-      { x: 200, y: 480, w: 3 },
-      { x: 360, y: 400, w: 2 },
-      { x: 520, y: 340, w: 4 },
-      { x: 760, y: 420, w: 2 },
-      { x: 920, y: 360, w: 3 },
-      { x: 1140, y: 300, w: 2 },
-      { x: 1300, y: 420, w: 3 },
-    ]
-
-    for (const p of layout) {
-      for (let i = 0; i < p.w; i++) {
-        this.addPlatformTile(p.x + i * 32, p.y)
-      }
-    }
-  }
-
-  private addPlatformTile(x: number, y: number) {
-    const tile = this.add.rectangle(x + 16, y + 16, 32, 32, 0x4a5568) as unknown as Phaser.GameObjects.GameObject
-    this.platforms.add(tile)
   }
 
   private spawnEnemies() {
+    // Spawns aligned with the tilemap platforms (top surface - 16px)
     const positions = [
-      { x: 300, y: 430 },
-      { x: 560, y: 290 },
-      { x: 800, y: 370 },
-      { x: 1000, y: 310 },
-      { x: 1360, y: 480 },
+      { x: 256, y: 430 },
+      { x: 432, y: 366 },
+      { x: 656, y: 302 },
+      { x: 944, y: 366 },
+      { x: 1152, y: 270 },
+      { x: 1392, y: 334 },
     ]
 
     for (const pos of positions) {
       const enemy = new Enemy(this, pos.x, pos.y)
-      this.add.existing(enemy)
-      this.physics.add.existing(enemy)
       this.enemies.add(enemy)
       this.enemyCount++
     }

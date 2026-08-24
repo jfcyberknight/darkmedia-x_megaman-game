@@ -25,10 +25,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this)
     scene.physics.add.existing(this)
 
-    this.setDisplaySize(16, 24)
-    this.setTint(0x3b82f6)
-    this.body!.setSize(14, 22)
-    this.body!.setOffset(1, 1)
+    this.body!.setSize(12, 20)
+    this.body!.setOffset(2, 3)
     this.setCollideWorldBounds(true)
     this.setDrag(0, 0)
   }
@@ -63,6 +61,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.setVelocityX(0)
     }
 
+    // Animation
+    const moving = left || right
+    if (onGround && moving) {
+      this.anims.play('player-run', true)
+    } else if (onGround) {
+      this.anims.play('player-idle', true)
+    }
+
     // Jump
     if (this.jumpBufferTimer > 0 && this.coyoteTimer > 0) {
       this.setVelocityY(this.jumpVelocity)
@@ -93,7 +99,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (now - this.lastShot < this.shootCooldown) return
     this.lastShot = now
 
-    const bullet = this.bullets.get(this.x, this.y - 4, 'bullet') as Bullet
+    const bullet = this.bullets.get(this.x, this.y - 4) as Bullet
     if (!bullet) return
 
     bullet.activate(this.facingRight ? 1 : -1)

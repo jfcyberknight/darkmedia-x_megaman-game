@@ -7,8 +7,6 @@ export class Bullet extends Phaser.Physics.Arcade.Image {
   constructor(scene: Phaser.Scene, x: number, y: number, texture: string) {
     super(scene, x, y, texture)
 
-    this.setDisplaySize(6, 4)
-    this.setTint(0xfacc15)
     this.setVisible(false)
     this.setActive(false)
   }

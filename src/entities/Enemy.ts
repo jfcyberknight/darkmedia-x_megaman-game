@@ -13,11 +13,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this)
     scene.physics.add.existing(this)
 
-    this.setDisplaySize(18, 18)
-    this.setTint(0xef4444)
     this.body!.setSize(16, 16)
+    this.body!.setOffset(1, 1)
     this.setCollideWorldBounds(true)
     this.setVelocityX(this.patrolSpeed)
+    this.play('enemy-walk')
   }
 
   update() {
@@ -47,9 +47,9 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       this.disableBody(true, true)
       this.createExplosion()
     } else {
-      this.setTint(0xffffff)
+      this.setTint(0xff8080)
       this.scene.time.delayedCall(100, () => {
-        if (this.active) this.setTint(0xef4444)
+        if (this.active) this.clearTint()
       })
     }
   }
