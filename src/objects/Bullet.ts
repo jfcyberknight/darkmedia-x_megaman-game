@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 
 export class Bullet extends Phaser.Physics.Arcade.Image {
-  private bulletSpeed = 280
+  private bulletSpeed = 700
   private lifetime = 1200
 
   constructor(scene: Phaser.Scene, x: number, y: number, texture: string) {

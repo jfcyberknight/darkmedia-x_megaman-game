@@ -1,6 +1,6 @@
 # darkmedia-x_megaman-game
 
-Jeu de plateforme 2D style Megaman (SNES), développé avec **Phaser 3**, **TypeScript** et **Vite**.
+Jeu de plateforme 2D au style moderne (rendu 960×540 lisse, dégradés, glow, parallaxe), développé avec **Phaser 3**, **TypeScript** et **Vite**.
 
 ## Stack
 
@@ -54,26 +54,35 @@ src/
   entities/
     Player.ts     # Joueur (déplacement, saut, tir, dégâts)
     Enemy.ts      # Ennemi patrouilleur
+    Boss.ts       # Boss de fin de niveau
   objects/
     Bullet.ts     # Projectile du joueur
   scenes/
-    GameScene.ts  # Niveau, plateformes, caméra, UI
-  main.ts         # Configuration Phaser
+    BootScene.ts        # Preload des textures partagées + splash
+    TitleScene.ts       # Écran-titre
+    StageSelectScene.ts # Sélection de stage
+    GameScene.ts        # Niveau, plateformes, caméra, HUD
+  main.ts         # Configuration Phaser (960x540, lissage)
 ```
+
+## Génération des assets (art HD procédural)
+
+Tous les sprites et décors sont générés par script en style 2D moderne :
+formes lisses anti-aliasées, dégradés, rim light, glow additif. Le monde est
+à l'échelle x2.5 (tuiles 80px, monde 4000x1600) et le rendu est lissé
+(`pixelArt: false`).
+
+```bash
+npm run assets   # régénère public/assets/*.png + level.json (échelle 80px)
+```
+
+Des aperçus agrandis sont écrits dans `scripts/preview/` (ignoré par git).
 
 ## Prochaines améliorations
 
-- [x] Sprites pixel-art (générés par `scripts/generate-assets.mjs`)
+- [x] Sprites HD procéduraux (perso, ennemis, boss, tuiles, parallaxe par stage)
 - [x] Tilemap externe (Tiled, `public/assets/level.json`)
-- [ ] Sons et musique chiptune
-- [ ] Boss de fin de niveau
+- [x] Écran-titre et sélection de stage
+- [x] Boss de fin de niveau avec barre de vie
+- [ ] Sons et musique
 - [ ] Système de vies / game over
-- [ ] Écran-titre et sélection de stage
-
-## Génération des assets
-
-Les sprites et la tilemap sont générés par script (regénérer après modification) :
-
-```bash
-node scripts/generate-assets.mjs
-```

@@ -3,9 +3,9 @@ import Phaser from 'phaser'
 export class Boss extends Phaser.Physics.Arcade.Sprite {
   private health = 20
   private maxHealth = 20
-  private patrolSpeed = 30
+  private patrolSpeed = 75
   private startX = 0
-  private patrolDistance = 120
+  private patrolDistance = 300
   private invulnerable = false
   private onHpChange: (hp: number, max: number) => void
 
@@ -17,8 +17,8 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this)
     scene.physics.add.existing(this)
 
-    this.body!.setSize(28, 26)
-    this.body!.setOffset(2, 4)
+    this.body!.setSize(62, 60)
+    this.body!.setOffset(9, 16)
     this.setCollideWorldBounds(true)
     this.setVelocityX(-this.patrolSpeed)
     this.play('boss-idle')

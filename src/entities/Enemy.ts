@@ -1,8 +1,8 @@
 import Phaser from 'phaser'
 
 export class Enemy extends Phaser.Physics.Arcade.Sprite {
-  private patrolSpeed = 40
-  private patrolDistance = 60
+  private patrolSpeed = 100
+  private patrolDistance = 150
   private startX = 0
   private health = 2
 
@@ -13,8 +13,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this)
     scene.physics.add.existing(this)
 
-    this.body!.setSize(16, 16)
-    this.body!.setOffset(1, 1)
+    this.body!.setSize(34, 34)
+    this.body!.setOffset(5, 8)
     this.setCollideWorldBounds(true)
     this.setVelocityX(this.patrolSpeed)
     this.play('enemy-walk')
@@ -48,7 +48,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
         .spawnExplosion(this.x, this.y)
       this.disableBody(true, true)
     } else {
-      // Full white hit-flash, classic SNES damage feedback
+      // Full white hit-flash damage feedback
       this.setTintFill(0xffffff)
       this.scene.time.delayedCall(70, () => {
         if (this.active) this.clearTint()
