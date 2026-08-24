@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import { drawStarfield, drawSkyline, drawVignette } from '../ui'
-import { sfx } from '../audio'
+import { sfx, startMusic } from '../audio'
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -69,11 +69,20 @@ export class TitleScene extends Phaser.Scene {
 
     const start = () => {
       sfx.unlock()
+      startMusic('menu')
       this.scene.start('StageSelectScene')
     }
     this.input.keyboard!.on('keydown-Z', start)
     this.input.keyboard!.on('keydown-ENTER', start)
     this.input.keyboard!.on('keydown-SPACE', start)
     this.input.on('pointerdown', start)
+
+    // Menu theme starts as soon as any input unlocks the audio context.
+    const wake = () => {
+      sfx.unlock()
+      startMusic('menu')
+    }
+    this.input.keyboard!.once('keydown', wake)
+    this.input.once('pointerdown', wake)
   }
 }

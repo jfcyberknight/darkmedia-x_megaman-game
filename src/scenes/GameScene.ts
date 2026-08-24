@@ -190,9 +190,9 @@ export class GameScene extends Phaser.Scene {
         .setScale(0.5).setScrollFactor(0).setDepth(200)
     }
 
-    // Audio: music loop + mute toggle (M)
+    // Audio: stage theme + mute toggle (M)
     sfx.unlock()
-    startMusic()
+    startMusic('stage')
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => stopMusic())
 
     drawVignette(this, 0.45)

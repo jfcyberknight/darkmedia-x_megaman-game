@@ -1,6 +1,9 @@
 import Phaser from 'phaser'
+import { sfx } from '../audio'
 
 export class BootScene extends Phaser.Scene {
+  private jingleDone = false
+
   constructor() {
     super({ key: 'BootScene' })
   }
@@ -40,6 +43,17 @@ export class BootScene extends Phaser.Scene {
     const go = () => this.scene.start('TitleScene')
     this.input.keyboard!.on('keydown-Z', go)
     this.input.keyboard!.on('keydown-ENTER', go)
+    // Browsers block audio until the first gesture: the boot fanfare plays on
+    // the very first key press / click (and unlocks the audio context).
+    const firstInput = () => {
+      sfx.unlock()
+      if (!this.jingleDone) {
+        this.jingleDone = true
+        sfx.intro()
+      }
+    }
+    this.input.keyboard!.once('keydown', firstInput)
+    this.input.once('pointerdown', firstInput)
     this.time.delayedCall(1600, () => {
       this.tweens.add({
         targets: [studio, presents],

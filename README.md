@@ -26,7 +26,7 @@ Jeu de plateforme 2D au rendu **16-bit authentique** (256×224 natif, pixel-art,
 - 6 ennemis patrouilleurs + un boss **WAR MACHINE** en fin de niveau.
 - Les ennemis vaincus lâchent parfois des **orbes d'énergie** (+2 HP) ; d'autres sont placées sur les plateformes (aimantées quand on approche).
 - Vaincre le boss laisse tomber son **noyau de pouvoir** : en le collectant, le héros absorbe son pouvoir (+1 dégât sur tous les tirs, teinte flamme, charge maximale cyclée) puis le stage est terminé.
-- **Sons et musique** 100 % synthétisés en Web Audio (aucun asset) : tirs, charge, impacts, explosions, collecte, jingles de pouvoir/game over et boucle musicale chiptune.
+- **Sons et musique** 100 % synthétisés en Web Audio (aucun asset) : jingle d'intro DarkMedia-X, thème de menu mystérieux, thème de stage MMX, tirs, charge, impacts, explosions, collecte, jingles de pouvoir/game over.
 
 ## Développement local
 

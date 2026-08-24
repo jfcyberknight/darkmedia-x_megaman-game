@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { STAGES } from '../stages'
 import { drawStarfield, drawSkyline, drawVignette } from '../ui'
+import { startMusic } from '../audio'
 
 export class StageSelectScene extends Phaser.Scene {
   private selected = 0
@@ -84,6 +85,9 @@ export class StageSelectScene extends Phaser.Scene {
     }).setOrigin(0.5)
 
     drawVignette(this, 0.5)
+
+    // Menu theme keeps playing here (no-op if already running from the title).
+    startMusic('menu')
 
     this.cursors = this.input.keyboard!.createCursorKeys()
     this.input.keyboard!.on('keydown-Z', () => this.confirm())

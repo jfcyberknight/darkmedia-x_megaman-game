@@ -75,14 +75,18 @@ function noise(opt: { dur: number; vol?: number; freq?: number; delay?: number }
 }
 
 // --------------------------- Music (lookahead sequencer) ---------------------------
-// Stage theme in the spirit of Mega Man X (fast, hopping melodies, octave bass),
-// with one modern touch: a dotted-eighth delay on the lead voice.
+// Two tracks: 'menu' (slow, mysterious, A-minor) and 'stage' (fast MMX-style theme),
+// plus one modern touch on the stage lead: a dotted-eighth delay.
+
+type Track = 'menu' | 'stage'
 
 let musicTimer: ReturnType<typeof setInterval> | null = null
+let currentTrack: Track | null = null
 let step = 0
 let nextTime = 0
 const BPM = 158
 const STEP = 60 / BPM / 4
+const MENU_STEP = 60 / 100 / 4
 
 let leadBus: GainNode | null = null
 function getLeadBus(): GainNode | null {
@@ -109,11 +113,23 @@ function getLeadBus(): GainNode | null {
 }
 
 const N = {
-  A2: 110, C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196, A3: 220, B3: 246.94,
+  A2: 110, C3: 130.81, D3: 146.83, E3: 164.81, F2: 87.31, F3: 174.61, G2: 98, G3: 196, A3: 220, B3: 246.94,
   C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392, A4: 440, B4: 493.88,
   C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880, B5: 987.77,
   C6: 1046.5, D6: 1174.66, E6: 1318.51,
 }
+
+// Menu theme — A minor, slow arpeggios, airy (32 sixteenths at 100 BPM)
+const MENU_BASS = [
+  N.A2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  N.F2, 0, 0, 0, 0, 0, 0, 0, N.C3, 0, 0, 0, 0, 0, 0, 0,
+]
+const MENU_LEAD = [
+  N.A4, 0, 0, 0, N.C5, 0, 0, 0, N.E5, 0, 0, 0, N.C5, 0, 0, 0,
+  N.F4, 0, 0, 0, N.A4, 0, 0, 0, N.C5, 0, 0, 0, N.E5, 0, 0, 0,
+  N.C5, 0, 0, 0, N.E5, 0, 0, 0, N.G5, 0, 0, 0, N.E5, 0, 0, 0,
+  N.G4, 0, 0, 0, N.B4, 0, 0, 0, N.D5, 0, 0, 0, N.B4, 0, 0, 0,
+]
 
 // Two 2-bar sections (32 sixteenths each): A = bouncy theme, B = soaring answer.
 const LEAD_A = [
@@ -169,29 +185,46 @@ function schedule() {
   const c = ctx
   if (!c || !musicBus) return
   const lead = getLeadBus()
-  const bar = Math.floor(step / 32) % 4
-  const i = step % 32
+  const menu = currentTrack === 'menu'
+  const stepDur = menu ? MENU_STEP : STEP
   while (nextTime < c.currentTime + 0.35) {
     const delay = Math.max(0, nextTime - c.currentTime)
-    const leadPat = bar === 0 ? LEAD_A : bar === 1 ? LEAD_A2 : bar === 2 ? LEAD_B : LEAD_B2
-    const bassPat = bar < 2 ? BASS_A : BASS_B
-    const li = leadPat[i]
-    if (li) tone({ f: li, dur: STEP * 0.9, type: 'square', vol: 0.13, delay, bus: lead })
-    const b = bassPat[i]
-    if (b) tone({ f: b, dur: STEP * 1.5, type: 'triangle', vol: 0.5, delay, bus: musicBus })
-    if (KICK[i]) tone({ f: 150, to: 45, dur: 0.1, type: 'sine', vol: 0.75, delay, bus: musicBus })
-    if (SNARE[i]) noise({ dur: 0.09, vol: 0.3, freq: 2400, delay })
-    if (HAT[i]) noise({ dur: 0.03, vol: 0.12, freq: 7000, delay })
-    nextTime += STEP
+    if (menu) {
+      const i = step % 32
+      const b = MENU_BASS[i]
+      if (b) tone({ f: b, dur: stepDur * 14, type: 'triangle', vol: 0.5, delay, bus: musicBus })
+      const l = MENU_LEAD[i]
+      if (l) tone({ f: l, dur: stepDur * 3.4, type: 'square', vol: 0.09, delay, bus: lead })
+      if (i % 16 === 0) noise({ dur: 0.05, vol: 0.05, freq: 4500, delay })
+    } else {
+      const bar = Math.floor(step / 32) % 4
+      const i = step % 32
+      const leadPat = bar === 0 ? LEAD_A : bar === 1 ? LEAD_A2 : bar === 2 ? LEAD_B : LEAD_B2
+      const bassPat = bar < 2 ? BASS_A : BASS_B
+      const li = leadPat[i]
+      if (li) tone({ f: li, dur: STEP * 0.9, type: 'square', vol: 0.13, delay, bus: lead })
+      const b = bassPat[i]
+      if (b) tone({ f: b, dur: STEP * 1.5, type: 'triangle', vol: 0.5, delay, bus: musicBus })
+      if (KICK[i]) tone({ f: 150, to: 45, dur: 0.1, type: 'sine', vol: 0.75, delay, bus: musicBus })
+      if (SNARE[i]) noise({ dur: 0.09, vol: 0.3, freq: 2400, delay })
+      if (HAT[i]) noise({ dur: 0.03, vol: 0.12, freq: 7000, delay })
+    }
+    nextTime += stepDur
     step++
   }
 }
 
-export function startMusic() {
+export function startMusic(track: Track = 'stage') {
   const c = ac()
-  if (!c || musicTimer) return
+  if (!c) return
+  if (musicTimer && currentTrack === track) return
+  if (musicTimer) {
+    clearInterval(musicTimer)
+    musicTimer = null
+  }
+  currentTrack = track
   step = 0
-  nextTime = c.currentTime + 0.15
+  nextTime = c.currentTime + 0.2
   musicTimer = setInterval(schedule, 120)
 }
 
@@ -200,6 +233,11 @@ export function stopMusic() {
     clearInterval(musicTimer)
     musicTimer = null
   }
+  currentTrack = null
+}
+
+export function getTrack(): Track | null {
+  return currentTrack
 }
 
 // --------------------------- SFX ---------------------------
@@ -257,4 +295,11 @@ export const sfx = {
   telegraph: () => tone({ f: 180, to: 240, dur: 0.3, type: 'sawtooth', vol: 0.3 }),
   checkpoint: () => [523.25, 783.99, 1046.5].forEach((f, i) =>
     tone({ f, dur: 0.12, vol: 0.34, delay: i * 0.08 })),
+  /** Short boot fanfare for the DarkMedia-X splash. */
+  intro: () => {
+    ;[523.25, 659.25, 783.99, 1046.5].forEach((f, i) =>
+      tone({ f, dur: 0.16, vol: 0.3, delay: i * 0.08, type: 'square' }))
+    tone({ f: 1318.51, dur: 0.42, vol: 0.26, delay: 0.34, type: 'square' })
+    noise({ dur: 0.3, vol: 0.12, freq: 6000, delay: 0.34 })
+  },
 }
