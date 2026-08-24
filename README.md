@@ -13,8 +13,9 @@ Jeu de plateforme 2D au style moderne (rendu 960×540 lisse, dégradés, glow, p
 
 | Touche | Action |
 |--------|--------|
-| ← → | Déplacement |
-| ↑ | Saut |
+| ← → | Déplacement (avec accélération/friction) |
+| ↑ | Saut (hauteur variable — relâcher tôt pour un petit saut) |
+| ← → contre un mur + ↑ | **Saut de mur** (glissade automatique le long du mur) |
 | Z (tap) | Tir rapide |
 | Z (maintenu) | Charge l'énergie — relâcher : tir moyen (0,4 s) ou gros tir perforant (1 s) |
 | M | Son on/off |
