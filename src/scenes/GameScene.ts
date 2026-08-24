@@ -11,6 +11,7 @@ const WORLD_H = 1600
 
 export class GameScene extends Phaser.Scene {
   private player!: Player
+  private ground!: Phaser.Tilemaps.TilemapLayer
   private platforms!: Phaser.Tilemaps.TilemapLayer
   private enemies!: Phaser.Physics.Arcade.Group
   private bullets!: Phaser.Physics.Arcade.Group
@@ -69,7 +70,7 @@ export class GameScene extends Phaser.Scene {
       collideWorldBounds: true,
     })
 
-    this.player = new Player(this, 160, 1266, this.bullets)
+    this.player = new Player(this, 160, 1330, this.bullets)
 
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1)
 
@@ -78,8 +79,12 @@ export class GameScene extends Phaser.Scene {
     this.cursors = this.input.keyboard!.createCursorKeys()
     this.shootKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.Z)
 
+    // Collide with BOTH layers: ground is the walkable floor, platforms the floating slabs.
+    this.physics.add.collider(this.player, this.ground)
     this.physics.add.collider(this.player, this.platforms)
+    this.physics.add.collider(this.enemies, this.ground)
     this.physics.add.collider(this.enemies, this.platforms)
+    this.physics.add.collider(this.bullets, this.ground)
     this.physics.add.collider(this.bullets, this.platforms)
     this.physics.add.overlap(
       this.bullets,
@@ -97,8 +102,9 @@ export class GameScene extends Phaser.Scene {
     )
 
     // Boss HP bar must exist before the boss spawns (spawn draws it once).
+    // Top-right placement so it never covers the player.
     this.bossBar = this.add.graphics().setScrollFactor(0).setDepth(200)
-    this.bossName = this.add.text(80, this.cameras.main.height - 76, 'WAR MACHINE', {
+    this.bossName = this.add.text(536, 4, 'WAR MACHINE', {
       fontSize: '15px', color: '#ff9d9d', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 4,
     }).setScrollFactor(0).setDepth(200).setVisible(false)
     this.spawnBoss()
@@ -202,10 +208,10 @@ export class GameScene extends Phaser.Scene {
   private createTilemap() {
     const map = this.make.tilemap({ key: 'level' })
     const tileset = map.addTilesetImage('tileset', 'tileset')
-    const ground = map.createLayer('ground', tileset!)
+    this.ground = map.createLayer('ground', tileset!)!
     this.platforms = map.createLayer('platforms', tileset!)!
 
-    ground!.setCollisionByExclusion([-1])
+    this.ground.setCollisionByExclusion([-1])
     this.platforms.setCollisionByExclusion([-1])
   }
 
@@ -350,7 +356,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private spawnBoss() {
-    const boss = new Boss(this, 3700, 1175, (hp, max) => this.drawBossBar(hp, max))
+    const boss = new Boss(this, 3700, 1320, (hp, max) => this.drawBossBar(hp, max))
     this.boss = boss
     this.bossActive = true
     this.physics.add.collider(this.boss, this.platforms)
@@ -372,9 +378,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawBossBar(hp?: number, max?: number) {
-    const W = this.cameras.main.width
-    const H = this.cameras.main.height
-    const x = 80, y = H - 44, barW = W - 160, barH = 14
+    const x = 536, y = 26, barW = 400, barH = 14
     this.bossBar.clear()
     if (!this.bossActive) {
       this.bossName.setVisible(false)

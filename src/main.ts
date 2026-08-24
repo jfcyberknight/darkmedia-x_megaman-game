@@ -27,4 +27,7 @@ const config: Phaser.Types.Core.GameConfig = {
   },
 }
 
-new Phaser.Game(config)
+const game = new Phaser.Game(config)
+// Exposed for headless debugging probes only.
+;(window as unknown as { __game?: Phaser.Game }).__game = game
+

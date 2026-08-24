@@ -3,7 +3,7 @@ import { Bullet } from '../objects/Bullet'
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
   private speed = 350
-  private jumpVelocity = -825
+  private jumpVelocity = -1120
   private maxHealth = 10
   private health = 10
   private invulnerable = false

@@ -195,112 +195,118 @@ const P = {
 // Sleek armored hero facing right: glowing visor, chest core, buster cannon.
 
 function drawHead(c, ox, oy) {
-  // helmet dome
-  el(c, ox + 19, oy + 12, 10.5, 9.5, (x, y) => {
-    const t = clamp01((y - (oy + 3)) / 18)
-    const light = Math.max(0, 1 - Math.hypot((x - (ox + 14)) / 12, (y - (oy + 7)) / 10))
+  // skull dome (profile: back of helmet at left, face at right)
+  el(c, ox + 17, oy + 12.5, 9.5, 9.2, (x, y) => {
+    const t = clamp01((y - (oy + 4)) / 17)
+    const light = Math.max(0, 1 - Math.hypot((x - (ox + 13)) / 10, (y - (oy + 8)) / 9))
     return mix(mix(P.armorTop, P.armorLo, t), P.armorHi, light * 0.55)
   })
-  // visor band
-  rr(c, ox + 20, oy + 13, 9, 4, 3.5, (x, y) => {
-    const t = clamp01((y - (oy + 9)) / 8)
-    const spec = Math.max(0, 1 - Math.hypot((x - (ox + 15)) / 6, (y - (oy + 11)) / 2.4))
-    return mix(mix(P.visor, P.visorDeep, t), P.white, spec * 0.8)
+  // helmet back rim
+  el(c, ox + 11, oy + 14.5, 4.2, 5.8, (x, y) => mix(P.armorLo, P.armorDeep, clamp01((y - (oy + 9)) / 11)))
+  // face plate (front)
+  rr(c, ox + 22.5, oy + 13, 4.8, 5.4, 3.2, (x, y) => {
+    const t = clamp01((y - (oy + 8)) / 10)
+    return mix(mix(P.armorHi, P.armorTop, 0.35), P.armorLo, t * 0.55)
   })
-  glow(c, ox + 22, oy + 13, 9, P.visor, 0.22)
-  // ear pod
-  el(c, ox + 9.5, oy + 13, 2.8, 3.2, solid(mix(P.armorLo, P.joint, 0.4)))
-  el(c, ox + 9.5, oy + 13, 1.2, 1.5, solid(P.visor))
-  // crest fin
-  seg(c, ox + 18, oy + 3.4, ox + 22, oy + 1.6, 1.7, solid(P.visor))
-  glow(c, ox + 20, oy + 2.5, 6, P.visor, 0.5)
-  // chin
-  rr(c, ox + 21, oy + 19.5, 4.5, 2, 2, solid(mix(P.skin, [180, 130, 95], 0.25)))
+  // glowing visor lens (on the face front only)
+  rr(c, ox + 23.5, oy + 12, 3.3, 2.6, 2.2, (x, y) => {
+    const spec = Math.max(0, 1 - Math.hypot((x - (ox + 22.6)) / 3.2, (y - (oy + 10.9)) / 1.6))
+    return mix(P.visor, P.white, spec * 0.55)
+  })
+  glow(c, ox + 24, oy + 12, 7, P.visor, 0.4)
+  // jaw
+  rr(c, ox + 22.5, oy + 19.3, 3.4, 2, 1.8, solid(mix(P.skin, [180, 130, 95], 0.25)))
+  // ear pod (back-center of skull)
+  el(c, ox + 12, oy + 13.5, 2.9, 3.3, solid(mix(P.armorLo, P.joint, 0.45)))
+  el(c, ox + 12, oy + 13.5, 1.2, 1.5, solid(P.visor))
+  // crest fin (swept back)
+  seg(c, ox + 17.5, oy + 3.6, ox + 13.5, oy + 1.8, 1.7, solid(P.visor))
+  glow(c, ox + 15.5, oy + 2.6, 6, P.visor, 0.5)
 }
 
 function drawTorso(c, ox, oy) {
   // neck
-  rr(c, ox + 19, oy + 21.5, 3, 2, 1.5, solid(P.joint))
-  // torso
-  rr(c, ox + 19.5, oy + 29.5, 8, 8.5, 5, (x, y) => {
+  rr(c, ox + 20, oy + 21.5, 2.6, 2, 1.5, solid(P.joint))
+  // torso (profile: chest at right, back at left)
+  rr(c, ox + 20, oy + 29.5, 7, 8.5, 5, (x, y) => {
     const t = clamp01((y - (oy + 21)) / 17)
-    const light = Math.max(0, 1 - Math.hypot((x - (ox + 14)) / 10, (y - (oy + 25)) / 10))
+    const light = Math.max(0, 1 - Math.hypot((x - (ox + 16)) / 9, (y - (oy + 25)) / 10))
     return mix(mix(P.armorTop, P.armorLo, t), P.armorHi, light * 0.4)
   })
-  // chest plate
-  rr(c, ox + 19.5, oy + 29, 6, 4.6, 3.5, (x, y) => {
-    const t = clamp01((y - (oy + 24)) / 10)
-    return mix(mix(P.armorHi, P.armorTop, 0.4), P.armorLo, t * 0.7)
+  // chest plate (front edge)
+  rr(c, ox + 24.5, oy + 28.5, 3.2, 5, 2.8, (x, y) => {
+    const t = clamp01((y - (oy + 23.5)) / 10)
+    return mix(mix(P.armorHi, P.armorTop, 0.4), P.armorLo, t * 0.6)
   })
-  // glowing core
-  el(c, ox + 19.5, oy + 29, 2.6, 2.6, solid(P.white))
-  glow(c, ox + 19.5, oy + 29, 7.5, P.core, 0.65)
-  // waist belt
-  rr(c, ox + 19.5, oy + 39, 7, 2, 1.5, solid(P.joint))
-  rr(c, ox + 21, oy + 39, 1.6, 1.2, 1, solid(P.visor))
+  // core glow near the front
+  el(c, ox + 24, oy + 29, 1.9, 1.9, solid(P.white))
+  glow(c, ox + 24, oy + 29, 6, P.core, 0.5)
+  // back pack hump
+  rr(c, ox + 14, oy + 27, 3, 5.2, 2.5, (x, y) => mix(P.armorLo, P.armorDeep, clamp01((y - (oy + 22)) / 10)))
+  // belt
+  rr(c, ox + 20, oy + 39, 6.5, 2, 1.5, solid(P.joint))
+  rr(c, ox + 21.5, oy + 39, 1.4, 1.2, 1, solid(P.visor))
 }
 
 function drawBackArm(c, ox, oy) {
-  seg(c, ox + 12.5, oy + 26, ox + 11.5, oy + 36, 3.1, (x, y) => mix(P.armorLo, P.armorDeep, clamp01((y - oy - 26) / 10)))
-  el(c, ox + 11.5, oy + 38.5, 2.8, 2.8, solid(P.joint))
+  seg(c, ox + 16, oy + 27, ox + 15, oy + 35, 2.5, (x, y) => mix(P.armorDeep, P.joint, clamp01((y - oy - 27) / 9)))
+  el(c, ox + 15, oy + 37.5, 2.3, 2.3, solid(P.joint))
 }
 
-/** Buster cannon; raised=true for shooting pose. */
+/** Buster cannon (front arm, pointing right); raised=true for shooting pose. */
 function drawBuster(c, ox, oy, raised = false) {
   const sy = raised ? -3 : 0
-  // shoulder pad
-  el(c, ox + 27, oy + 25 + sy, 4.6, 4.2, (x, y) => {
-    const light = Math.max(0, 1 - Math.hypot((x - (ox + 25.5)) / 5, (y - (oy + 23 + sy)) / 4))
+  // shoulder pauldron
+  el(c, ox + 24.5, oy + 25 + sy, 4.4, 4, (x, y) => {
+    const light = Math.max(0, 1 - Math.hypot((x - (ox + 23)) / 5, (y - (oy + 23 + sy)) / 4))
     return mix(P.armorTop, P.armorHi, light * 0.7)
   })
-  // cannon body
-  rr(c, ox + 31.5, oy + 29.5 + sy, 7, 4.2, 3.5, (x, y) => {
-    const t = clamp01((y - (oy + 25 + sy)) / 9)
-    const spec = Math.max(0, 1 - Math.abs(y - (oy + 27 + sy)) / 1.6)
+  // upper arm
+  seg(c, ox + 25, oy + 28.5 + sy, ox + 28.5, oy + 30 + sy, 2.7, solid(P.gunLo))
+  // cannon
+  rr(c, ox + 33, oy + 30 + sy, 5.8, 3.9, 3.2, (x, y) => {
+    const t = clamp01((y - (oy + 26 + sy)) / 9)
+    const spec = Math.max(0, 1 - Math.abs(y - (oy + 28 + sy)) / 1.5)
     return mix(mix(P.gunTop, P.gunLo, t), P.white, spec * 0.25)
   })
   // muzzle ring + energy tip
-  rr(c, ox + 37, oy + 29.5 + sy, 1.6, 3.4, 1.4, solid(P.joint))
-  el(c, ox + 38.6, oy + 29.5 + sy, 1.5, 2.4, solid(P.visor))
-  glow(c, ox + 38.5, oy + 29.5 + sy, 7, P.visor, 0.6)
+  rr(c, ox + 37.2, oy + 30 + sy, 1.3, 3.1, 1.2, solid(P.joint))
+  el(c, ox + 38.4, oy + 30 + sy, 1.3, 2.1, solid(P.visor))
+  glow(c, ox + 38.3, oy + 30 + sy, 6.5, P.visor, 0.6)
 }
 
-// --- leg poses (40x60 frame, hips at ~y41) ---
-function drawBoot(c, ox, oy, x, y, dark) {
-  rr(c, ox + x, oy + y, 4.6, 3.6, 2.6, solid(dark ? P.bootLo : P.bootTop))
+// --- profile legs: hip -> knee -> ankle chain + boot with forward toe ---
+function drawLeg(c, ox, oy, [hipX, kneeX, kneeY, footX, footY], dark) {
+  const thigh = dark ? P.armorLo : P.armorTop
+  const shin = dark ? P.armorDeep : P.armorLo
+  seg(c, ox + hipX, oy + 41.5, ox + kneeX, oy + kneeY, 3.5, solid(thigh))
+  seg(c, ox + kneeX, oy + kneeY, ox + footX, oy + footY, 2.9, solid(shin))
+  rr(c, ox + footX + 1.2, oy + footY + 1.6, 4.4, 3.3, 2.5, solid(dark ? P.bootLo : P.bootTop))
+  rr(c, ox + footX + 4.4, oy + footY + 2.4, 2, 1.8, 1.5, solid(dark ? mix(P.bootLo, [0, 0, 0], 0.35) : mix(P.bootTop, P.armorHi, 0.25)))
 }
 function legsIdle(c, ox, oy) {
-  for (const hx of [16.5, 23]) {
-    seg(c, ox + hx, oy + 41, ox + hx, oy + 49, 3.6, (x, y) => mix(P.armorTop, P.armorLo, clamp01((y - oy - 41) / 9)))
-    drawBoot(c, ox, oy, hx + 1.6, 53, false)
-  }
+  drawLeg(c, ox, oy, [18.5, 17.5, 48.5, 17, 54], true)
+  drawLeg(c, ox, oy, [22, 22.5, 48.5, 23, 54], false)
 }
 function legsRun(c, ox, oy, phase) {
+  // [hipX, kneeX, kneeY, footX, footY] per leg — classic 4-phase stride
   const poses = [
-    [[26, 42, 31, 56], [14, 42, 8, 44]],
-    [[21, 42, 22, 57], [18, 42, 15, 55]],
-    [[14, 42, 8, 44], [26, 42, 32, 55]],
-    [[19, 42, 17, 56], [22, 42, 25, 56]],
+    { front: [22, 26, 47, 29, 52.5], back: [19, 14, 47, 10, 51] },
+    { front: [21.5, 22, 48, 23, 54], back: [19, 18.5, 47.5, 16.5, 51.5] },
+    { front: [21, 15.5, 47.5, 11.5, 52], back: [19.5, 25, 47, 28, 52] },
+    { front: [21.5, 19.5, 48, 18, 54], back: [19, 22, 47.5, 24, 51] },
   ]
-  const [front, back] = poses[phase]
-  const drawLeg = ([x1, y1, x2, y2], dark) => {
-    seg(c, ox + x1, oy + y1, ox + x2, oy + y2, 3.4, (x, y) => mix(dark ? P.armorLo : P.armorTop, dark ? P.armorDeep : P.armorLo, clamp01((y - oy - 41) / 16)))
-    drawBoot(c, ox, oy, x2 + 1.4, y2 + 0.5, dark)
-  }
-  drawLeg(back, true)
-  drawLeg(front, false)
+  const p = poses[phase]
+  drawLeg(c, ox, oy, p.back, true)
+  drawLeg(c, ox, oy, p.front, false)
 }
 function legsJump(c, ox, oy) {
-  seg(c, ox + 15, oy + 42, ox + 10, oy + 48, 3.4, solid(P.armorLo))
-  drawBoot(c, ox, oy, 8.6, 49, true)
-  seg(c, ox + 24, oy + 42, ox + 30, oy + 47, 3.4, solid(P.armorTop))
-  drawBoot(c, ox, oy, 31.4, 48.5, false)
+  drawLeg(c, ox, oy, [19, 13, 46, 11, 50], true)
+  drawLeg(c, ox, oy, [21.5, 27, 46, 26, 51], false)
 }
 function legsFall(c, ox, oy) {
-  seg(c, ox + 15, oy + 42, ox + 11, oy + 52, 3.4, solid(P.armorLo))
-  drawBoot(c, ox, oy, 9.6, 54, true)
-  seg(c, ox + 24, oy + 42, ox + 29, oy + 52, 3.4, solid(P.armorTop))
-  drawBoot(c, ox, oy, 30.6, 54, false)
+  drawLeg(c, ox, oy, [19, 14, 48, 11, 53.5], true)
+  drawLeg(c, ox, oy, [21.5, 26, 48, 28, 54], false)
 }
 
 function playerFrame(bob, legsFn, shooting = false) {
@@ -633,6 +639,11 @@ for (const [id, art] of Object.entries(STAGE_ART)) {
     ts.imagewidth = 320
     ts.imageheight = 80
   }
+  // Extend the ground fill to the very bottom of the world (row 19) so no void
+  // shows below the floor and nothing can slip under the last tile row.
+  const ground = level.layers.find((l) => l.name === 'ground')
+  const W = level.width
+  for (let x = 0; x < W; x++) ground.data[19 * W + x] = 3
   writeFileSync(levelPath, JSON.stringify(level))
 }
 
