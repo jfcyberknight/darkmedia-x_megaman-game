@@ -27,10 +27,22 @@ export class Flyer extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
     if (!this.active) return
     this.t += delta
     const dx = this.target.x - this.x
-    const chase = Math.abs(dx) < 120 && Math.abs(this.target.y - this.y) < 110
-    this.setVelocityX(chase ? Math.sign(dx) * 23 : Math.cos(this.t / 900) * 11)
+    const dy = this.target.y - this.y
+    // Poursuite large (portée verticale augmentée) : le drone descend/remonte
+    // vers la hauteur du joueur pour devenir touchable par les balles horizontales.
+    const chase = Math.abs(dx) < 140 && Math.abs(dy) < 170
+    let hoverY: number
+    if (chase) {
+      this.setVelocityX(Math.sign(dx) * 23)
+      hoverY = this.target.y - 8
+    } else {
+      this.setVelocityX(Math.cos(this.t / 900) * 11)
+      hoverY = this.baseY + Math.sin(this.t / 430) * 3
+    }
+    // On glisse toujours en vitesse verticale vers la cible (pas de setY brutal),
+    // ce qui évite un saut visuel quand le drone quitte la poursuite.
+    this.setVelocityY(Phaser.Math.Clamp((hoverY - this.y) * 2, -60, 60))
     this.setFlipX(this.body!.velocity.x < 0)
-    this.setY(this.baseY + Math.sin(this.t / 430) * 3)
   }
 
   takeDamage(amount: number) {

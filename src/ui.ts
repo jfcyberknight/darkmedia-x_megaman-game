@@ -47,11 +47,13 @@ export function drawSkyline(scene: Phaser.Scene, texture: string, depth = -6): P
     .setScrollFactor(0)
     .setDepth(depth)
     .setAlpha(0.9)
-  scene.events.on(Phaser.Scenes.Events.UPDATE, () => {
+  const onUpdate = () => {
     strip.tilePositionX += 0.25
-  })
+  }
+  scene.events.on(Phaser.Scenes.Events.UPDATE, onUpdate)
   scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-    scene.events.off(Phaser.Scenes.Events.UPDATE)
+    // Ne retirer que CE listener (pas tous les listeners UPDATE de la scène).
+    scene.events.off(Phaser.Scenes.Events.UPDATE, onUpdate)
   })
   return strip
 }

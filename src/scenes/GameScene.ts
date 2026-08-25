@@ -264,6 +264,10 @@ export class GameScene extends Phaser.Scene {
 
     drawVignette(this, 0.45)
     this.cameras.main.fadeIn(300, 0, 0, 0)
+
+    // Apparition : matérialisation + courte invulnérabilité (spawn / respawn).
+    this.spawnTeleportEffect(this.player.x, this.player.y)
+    this.player.grantInvulnerability(1300)
   }
 
   update(_time: number, delta: number) {
@@ -565,6 +569,63 @@ export class GameScene extends Phaser.Scene {
     })
   }
 
+  /** Apparition du joueur : colonne de lumière + motes ascendantes + onde + flash. */
+  private spawnTeleportEffect(x: number, y: number) {
+    // Colonne de lumière verticale.
+    const beam = this.add.image(x, y, 'glow')
+      .setBlendMode(Phaser.BlendModes.ADD).setDepth(38)
+      .setTint(0x9df2ff).setScale(0.3, 3.2).setAlpha(0)
+    this.tweens.add({
+      targets: beam, alpha: { from: 0.9, to: 0 }, scaleX: 0.5, duration: 460,
+      ease: 'Cubic.Out', onComplete: () => beam.destroy(),
+    })
+
+    // Motes ascendantes (direction 270° ≈ vers le haut).
+    const p = this.add.particles(x, y, 'glow', {
+      speed: { min: 14, max: 44 },
+      angle: { min: 250, max: 290 },
+      scale: { start: 0.09, end: 0 },
+      lifespan: 540,
+      tint: [0x9df2ff, 0xffffff, 0x35e0ff],
+      blendMode: Phaser.BlendModes.ADD,
+      emitting: false,
+    })
+    p.explode(18)
+    this.time.delayedCall(620, () => p.destroy())
+
+    // Onde d'apparition circulaire.
+    const ring = this.add.circle(x, y, 4).setStrokeStyle(2, 0x9df2ff, 1)
+    this.tweens.add({
+      targets: ring, radius: 32, alpha: 0, duration: 400,
+      ease: 'Cubic.Out', onComplete: () => ring.destroy(),
+    })
+
+    this.cameras.main.flash(220, 160, 200, 255)
+  }
+
+  /** Éclat de mort : grosse explosion + onde + flash + débris rouges. */
+  private spawnDeathEffect(x: number, y: number) {
+    this.cameras.main.flash(240, 255, 90, 80)
+    this.spawnExplosion(x, y, true)
+
+    const ring = this.add.circle(x, y, 10).setStrokeStyle(3, 0xff5546, 1)
+    this.tweens.add({
+      targets: ring, radius: 70, alpha: 0, duration: 520,
+      ease: 'Cubic.Out', onComplete: () => ring.destroy(),
+    })
+
+    const p = this.add.particles(x, y, 'glow', {
+      speed: { min: 40, max: 120 },
+      scale: { start: 0.12, end: 0 },
+      lifespan: 700,
+      tint: [0xff5546, 0xffb37a, 0xffffff],
+      blendMode: Phaser.BlendModes.ADD,
+      emitting: false,
+    })
+    p.explode(28)
+    this.time.delayedCall(760, () => p.destroy())
+  }
+
   // ------------------------- Energy orbs -------------------------
 
   private spawnEnergyPickups() {
@@ -742,6 +803,7 @@ export class GameScene extends Phaser.Scene {
     b.setVelocity(Math.cos(ang) * speed, Math.sin(ang) * speed)
     const token = this.time.now + Math.random()
     b.setData('token', token)
+    b.setData('kind', 'bullet') // réinit au cas où l'objet recyclé était une onde de choc
     this.time.delayedCall(3200, () => {
       if (b.active && b.getData('token') === token) b.disableBody(true, true)
     })
@@ -775,6 +837,18 @@ export class GameScene extends Phaser.Scene {
     b.disableBody(true, true)
     this.spawnSparks(b.x, b.y)
     p.takeDamage(2, b.body!.velocity.x >= 0 ? -1 : 1)
+  }
+
+  /** Projectile ennemi bloqué par le sol : désactivé — sauf ondes de choc. */
+  private handleEnemyBulletGround(
+    bulletObj: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+    _collider: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+  ) {
+    const b = bulletObj as Phaser.Physics.Arcade.Image
+    if (!b.active) return
+    if (b.getData('kind') === 'shockwave') return
+    this.spawnSparks(b.x, b.y)
+    b.disableBody(true, true)
   }
 
   private spawnBoss() {
@@ -1020,7 +1094,7 @@ export class GameScene extends Phaser.Scene {
   /** Called by the Player when its HP reaches zero: life lost, respawn or game over. */
   onPlayerDeath() {
     sfx.explode()
-    this.spawnExplosion(this.player.x, this.player.y, false)
+    this.spawnDeathEffect(this.player.x, this.player.y)
     const lives = ((this.registry.get('lives') as number) ?? 1) - 1
     this.registry.set('lives', lives)
     if (lives > 0) {

@@ -29,6 +29,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private maxHealth = 10
   private health = 10
   private invulnerable = false
+  private invulnToken = 0
   private facingRight = true
   private bullets: Phaser.Physics.Arcade.Group
   private lastShot = 0
@@ -309,8 +310,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.scene.time.delayedCall(90, () => this.clearTint())
     this.scene.cameras.main.shake(130, 0.0035)
 
+    // L'invulnérabilité est gérée par jeton : un nouveau hit réinitialise le
+    // timer au lieu d'être coupé au milieu (pas de « trou » d'invulnérabilité).
+    const token = ++this.invulnToken
     this.scene.time.delayedCall(1000, () => {
-      this.invulnerable = false
+      if (token === this.invulnToken) this.invulnerable = false
     })
 
     if (this.health <= 0) {
@@ -323,6 +327,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.dead = true
     this.charging = false
     this.hideChargeVisual()
+    // Flash rouge au moment du coup fatal (le burst complet part de onPlayerDeath).
+    this.scene.cameras.main.flash(200, 255, 60, 50)
     this.setVelocityX(-knockbackDir * 30)
     this.setVelocityY(-104)
     this.scene.tweens.add({
@@ -352,5 +358,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   getHealth() {
     return this.health
+  }
+
+  /** Invulnérabilité de spawn : le joueur clignote et rien ne le touche (jeton). */
+  grantInvulnerability(ms = 1300) {
+    const token = ++this.invulnToken
+    this.invulnerable = true
+    this.scene.time.delayedCall(ms, () => {
+      if (token === this.invulnToken) this.invulnerable = false
+    })
   }
 }

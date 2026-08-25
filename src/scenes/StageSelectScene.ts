@@ -145,7 +145,6 @@ export class StageSelectScene extends Phaser.Scene {
     this.skyline.setTexture(`bg-far-${STAGES[i].id}`)
     this.renderCursor()
     void this.showStageDesc(STAGES[i])
-    void this.showStageDesc(STAGES[this.selected])
   }
 
   private renderCursor() {

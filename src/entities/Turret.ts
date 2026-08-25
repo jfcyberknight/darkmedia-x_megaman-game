@@ -18,8 +18,9 @@ export class Turret extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
 
     ;(this.body as Phaser.Physics.Arcade.Body).allowGravity = false
     this.setImmovable(true)
-    this.body!.setSize(12, 10)
-    this.body!.setOffset(3, 8)
+    // Hitbox centrée et généreuse : l'ancien décalage (3,8) plaquait le corps
+    // en bas (Y 260-270) et les balles du joueur (Y~258) passaient au-dessus.
+    this.body!.setSize(16, 16)
     this.setFlipX(target.x < x)
   }
 
