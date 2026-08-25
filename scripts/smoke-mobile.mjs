@@ -39,6 +39,15 @@ try {
   const btns = await page.locator('.tc-btn').count()
   check('overlay tactile visible', btns === 4, `${btns}/4 boutons (◀ ▶ B A)`)
 
+  // 1b. Invite de rotation en vertical + échappatoire
+  check('invite « tournez l\'écran » affichée en vertical',
+    (await page.locator('#rotate-hint.show').count()) === 1)
+  await page.screenshot({ path: new URL('../scripts/preview/smoke-rotate.png', import.meta.url).pathname })
+  await page.locator('.rh-play').dispatchEvent('pointerdown')
+  await sleep(150)
+  check('« JOUER QUAND MÊME » masque l\'invite',
+    (await page.locator('#rotate-hint.show').count()) === 0)
+
   const activeScenes = () =>
     page.evaluate(() => {
       const g = window.__game

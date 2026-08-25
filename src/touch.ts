@@ -118,4 +118,37 @@ export function installTouchControls(): void {
 
   root.append(dpad, actions, utils)
   document.body.appendChild(root)
+
+  installRotateHint()
+}
+
+/**
+ * Écran « tournez votre appareil » affiché en mode vertical : le canvas 8:7
+ * n'y occupe qu'une bande centrale. Bouton d'échappatoire pour jouer quand
+ * même en vertical. Masqué définitivement après dismissal, et automatiquement
+ * en paysage.
+ */
+function installRotateHint(): void {
+  if (document.getElementById('rotate-hint')) return
+  const hint = document.createElement('div')
+  hint.id = 'rotate-hint'
+  hint.innerHTML = [
+    '<div class="rh-icon">📱</div>',
+    '<div class="rh-title">TOURNEZ VOTRE ÉCRAN</div>',
+    '<div class="rh-sub">Mode paysage : le jeu occupe tout l\'écran</div>',
+    '<button class="rh-play" type="button">JOUER QUAND MÊME</button>',
+  ].join('')
+
+  const mq = window.matchMedia('(orientation: portrait)')
+  let dismissed = false
+  const update = () => hint.classList.toggle('show', !dismissed && mq.matches)
+  hint.querySelector('.rh-play')?.addEventListener('pointerdown', (e) => {
+    e.preventDefault()
+    dismissed = true
+    update()
+  })
+  if (typeof mq.addEventListener === 'function') mq.addEventListener('change', update)
+  else mq.addListener(update) // vieux Safari
+  document.body.appendChild(hint)
+  update()
 }

@@ -95,6 +95,48 @@
         border-radius: 8px;
         touch-action: none;
       }
+
+      /* ---- Invite « tournez votre écran » (vertical) ---- */
+      #rotate-hint {
+        position: fixed;
+        inset: 0;
+        z-index: 30;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        background: rgba(5, 6, 12, 0.94);
+        color: #c7d2e8;
+        font-family: monospace;
+        text-align: center;
+        pointer-events: auto;
+      }
+      #rotate-hint.show { display: flex; }
+      .rh-icon { font-size: 44px; display: inline-block; animation: rh-tilt 1.8s ease-in-out infinite; }
+      @keyframes rh-tilt {
+        0%, 18% { transform: rotate(0); }
+        48%, 72% { transform: rotate(-90deg); }
+        100% { transform: rotate(0); }
+      }
+      .rh-title {
+        font-size: 15px;
+        font-weight: bold;
+        letter-spacing: 4px;
+        color: #9df2ff;
+        text-shadow: 0 0 8px rgba(53, 224, 255, 0.6);
+      }
+      .rh-sub { font-size: 10px; color: #8b93a8; letter-spacing: 1px; }
+      .rh-play {
+        margin-top: 10px;
+        padding: 11px 20px;
+        font: bold 11px monospace;
+        letter-spacing: 2px;
+        color: #0d0e15;
+        background: #35e0ff;
+        border: 0;
+        border-radius: 999px;
+      }
     </style>
   </head>
   <body>

@@ -13,7 +13,10 @@ Jeu de plateforme 2D au rendu **16-bit authentique** (256×224 natif, pixel-art,
 
 ### 📱 Mobile / tactile
 
-Sur écran tactile, un **D-pad virtuel + boutons** apparaît automatiquement :
+Sur écran tactile, un **D-pad virtuel + boutons** apparaît automatiquement.
+En **mode vertical**, une invite propose de tourner l'écran (le canvas 8:7
+n'occupe qu'une bande centrale sinon) — bouton **JOUER QUAND MÊME** pour
+rester en vertical :
 
 | Contrôle | Action |
 |----------|--------|
