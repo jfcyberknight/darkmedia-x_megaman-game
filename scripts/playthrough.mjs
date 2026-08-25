@@ -69,12 +69,18 @@ try {
   }
   const tap = async (sel) => hold(sel, 120)
 
-  // --- Navigation jusqu'au niveau (attentes explicites entre écrans) ---
+  // --- Navigation jusqu'au niveau (pilotée par l'état des scènes) ---
   await waitScene('IntroScene', 10000)
-  for (let i = 0; i < 14 && !(await scenes()).includes('TitleScene'); i++) await tap('.tc-fire')
-  check('TitleScene atteinte', (await scenes()).includes('TitleScene'))
-  await tap('.tc-jump')
-  check('StageSelectScene atteinte', await waitScene('StageSelectScene', 6000))
+  let nav0 = Date.now()
+  while (!(await scenes()).some((k) => k === 'TitleScene' || k === 'StageSelectScene') && Date.now() - nav0 < 15000) {
+    await tap('.tc-fire')
+  }
+  if ((await scenes()).includes('TitleScene')) {
+    await tap('.tc-jump')
+    check('StageSelectScene atteinte', await waitScene('StageSelectScene', 6000))
+  } else {
+    check('StageSelectScene atteinte', (await scenes()).includes('StageSelectScene'))
+  }
   await sleep(500)
   await tap('.tc-jump')
   check('arrivée dans GameScene', await waitScene('GameScene', 8000))

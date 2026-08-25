@@ -679,6 +679,9 @@ export class GameScene extends Phaser.Scene {
     const boss = new Boss(this, 740, 262, this.player, (hp, max) => this.drawBossBar(hp, max))
     this.boss = boss
     this.bossActive = true
+    // Colliders sur les DEUX couches : sans `ground`, le boss tombait à
+    // travers le sol et se battait depuis sous le niveau (inhittable).
+    this.physics.add.collider(this.boss, this.ground)
     this.physics.add.collider(this.boss, this.platforms)
     this.physics.add.overlap(
       this.bullets,
