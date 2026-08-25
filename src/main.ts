@@ -20,6 +20,10 @@ const config: Phaser.Types.Core.GameConfig = {
     default: 'arcade',
     arcade: {
       gravity: { x: 0, y: 450 },
+      // Pas variable : la physique avance avec le temps réel quelle que soit
+      // la fréquence d'écran (fixedStep=true faisait 2× sur écrans 120 Hz et
+      // 0,5× sur 30 Hz). Le delta est clampé ci-dessous → pas de tunneling.
+      fixedStep: false,
       debug: false,
     },
   },
@@ -35,6 +39,12 @@ installTouchControls()
 // Déblocage audio global : les boutons tactiles DOM ne passent pas par
 // l'input Phaser, donc on écoute aussi au niveau document.
 installAudioGestures()
+
+// Clamp du delta physique à ~33 ms (30 fps plancher) : au-delà, le jeu ralentit
+// plutôt que de laisser les corps sauter à travers les tuiles (tunneling).
+const world = (game as unknown as { physics: Phaser.Physics.Arcade.ArcadePhysics }).physics.world
+const worldUpdate = world.update.bind(world)
+world.update = (time: number, delta: number) => worldUpdate(time, Math.min(delta, 33.4))
 // Exposed for headless debugging probes only.
 ;(window as unknown as { __game?: Phaser.Game; __track?: () => string | null }).__game = game
 ;(window as unknown as { __track?: () => string | null }).__track = getTrack

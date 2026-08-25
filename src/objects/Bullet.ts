@@ -9,8 +9,9 @@ const BULLET_DEF: Record<BulletType, { key: string; damage: number; speed: numbe
 }
 
 export class Bullet extends Phaser.Physics.Arcade.Image {
-  private lifetime = 1400
-  private shotToken = 0
+  /** Portée maximale en PIXELS (et non en ms) : indépendante du framerate. */
+  private static readonly MAX_RANGE = 200
+  private spawnX = 0
   bulletType: BulletType = 'normal'
   damage = 1
   pierce = false
@@ -38,12 +39,7 @@ export class Bullet extends Phaser.Physics.Arcade.Image {
     this.setActive(true)
     this.body!.enable = true
     this.setVelocityX(direction * def.speed)
-
-    // Token guards against stale timers firing after the bullet was recycled.
-    const token = ++this.shotToken
-    this.scene.time.delayedCall(this.lifetime, () => {
-      if (this.shotToken === token) this.disableBody(true, true)
-    })
+    this.spawnX = this.x
   }
 
   canHit(target: object) {
@@ -57,6 +53,12 @@ export class Bullet extends Phaser.Physics.Arcade.Image {
   update() {
     const body = this.body as Phaser.Physics.Arcade.Body
     if (body.blocked.left || body.blocked.right || body.blocked.up || body.blocked.down) {
+      this.disableBody(true, true)
+      return
+    }
+    // Portée en distance : à bas FPS l'ancienne limite temporelle (1400 ms
+    // temps réel) tuait les balles après ~50 px, déconnectée de la physique.
+    if (Math.abs(this.x - this.spawnX) > Bullet.MAX_RANGE) {
       this.disableBody(true, true)
     }
   }

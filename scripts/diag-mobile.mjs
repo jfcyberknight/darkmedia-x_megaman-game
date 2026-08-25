@@ -112,6 +112,27 @@ try {
   const bSecond = await page.evaluate(() => window.__game.scene.getScene('GameScene').bullets.countActive(true))
   console.log(`Anti-latch: ultra-court=${bUltra > 0 ? 'balle' : 'RIEN'}, 2e tap=${bSecond > 0 ? 'balle' : 'RIEN'} -> ${bUltra > 0 && bSecond > 0 ? 'OK' : 'FAIL (verrouillé !)'}`)
 
+  // --- 2c. PORTÉE : la balle meurt en DISTANCE (~200 px), plus en temps réel.
+  // À FPS normal : vivante à +1,2 s. Throttlé : encore vivante à +2,2 s
+  // (l'ancien code la tuait à 1400 ms réel après ~50 px). ---
+  await sleep(900)
+  await tap('.tc-fire')
+  await sleep(1200)
+  const persist = await page.evaluate(() => {
+    const s = window.__game.scene.getScene('GameScene')
+    const b = s.bullets.getChildren().find((x) => x.active)
+    return b ? { alive: true, dist: Math.round(Math.abs(b.x - b.originX)) } : { alive: false, dist: 0 }
+  })
+  console.log(`Portée: vivante à +1,2 s -> ${persist.alive ? 'OK' : 'FAIL'} (dist=${persist.dist}px)`)
+  if (THROTTLE > 1) {
+    await sleep(1000)
+    const persist2 = await page.evaluate(() => {
+      const s = window.__game.scene.getScene('GameScene')
+      return s.bullets.getChildren().some((x) => x.active)
+    })
+    console.log(`Portée (throttlé): vivante à +2,2 s -> ${persist2 ? 'OK' : 'FAIL (disparue en plein vol !)'}`)
+  }
+
   // --- 3. Dégât de contact : téléport SUR l'ennemi (overlap garanti quel
   const dbg = await page.evaluate(() => {
     const s = window.__game.scene.getScene('GameScene')
