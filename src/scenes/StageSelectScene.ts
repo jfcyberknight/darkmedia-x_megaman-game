@@ -77,9 +77,7 @@ export class StageSelectScene extends Phaser.Scene {
       this.add.text(x, y, String(i + 1), {
         fontSize: '16px', color: '#ffffff', fontFamily: 'monospace', fontStyle: 'bold',
       }).setOrigin(0.5).setAlpha(0.85)
-      this.add.text(x, y + 18, s.name, {
-        fontSize: '6px', color: '#8b93a8', fontFamily: 'monospace', letterSpacing: 1,
-      }).setOrigin(0.5)
+      // pas de nom par carte : le nom du stage sélectionné est affiché en grand plus bas
     }
 
     this.cursor = this.add.rectangle(0, 0, this.cardSize + 4, this.cardSize + 4)
