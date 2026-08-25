@@ -127,7 +127,7 @@ try {
     s.player.setPosition(340, 250)
     s.player.body.reset(340, 250)
   })
-  await hold('.tc-dir:nth-child(1)', 80) // face à gauche
+  await tap('.tc-dir:nth-child(1)') // face à gauche
   await tap('.tc-fire')
   await sleep(1200)
   const persist = await page.evaluate(() => {
@@ -136,6 +136,18 @@ try {
     return b ? { alive: true, dist: Math.round(Math.abs(b.x - b.spawnX)) } : { alive: false, dist: 0 }
   })
   console.log(`Portée: vivante à +1,2 s -> ${persist.alive ? 'OK' : 'FAIL'} (dist=${persist.dist}px)`)
+  if (!persist.alive || THROTTLE > 1) {
+    const dbg = await page.evaluate(() => {
+      const s = window.__game.scene.getScene('GameScene')
+      return {
+        actifs: s.bullets.getChildren().filter((b) => b.active)
+          .map((b) => ({ x: Math.round(b.x), sx: Math.round(b.spawnX) })),
+        seen: window.__diagSeen ? window.__diagSeen.size : -1,
+        px: Math.round(s.player.x),
+      }
+    })
+    console.log(`  DEBUG balles actives: ${JSON.stringify(dbg.actifs)} vues=${dbg.seen} joueur@${dbg.px}`)
+  }
   if (THROTTLE > 1) {
     await sleep(1000)
     const persist2 = await page.evaluate(() => {
