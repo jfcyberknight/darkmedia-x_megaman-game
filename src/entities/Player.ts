@@ -43,6 +43,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   // Boss power absorbed
   powerUp = false
+  weapon: 'buster' | 'war' = 'buster'
+  private we = 28
+  private weMax = 28
 
   // Runtime movement state
   private coyoteTimer = 0
@@ -259,10 +262,23 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.lastShot = now
     }
 
+    // Canon war : plus puissant mais consomme de l'énergie
+    let bonus = this.powerUp ? 1 : 0
+    if (this.weapon === 'war') {
+      const cost = type === 'normal' ? 1 : type === 'mid' ? 2 : 4
+      if (this.we >= cost) {
+        this.we -= cost
+        bonus += 1
+      } else {
+        type = 'normal'   // secours : tir buster standard sans coût
+        bonus = this.powerUp ? 1 : 0
+      }
+    }
+
     const key = type === 'normal' ? 'bullet' : type === 'mid' ? 'bullet-mid' : 'bullet-big'
     const bullet = this.bullets.get(this.x + dir * 8, this.y - 1, key) as Bullet
     if (!bullet) return
-    bullet.activate(dir, type, this.powerUp ? 1 : 0, this.powerUp)
+    bullet.activate(dir, type, bonus, this.weapon === 'war')
 
     const flashScale = type === 'big' ? 0.22 : type === 'mid' ? 0.14 : 0.09
     if (type === 'normal') sfx.shoot()
@@ -320,6 +336,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       ;(this.scene as Phaser.Scene & { onPlayerDeath(): void }).onPlayerDeath()
     })
   }
+
+  addWe(n: number) {
+    this.we = Math.min(this.weMax, this.we + n)
+  }
+  getWe() { return this.we }
+  getWeMax() { return this.weMax }
 
   heal(amount: number) {
     if (this.health >= this.maxHealth) return

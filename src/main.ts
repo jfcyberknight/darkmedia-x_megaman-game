@@ -5,6 +5,7 @@ import { CompanionScene } from './scenes/CompanionScene'
 import { TitleScene } from './scenes/TitleScene'
 import { StageSelectScene } from './scenes/StageSelectScene'
 import { GameScene } from './scenes/GameScene'
+import { PauseScene } from './scenes/PauseScene'
 import { getTrack, installAudioGestures } from './audio'
 import { installTouchControls } from './touch'
 
@@ -28,7 +29,7 @@ const config: Phaser.Types.Core.GameConfig = {
       debug: false,
     },
   },
-  scene: [BootScene, IntroScene, CompanionScene, TitleScene, StageSelectScene, GameScene],
+  scene: [BootScene, IntroScene, CompanionScene, TitleScene, StageSelectScene, GameScene, PauseScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,

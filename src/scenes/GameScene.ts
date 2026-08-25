@@ -16,7 +16,7 @@ const WORLD_W = 800
 const WORLD_H = 320
 
 export class GameScene extends Phaser.Scene {
-  private player!: Player
+  player!: Player
   private ground!: Phaser.Tilemaps.TilemapLayer
   private platforms!: Phaser.Tilemaps.TilemapLayer
   private enemies!: Phaser.Physics.Arcade.Group
@@ -52,7 +52,10 @@ export class GameScene extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
   private shootKey!: Phaser.Input.Keyboard.Key
   private muteKey!: Phaser.Input.Keyboard.Key
+  private pauseKey!: Phaser.Input.Keyboard.Key
+  private escKey!: Phaser.Input.Keyboard.Key
   private muteToast?: Phaser.GameObjects.Text
+  private weBar!: Phaser.GameObjects.Graphics
   private bgFar!: Phaser.GameObjects.TileSprite
   private bgMid!: Phaser.GameObjects.TileSprite
   private enemyCount = 0
@@ -157,6 +160,8 @@ export class GameScene extends Phaser.Scene {
     this.cursors = this.input.keyboard!.createCursorKeys()
     this.shootKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.Z)
     this.muteKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.M)
+    this.pauseKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.P)
+    this.escKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC)
 
     // Collide with BOTH layers: ground is the walkable floor, platforms the floating slabs.
     this.physics.add.collider(this.player, this.ground)
@@ -193,8 +198,18 @@ export class GameScene extends Phaser.Scene {
       undefined,
       this,
     )
-    this.physics.add.collider(this.enemyBullets, this.ground)
-    this.physics.add.collider(this.enemyBullets, this.platforms)
+    // Un projectile ennemi qui touche le sol est désactivé (explosion) — sauf
+    // les ondes de choc du boss, qui voyagent le long du sol (kind 'shockwave').
+    this.physics.add.collider(
+      this.enemyBullets,
+      this.ground,
+      this.handleEnemyBulletGround as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+    )
+    this.physics.add.collider(
+      this.enemyBullets,
+      this.platforms,
+      this.handleEnemyBulletGround as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+    )
 
     // Boss HP bar must exist before the boss spawns (spawn draws it once).
     // Top-right placement so it never covers the player.
@@ -206,6 +221,7 @@ export class GameScene extends Phaser.Scene {
 
     // HUD
     this.hpBar = this.add.graphics().setScrollFactor(0).setDepth(200)
+    this.weBar = this.add.graphics().setScrollFactor(0).setDepth(200)
     this.add.text(6, 3, 'HP', {
       fontSize: '7px', color: '#9fb4d8', fontFamily: 'monospace', fontStyle: 'bold',
     }).setScrollFactor(0).setDepth(200)
@@ -213,7 +229,7 @@ export class GameScene extends Phaser.Scene {
       fontSize: '8px', color: '#a9b3cf', fontFamily: 'monospace', letterSpacing: 1,
     }).setScrollFactor(0).setDepth(200)
 
-    this.add.text(6, 24, isTouchUI() ? '◀▶ MOVE  A JUMP  B HOLD=CHARGE' : '←→:move ↑:jump Z:hold=charge', {
+    this.add.text(6, 24, isTouchUI() ? '◀▶ MOVE  A JUMP  B HOLD=CHARGE' : '←→:move ↑:jump Z:charge P:pause', {
       fontSize: '7px', color: '#5a6280', fontFamily: 'monospace',
     }).setScrollFactor(0).setDepth(200)
 
@@ -272,6 +288,13 @@ export class GameScene extends Phaser.Scene {
     this.tPrevJump = touchState.jump
     this.tPrevShoot = touchState.shoot
 
+    if (Phaser.Input.Keyboard.JustDown(this.pauseKey) || Phaser.Input.Keyboard.JustDown(this.escKey)) {
+      sfx.checkpoint()
+      this.scene.launch('PauseScene')
+      this.scene.pause()
+      return
+    }
+
     if (Phaser.Input.Keyboard.JustDown(this.muteKey)) {
       const m = sfx.toggleMute()
       if (!this.muteToast) {
@@ -283,8 +306,12 @@ export class GameScene extends Phaser.Scene {
       this.tweens.add({ targets: this.muteToast, alpha: 0, duration: 900, delay: 500 })
     }
 
+    const weapon = this.registry.get('weapon') === 'war' && this.registry.get('power') ? 'war' : 'buster'
+    this.player.weapon = weapon
     this.player.update(left, right, jump, jumpHeld, shootPressed, shootHeld, delta)
     this.drawHpBar()
+    if (weapon === 'war') this.drawWeBar()
+    else this.weBar.clear()
 
     // Energy orbs: gentle magnet toward the player when close.
     this.orbs.children.iterate((child) => {
@@ -457,6 +484,22 @@ export class GameScene extends Phaser.Scene {
     for (let i = 1; i < 10; i++) this.hpBar.fillRect(x + (w / 10) * i, y, 1, h)
   }
 
+  /** Barre d'énergie du canon war (HUD). */
+  private drawWeBar() {
+    // Sous le bloc HP / vie : on évite le pouvoir (y=34) et les icônes de vie (y=44).
+    const x = 20, y = 56, w = 84, h = 5
+    const frac = Math.max(0, this.player.getWe() / this.player.getWeMax())
+    this.weBar.clear()
+    this.weBar.fillStyle(0x0a0d16, 0.75).fillRoundedRect(x - 2, y - 2, w + 4, h + 4, 3)
+    this.weBar.fillStyle(0x1a2030, 1).fillRect(x, y, w, h)
+    if (frac > 0) {
+      this.weBar.fillGradientStyle(0xffc857, 0xff9a3c, 0xb87808, 0x8a5a06, 1)
+      this.weBar.fillRect(x, y, Math.max(2, w * frac), h)
+    }
+    this.weBar.fillStyle(0x0a0d16, 0.5)
+    for (let i = 1; i < 7; i++) this.weBar.fillRect(x + (w / 7) * i, y, 1, h)
+  }
+
   /** Yellow-white impact sparks at a world position. */
   spawnSparks(x: number, y: number) {
     const p = this.add.particles(x, y, 'glow', {
@@ -582,6 +625,7 @@ export class GameScene extends Phaser.Scene {
       return
     }
     p.heal(2)
+    p.addWe(6)
     sfx.collect()
     this.spawnCollectBurst(ox, oy, 0x7dfca2)
   }
@@ -715,6 +759,7 @@ export class GameScene extends Phaser.Scene {
     b.setVelocity(dir * 80, 0)
     const token = this.time.now + Math.random()
     b.setData('token', token)
+    b.setData('kind', 'shockwave')
     this.time.delayedCall(1500, () => {
       if (b.active && b.getData('token') === token) b.disableBody(true, true)
     })
@@ -786,7 +831,7 @@ export class GameScene extends Phaser.Scene {
     const { width, height } = this.cameras.main
     const strip = this.add.rectangle(width / 2, height - 22, width, 34, 0x05060c, 0)
       .setScrollFactor(0).setDepth(240)
-    const t1 = this.add.text(width / 2, height - 32, 'MISSION 01 — NÉON CITY', {
+    const t1 = this.add.text(width / 2, height - 32, `MISSION 01 — ${this.stage.name}`, {
       fontSize: '8px', color: '#9df2ff', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(241).setAlpha(0)
     const t2 = this.add.text(width / 2, height - 18, 'Libérez le secteur. Détruisez le WAR MACHINE.', {
