@@ -55,11 +55,17 @@ try {
     await sleep(140)
   }
 
-  // Boot → Intro → Titre → Sélection → Jeu
+  // Boot → Intro → Titre → Sélection → Jeu (nav pilotée par l'état des scènes)
   await waitScene('IntroScene', 10000)
-  for (let i = 0; i < 14 && !(await scenes()).includes('TitleScene'); i++) await tap('.tc-fire')
-  await tap('.tc-jump') // titre → sélection
-  await sleep(400)
+  let nav0 = Date.now()
+  while (!(await scenes()).some((k) => k === 'TitleScene' || k === 'StageSelectScene') && Date.now() - nav0 < 15000) {
+    await tap('.tc-fire')
+  }
+  if ((await scenes()).includes('TitleScene')) {
+    await tap('.tc-jump') // titre → sélection
+    await waitScene('StageSelectScene', 8000)
+  }
+  await sleep(500)
   await tap('.tc-jump') // confirmation
   const inGame = await waitScene('GameScene', 8000)
   console.log(`GameScene atteinte: ${inGame}`)
