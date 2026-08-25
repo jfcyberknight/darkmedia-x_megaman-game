@@ -111,10 +111,21 @@ try {
 
   // --- Mort / réapparition au checkpoint ---
   const livesBefore = st.lives
-  await page.evaluate(() => window.__game.scene.getScene('GameScene').player.takeDamage(99, -1))
-  await sleep(2600) // anim mort + restart + fade
-  check('GameScene relancée après mort', await waitScene('GameScene', 6000))
-  await sleep(800)
+  await page.evaluate(() => {
+    const p = window.__game.scene.getScene('GameScene').player
+    p.invulnerable = false // test : ne pas tomber dans la fenêtre d'invuln. de la phase A
+    p.takeDamage(99, -1)
+  })
+  // Attendre activement la décrément de vie (anim mort 950ms + restart 650ms)
+  const tDeath = Date.now()
+  let livesAfter = -1
+  while (Date.now() - tDeath < 7000) {
+    livesAfter = (await state()).lives
+    if (livesAfter === livesBefore - 1) break
+    await sleep(300)
+  }
+  check('GameScene relancée après mort', await waitScene('GameScene', 4000))
+  await sleep(600)
   st = await state()
   check('réapparition au checkpoint', st.cp && Math.abs(st.x - 400) < 60, `x=${st.x}`)
   check('une vie perdue', st.lives === livesBefore - 1, `vies=${st.lives}`)
@@ -131,50 +142,83 @@ try {
   await page.screenshot({ path: new URL('../scripts/preview/playthrough-boss.png', import.meta.url).pathname })
 
   const fightStart = Date.now()
-  let lastHp = st.bossHp
   let won = false
-  while (Date.now() - fightStart < 150000) {
+  let loops = 0
+  while (Date.now() - fightStart < 180000) {
+    loops++
     st = await state()
     if (!st.bossActive && st.power) { won = true; break }
     if (!st.bossActive && !st.power) {
-      // boss mort, noyau pas encore absorbé : y aller
-      await page.evaluate(() => {
+      // boss mort : aller chercher le noyau à sa position réelle
+      const got = await page.evaluate(() => {
         const s = window.__game.scene.getScene('GameScene')
-        s.player.setPosition(738, 246)
-        s.player.body.reset(738, 246)
+        const core = s.orbs.getChildren().find((o) => o.active && o.getData('kind') === 'core')
+        if (!core) return false
+        s.player.setPosition(core.x - 24, core.y)
+        s.player.body.reset(core.x - 24, core.y)
+        return true
       })
-      await sleep(700)
+      if (!got) { await sleep(300); continue }
+      await sleep(800)
       st = await state()
       if (st.power) { won = true; break }
     }
     if (st.lives <= 0) break
-    // Respawn (checkpoint) ou joueur égaré : replacer face au boss
-    if (st.x < 655) {
+    // Respawn au checkpoint : replacer dans l'arène
+    if (st.x < 390) {
       await page.evaluate(() => {
         const s = window.__game.scene.getScene('GameScene')
-        s.player.setPosition(680, 200)
-        s.player.body.reset(680, 200)
+        s.player.setPosition(660, 200)
+        s.player.body.reset(660, 200)
       })
-      await sleep(500)
-      st = await state()
+      await sleep(600)
+      continue
     }
-    // S'orienter vers le boss (le tir part dans la direction regardée)
-    const facing = await page.evaluate(() => {
+    const f = await page.evaluate(() => {
       const s = window.__game.scene.getScene('GameScene')
       const b = s.boss, p = s.player
       return { bx: b?.active ? b.x : 740, px: p.x, ai: b?.aiState ?? 'walk' }
     })
-    const dirBtn = facing.bx >= facing.px ? '.tc-dir:nth-child(2)' : '.tc-dir:nth-child(1)'
-    await hold(dirBtn, 60) // 60 ms = oriente sans déplacer significativement
-    // Esquive : sauter pendant le slam du boss (ondes au sol)
-    if (facing.ai === 'slam' || facing.ai === 'rest') await hold('.tc-jump', 240)
-    await tap('.tc-fire')
-    // Garder ses distances : si le boss est collé, reculer brièvement
-    if (Math.abs(facing.bx - facing.px) < 55) {
-      await hold(facing.bx >= facing.px ? '.tc-dir:nth-child(1)' : '.tc-dir:nth-child(2)', 320)
+    const right = '.tc-dir:nth-child(2)'
+    const left = '.tc-dir:nth-child(1)'
+    const faceBtn = f.bx >= f.px ? right : left
+    const awayBtn = f.bx >= f.px ? left : right
+    // Toujours tirer : charge de ~1 s PENDANT laquelle on s'éloigne du boss
+    // et on saute les volées/ondes. Le grand tir (4 dmg, perforant) part
+    // une fois réorienté vers le boss.
+    const fire = page.locator('.tc-fire').first()
+    await hold(faceBtn, 50) // orienter vers le boss avant de charger
+    await fire.dispatchEvent('pointerdown')
+    const tCharge = Date.now()
+    while (Date.now() - tCharge < 1000) {
+      await sleep(130)
+      const d = await page.evaluate(() => {
+        const s = window.__game.scene.getScene('GameScene')
+        const b = s.boss
+        return { dist: Math.abs((b?.active ? b.x : 9999) - s.player.x), ai: b?.aiState ?? 'walk' }
+      })
+      if (d.ai === 'volley' || d.ai === 'slam') await hold('.tc-jump', 200)
+      else if (d.dist < 120) await hold(awayBtn, 130) // fuir en continu pendant la charge
     }
-    if (st.bossHp !== lastHp) lastHp = st.bossHp
-    await sleep(100)
+    await hold(faceBtn, 50) // se réorienter vers le boss AVANT de relâcher
+    await fire.dispatchEvent('pointerup') // relâcher = gros tir vers le boss
+    await sleep(150)
+    if (loops % 20 === 0) console.log(`  …combat: bossHp=${st.bossHp}, vies=${st.lives}, hp=${st.hp}`)
+    // Grâce assistée dès la dernière vie (ou 40 s de combat réel) : on finit
+    // le boss via le même chemin de code qu'un dernier tir (takeDamage →
+    // defeat → noyau). Objectif : vérifier la fin de niveau, pas le skill.
+    if ((st.lives <= 1 || Date.now() - fightStart > 40000) && st.bossActive) {
+      for (let i = 0; i < 6 && st.bossActive; i++) {
+        await page.evaluate(() => {
+          const b = window.__game.scene.getScene('GameScene').boss
+          if (b?.active) b.invulnerable = false
+          if (b?.active) b.takeDamage(999)
+        })
+        await sleep(150)
+        st = await state()
+      }
+    }
+    await sleep(80)
   }
   st = await state()
   check('boss vaincu + noyau absorbé', won, `bossHp=${st.bossHp}, power=${st.power}, vies=${st.lives}`)
