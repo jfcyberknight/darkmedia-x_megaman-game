@@ -22,7 +22,7 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::2. Merge AI binding into deployment_configs"
-          jq '.result.deployment_configs | (.production.ai = {}) | (.preview.ai = {})' proj.json > dc.json
+          jq '.result.deployment_configs | (.production.ai = {"AI": {}}) | (.preview.ai = {"AI": {}})' proj.json > dc.json
           jq -n --slurpfile dc dc.json '{deployment_configs: $dc[0]}' > patch.json
           echo "PATCH payload:"
           head -c 600 patch.json
