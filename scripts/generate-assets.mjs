@@ -663,10 +663,14 @@ for (const [id, art] of Object.entries(STAGE_ART)) {
     ts.imagewidth = 64
     ts.imageheight = 16
   }
-  // keep the ground fill down to the last row (row 19)
+  // Keep the ground fill down to the last row (row 19) — but ONLY under
+  // columns that already have ground in row 18, so generated pits stay open
+  // (otherwise the player would land in the pit bottom instead of falling).
   const ground = level.layers.find((l) => l.name === 'ground')
   const W = level.width
-  for (let x = 0; x < W; x++) ground.data[19 * W + x] = 3
+  for (let x = 0; x < W; x++) {
+    if (ground.data[18 * W + x] !== 0) ground.data[19 * W + x] = 3
+  }
   writeFileSync(levelPath, JSON.stringify(level))
 }
 

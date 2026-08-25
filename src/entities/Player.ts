@@ -360,6 +360,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return this.health
   }
 
+  isDead() {
+    return this.dead
+  }
+
   /** Invulnérabilité de spawn : le joueur clignote et rien ne le touche (jeton). */
   grantInvulnerability(ms = 1300) {
     const token = ++this.invulnToken

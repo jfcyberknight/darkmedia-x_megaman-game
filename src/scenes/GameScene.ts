@@ -12,8 +12,21 @@ import { getCompanion, type CompanionDef } from '../companions'
 import { STAGES, DEFAULT_STAGE, type StageDef } from '../stages'
 import { touchState, isTouchUI, consumeTouchEdges } from '../touch'
 
-const WORLD_W = 800
 const WORLD_H = 320
+// Actualisées en create() depuis level-entities.json (niveau généré).
+let WORLD_W = 800
+
+/** Contenu de level-entities.json (voir scripts/generate-level.mjs). */
+interface LevelEntities {
+  worldW: number
+  spawnX: number
+  spawnY: number
+  bossX: number
+  bossWarnX: number
+  enemies: Array<{ kind: string; x: number; y: number }>
+  checkpoints: Array<{ x: number; y: number }>
+  orbs: Array<{ x: number; y: number }>
+}
 
 export class GameScene extends Phaser.Scene {
   player!: Player
@@ -23,8 +36,9 @@ export class GameScene extends Phaser.Scene {
   private bullets!: Phaser.Physics.Arcade.Group
   private orbs!: Phaser.Physics.Arcade.Group
   private enemyBullets!: Phaser.Physics.Arcade.Group
-  private checkpoint!: Phaser.GameObjects.Image
-  private cpActive = false
+  private ents!: LevelEntities
+  private checkpoints: Phaser.GameObjects.Image[] = []
+  private respawning = false
   private bossIntroDone = false
   private bossTauntBusy = false
   private bossTauntTimer = 6000
@@ -73,13 +87,13 @@ export class GameScene extends Phaser.Scene {
     // A fresh entry from the stage select resets lives and checkpoint; a death-restart keeps them.
     if (data.fresh) {
       this.registry.set('lives', 3)
-      this.registry.set('cp', false)
+      this.registry.set('cpX', undefined)
+      this.registry.set('cpY', undefined)
       this.registry.set('briefed', false)
     }
     if (this.registry.get('lives') === undefined) {
       this.registry.set('lives', 3)
     }
-    this.cpActive = this.registry.get('cp') === true
     // Appuis tactiles hérités de l'écran précédent : ignorés au spawn.
     this.tPrevJump = touchState.jump
     this.tPrevShoot = touchState.shoot
@@ -103,10 +117,16 @@ export class GameScene extends Phaser.Scene {
     this.load.image(`bg-far-${this.stage.id}`, `assets/bg-far-${this.stage.id}.png`)
     this.load.image(`bg-mid-${this.stage.id}`, `assets/bg-mid-${this.stage.id}.png`)
     this.load.image('haze', 'assets/haze.png')
+    this.load.json('level-entities', 'assets/level-entities.json')
   }
 
   create() {
     this.createAnimations()
+    this.respawning = false
+
+    // Niveau généré : taille du monde + entités (ennemis, checkpoints, orbes).
+    this.ents = this.cache.json.get('level-entities') as LevelEntities
+    WORLD_W = this.ents.worldW
 
     // Clamp du delta physique à ~33 ms (plancher 30 fps) : au-delà, le jeu
     // ralentit au lieu de laisser les corps traverser les tuiles (tunneling).
@@ -118,7 +138,9 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.cameras.main.setBounds(0, 0, WORLD_W, WORLD_H)
-    this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H)
+    // Fond du monde étendu : le joueur peut tomber dans les trous (puis mourir),
+    // la caméra reste clampée à WORLD_H → il tombe hors du champ visuel.
+    this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H + 120)
 
     this.createBackground()
     this.createTilemap()
@@ -148,7 +170,9 @@ export class GameScene extends Phaser.Scene {
       collideWorldBounds: true,
     })
 
-    this.player = new Player(this, this.cpActive ? 400 : 32, 256, this.bullets)
+    const spawnX = ((this.registry.get('cpX') as number | undefined) ?? this.ents.spawnX)
+    const spawnY = ((this.registry.get('cpY') as number | undefined) ?? this.ents.spawnY)
+    this.player = new Player(this, spawnX, spawnY, this.bullets)
     this.player.powerUp = this.registry.get('power') === true
 
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1)
@@ -277,7 +301,7 @@ export class GameScene extends Phaser.Scene {
     this.bgMid.tilePositionX = cam.scrollX * 0.35
     this.bgMid.tilePositionY = cam.scrollY * 0.12
 
-    if (!this.bossIntroDone && this.player.x > 660) this.bossWarning()
+    if (!this.bossIntroDone && this.player.x > this.ents.bossWarnX) this.bossWarning()
 
     // Merge keyboard + touch (virtual pad). Touch edges are computed against
     // the previous frame, plus a queue for taps shorter than one rendered
@@ -296,6 +320,12 @@ export class GameScene extends Phaser.Scene {
       sfx.checkpoint()
       this.scene.launch('PauseScene')
       this.scene.pause()
+      return
+    }
+
+    // Mort par chute : tomber dans un trou = perte d'une vie (respawn checkpoint).
+    if (!this.respawning && !this.player.isDead() && this.player.y > WORLD_H + 30) {
+      this.playerFall()
       return
     }
 
@@ -629,15 +659,7 @@ export class GameScene extends Phaser.Scene {
   // ------------------------- Energy orbs -------------------------
 
   private spawnEnergyPickups() {
-    const spots = [
-      { x: 152, y: 216 },
-      { x: 240, y: 184 },
-      { x: 360, y: 152 },
-      { x: 592, y: 136 },
-      { x: 712, y: 168 },
-      { x: 420, y: 260 },
-    ]
-    for (const s of spots) this.spawnOrb(s.x, s.y, 'hp')
+    for (const s of this.ents.orbs) this.spawnOrb(s.x, s.y, 'hp')
   }
 
   spawnOrb(x: number, y: number, kind: 'hp' | 'core') {
@@ -734,17 +756,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private spawnEnemies() {
-    const defs: Array<{ kind: 'walker' | 'flyer' | 'turret'; x: number; y: number }> = [
-      { kind: 'walker', x: 128, y: 212 },
-      { kind: 'walker', x: 216, y: 180 },
-      { kind: 'flyer', x: 304, y: 128 },
-      { kind: 'walker', x: 472, y: 180 },
-      { kind: 'flyer', x: 524, y: 112 },
-      { kind: 'turret', x: 452, y: 262 },
-      { kind: 'turret', x: 630, y: 262 },
-      { kind: 'walker', x: 696, y: 164 },
-    ]
-    for (const d of defs) {
+    for (const d of this.ents.enemies) {
       let enemy: StageEnemy
       if (d.kind === 'flyer') enemy = new Flyer(this, d.x, d.y, this.player)
       else if (d.kind === 'turret') enemy = new Turret(this, d.x, d.y, this.player)
@@ -754,23 +766,25 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** Mid-level holographic checkpoint: touching it moves the respawn point here. */
+  /** Several holographic checkpoints: touching one moves the respawn point there. */
   private spawnCheckpoint() {
-    const x = 400, y = 264
-    this.checkpoint = this.add.image(x, y, 'checkpoint').setDepth(10)
-    this.physics.add.existing(this.checkpoint)
-    const body = (this.checkpoint as Phaser.Physics.Arcade.Image).body as Phaser.Physics.Arcade.Body
-    body.setAllowGravity(false)
-    body.setSize(20, 32)
-    if (this.cpActive) this.activateCheckpointVisual()
-    this.physics.add.overlap(
-      this.player,
-      this.checkpoint,
-      () => {
-        if (!this.cpActive) {
-          this.cpActive = true
-          this.registry.set('cp', true)
-          this.activateCheckpointVisual()
+    this.checkpoints = []
+    for (const cp of this.ents.checkpoints) {
+      const { x, y } = cp
+      const img = this.add.image(x, y, 'checkpoint').setDepth(10)
+      this.physics.add.existing(img)
+      const body = (img as Phaser.Physics.Arcade.Image).body as Phaser.Physics.Arcade.Body
+      body.setAllowGravity(false)
+      body.setSize(20, 32)
+      this.checkpoints.push(img)
+
+      this.physics.add.overlap(this.player, img, () => {
+        // Ne réactive le checkpoint que si c'est un nouveau point (vers la droite).
+        const prevX = this.registry.get('cpX') as number | undefined
+        if (prevX === undefined || x > prevX) {
+          this.registry.set('cpX', x)
+          this.registry.set('cpY', y)
+          img.setTint(0x7dfca2)
           sfx.checkpoint()
           void this.companionSay('checkpoint')
           this.spawnCollectBurst(x, y - 8, 0x35e0ff)
@@ -780,14 +794,14 @@ export class GameScene extends Phaser.Scene {
           this.tweens.add({ targets: t, alpha: 1, y: y - 40, duration: 500, ease: 'Cubic.Out',
             onComplete: () => this.tweens.add({ targets: t, alpha: 0, delay: 900, duration: 400, onComplete: () => t.destroy() }) })
         }
-      },
-      undefined,
-      this,
-    )
-  }
-
-  private activateCheckpointVisual() {
-    this.checkpoint.setTint(0x7dfca2)
+      }, undefined, this)
+    }
+    // Si on a déjà un checkpoint actif (retour de mort), teinter celui correspondant.
+    const activeX = this.registry.get('cpX') as number | undefined
+    if (activeX !== undefined) {
+      const img = this.checkpoints.find(c => Math.abs(c.x - activeX) < 1)
+      if (img) img.setTint(0x7dfca2)
+    }
   }
 
   /** Aimed enemy projectile (boss volleys, turrets). */
@@ -852,7 +866,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private spawnBoss() {
-    const boss = new Boss(this, 740, 262, this.player, (hp, max) => this.drawBossBar(hp, max))
+    const boss = new Boss(this, this.ents.bossX, 262, this.player, (hp, max) => this.drawBossBar(hp, max))
     this.boss = boss
     this.bossActive = true
     // Colliders sur les DEUX couches : sans `ground`, le boss tombait à
@@ -1092,9 +1106,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Called by the Player when its HP reaches zero: life lost, respawn or game over. */
-  onPlayerDeath() {
+  onPlayerDeath(fxX = this.player.x, fxY = this.player.y) {
+    this.respawning = true
     sfx.explode()
-    this.spawnDeathEffect(this.player.x, this.player.y)
+    this.spawnDeathEffect(fxX, fxY)
     const lives = ((this.registry.get('lives') as number) ?? 1) - 1
     this.registry.set('lives', lives)
     if (lives > 0) {
@@ -1103,6 +1118,12 @@ export class GameScene extends Phaser.Scene {
     } else {
       this.gameOver()
     }
+  }
+
+  /** Tombé dans un trou : perte d'une vie, effet au bord du vide, respawn checkpoint. */
+  private playerFall() {
+    this.respawning = true
+    this.onPlayerDeath(this.player.x, Math.min(this.player.y, WORLD_H + 10))
   }
 
   private gameOver() {
