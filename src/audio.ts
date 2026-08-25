@@ -16,7 +16,7 @@ function ac(): AudioContext | null {
   if (!ctx) {
     ctx = new AC()
     master = ctx.createGain()
-    master.gain.value = muted ? 0 : 0.18
+    master.gain.value = muted ? 0 : 0.28
     master.connect(ctx.destination)
     musicBus = ctx.createGain()
     musicBus.gain.value = 0.32
@@ -24,6 +24,53 @@ function ac(): AudioContext | null {
   }
   if (ctx.state === 'suspended') void ctx.resume()
   return ctx
+}
+
+// --------------------------- Mobile unlock ---------------------------
+// iOS/Safari: l'AudioContext ne démarre que dans un geste utilisateur, et il
+// repart en « interrupted » après un verrouillage d'écran ou un changement
+// d'app. On (re)tente donc le resume sur CHAQUE geste au niveau document,
+// avec le classique buffer muet qui débloque les vieux WebKit.
+
+let silentBufPlayed = false
+
+function playSilentBuffer(c: AudioContext): void {
+  if (silentBufPlayed) return
+  try {
+    const buf = c.createBuffer(1, 1, 22050)
+    const src = c.createBufferSource()
+    src.buffer = buf
+    src.connect(c.destination)
+    src.start(0)
+    silentBufPlayed = true
+  } catch {
+    /* vieux navigateurs : ignorer */
+  }
+}
+
+/** Crée/resume le contexte audio — sûr à appeler depuis n'importe quel geste. */
+export function unlockAudio(): void {
+  const c = ac()
+  if (!c) return
+  if (c.state === 'suspended') void c.resume()
+  playSilentBuffer(c)
+}
+
+/**
+ * Pose les listeners globaux de déblocage (une fois au boot). Complète les
+ * handlers Phaser : les boutons tactiles DOM empêchent la propagation vers
+ * le canvas, donc sans ça le contexte resterait suspendu sur mobile.
+ */
+export function installAudioGestures(): void {
+  const kick = () => unlockAudio()
+  const opts: AddEventListenerOptions = { passive: true, capture: true }
+  document.addEventListener('pointerdown', kick, opts)
+  document.addEventListener('touchend', kick, opts)
+  document.addEventListener('keydown', kick, opts)
+  document.addEventListener('visibilitychange', () => {
+    // Retour au premier plan : iOS laisse souvent le contexte interrompu.
+    if (!document.hidden) setTimeout(unlockAudio, 60)
+  })
 }
 
 function tone(opt: {
@@ -184,6 +231,9 @@ const HAT = [
 function schedule() {
   const c = ctx
   if (!c || !musicBus) return
+  // Resync si le contexte a été suspendu/throttlé (onglet caché, iOS) :
+  // sinon toutes les notes en retard partiraient d'un coup au resume.
+  if (nextTime < c.currentTime - 0.2) nextTime = c.currentTime + 0.05
   const lead = getLeadBus()
   const menu = currentTrack === 'menu'
   const stepDur = menu ? MENU_STEP : STEP
@@ -244,10 +294,10 @@ export function getTrack(): Track | null {
 
 export const sfx = {
   /** Create/resume the AudioContext — call from a user gesture. */
-  unlock: () => { ac() },
+  unlock: () => { unlockAudio() },
   toggleMute: () => {
     muted = !muted
-    if (master) master.gain.value = muted ? 0 : 0.18
+    if (master) master.gain.value = muted ? 0 : 0.28
     return muted
   },
   isMuted: () => muted,

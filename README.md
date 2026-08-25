@@ -25,6 +25,10 @@ Sur écran tactile, un **D-pad virtuel + boutons** apparaît automatiquement :
 Menus : tap pour avancer dans l'intro ; sur la sélection de stage, tap = sélection,
 re-tap sur la carte sélectionnée = confirmer. Le clavier reste fonctionnel en parallèle.
 
+> 🔊 **Pas de son sur mobile ?** Touchez l'écran une fois (le contexte audio se
+> débloque au premier geste). Sur **iOS**, le switch silencieux du téléphone
+> coupe aussi le Web Audio — remettez la sonnerie.
+
 ### ⌨️ Clavier
 
 | Touche | Action |
