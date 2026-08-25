@@ -37,6 +37,10 @@ export class Bullet extends Phaser.Physics.Arcade.Image {
 
     this.setVisible(true)
     this.setActive(true)
+    // body.reset : position + vélocité + flags (blocked/touching) remis à
+    // zéro. Sans lui, une balle morte sur un mur recyclait son corps avec
+    // blocked.right=true → la suivante naissait morte (avancée d'1 px).
+    this.body!.reset(this.x, this.y)
     this.body!.enable = true
     this.setVelocityX(direction * def.speed)
     this.spawnX = this.x
