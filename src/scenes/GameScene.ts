@@ -224,15 +224,21 @@ export class GameScene extends Phaser.Scene {
     )
     // Un projectile ennemi qui touche le sol est désactivé (explosion) — sauf
     // les ondes de choc du boss, qui voyagent le long du sol (kind 'shockwave').
+    // Le contexte `this` est obligatoire : sans lui, `this.spawnSparks` n'existe
+    // pas dans le callback (this = monde arcade).
     this.physics.add.collider(
       this.enemyBullets,
       this.ground,
       this.handleEnemyBulletGround as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+      undefined,
+      this,
     )
     this.physics.add.collider(
       this.enemyBullets,
       this.platforms,
       this.handleEnemyBulletGround as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+      undefined,
+      this,
     )
 
     // Boss HP bar must exist before the boss spawns (spawn draws it once).

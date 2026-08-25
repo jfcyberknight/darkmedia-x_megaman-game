@@ -49,16 +49,20 @@ for (let x = 0; x < W; x++) fillGround(x)
 const PITS = [[22, 3], [40, 3], [58, 3], [76, 3], [94, 3], [112, 3], [130, 3], [150, 3], [168, 3]]
 for (const [x, w] of PITS) pit(x, w)
 
-const WALLS = [[31, 2], [66, 2], [88, 3], [120, 2], [141, 3]]
+// Murs de 2 tuiles maximum : au-dessus, la fenêtre où les pieds dépassent le
+// sommet (~0,37 s pour 3 tuiles) est trop courte pour un saut fiable.
+const WALLS = [[31, 2], [66, 2], [88, 2], [120, 2], [141, 2]]
 for (const [x, h] of WALLS) wall(x, h)
 
-// ---- platforms (optional high routes) ----
-// row 15 = 2 tiles up, row 14 = 3 tiles up — both jumpable from the ground.
-// (pas de row 13 : 4 tuiles = hors de portée d'un saut depuis le sol.)
+// ---- platforms (décor haute altitude, comme l'original) ----
+// ATTENTION : une plateforme « atteignable d'un saut » (row >= 13) plafonne
+// aussi les sauts passant DESSOUS (son dessous est à moins de 30 px de la tête
+// du joueur debout → « bonk », impossible de franchir un mur/trou derrière).
+// Rows 10-11 = dessous à 60-76 px au-dessus du sol : aucun saut n'est coupé.
 const PLATS = [
-  [15, 15, 4], [25, 14, 4], [34, 14, 4], [48, 15, 4],
-  [84, 15, 4], [104, 14, 4], [118, 15, 4], [136, 15, 4], [156, 14, 4],
-  [172, 15, 4], [184, 14, 4],
+  [15, 10, 4], [25, 11, 4], [34, 10, 4], [48, 11, 4],
+  [84, 10, 4], [104, 11, 4], [118, 10, 4], [136, 11, 4], [156, 10, 4],
+  [172, 11, 4], [184, 10, 4],
 ]
 for (const [x, row, w] of PLATS) platRow(x, row, w)
 
@@ -77,10 +81,11 @@ for (const [x, y] of FLYERS) enemies.push({ kind: 'flyer', x: x * TILE + 8, y })
 // checkpoints at safe flat spots (respawn point)
 const checkpoints = [20, 62, 100, 145, 185].map((x) => ({ x: x * TILE + 8, y: GT * TILE - 18 }))
 
-// energy orbs: on platforms + a few on the ground
+// energy orbs: au sol, répartis (positions hors trous et hors murs)
 const orbs = []
-for (const [x, row, w] of PLATS) orbs.push({ x: (x + Math.floor(w / 2)) * TILE + 8, y: row * TILE + 6 })
-for (const x of [27, 71, 124, 164]) orbs.push({ x: x * TILE + 8, y: GT * TILE - 6 })
+for (const x of [12, 28, 36, 46, 54, 64, 72, 82, 90, 100, 108, 126, 136, 146, 158, 164, 176]) {
+  orbs.push({ x: x * TILE + 8, y: GT * TILE - 10 })
+}
 
 // ---- write level.json (Tiled, tilemap compatible) ----
 const data = (grid) => {
