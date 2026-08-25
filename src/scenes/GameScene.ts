@@ -606,14 +606,15 @@ export class GameScene extends Phaser.Scene {
     })
   }
 
-  /** Apparition du joueur : colonne de lumière + motes ascendantes + onde + flash. */
+  /** Apparition du joueur : halo doux + motes ascendantes + onde + flash. */
   private spawnTeleportEffect(x: number, y: number) {
-    // Colonne de lumière verticale.
+    // Halo doux (pas une colonne dure : un beam étiré passait sur le sprite et
+    // se lisait comme une barre cyan/verte sur le héros).
     const beam = this.add.image(x, y, 'glow')
       .setBlendMode(Phaser.BlendModes.ADD).setDepth(38)
-      .setTint(0x9df2ff).setScale(0.3, 3.2).setAlpha(0)
+      .setTint(0x9df2ff).setScale(0.85, 1.5).setAlpha(0)
     this.tweens.add({
-      targets: beam, alpha: { from: 0.9, to: 0 }, scaleX: 0.5, duration: 460,
+      targets: beam, alpha: { from: 0.45, to: 0 }, scale: 1.3, duration: 380,
       ease: 'Cubic.Out', onComplete: () => beam.destroy(),
     })
 
