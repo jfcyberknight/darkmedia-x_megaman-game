@@ -22,12 +22,13 @@ export const touchState: TouchState = { left: false, right: false, jump: false, 
  * typique sur téléphone à bas FPS). Consommés par GameScene à la frame
  * suivante : aucun appui ne peut être perdu.
  */
-const queued = { jump: false, shoot: false }
+const queued = { jump: false, shoot: false, pause: false }
 
-export function consumeTouchEdges(): { jump: boolean; shoot: boolean } {
-  const q = { jump: queued.jump, shoot: queued.shoot }
+export function consumeTouchEdges(): { jump: boolean; shoot: boolean; pause: boolean } {
+  const q = { jump: queued.jump, shoot: queued.shoot, pause: queued.pause }
   queued.jump = false
   queued.shoot = false
+  queued.pause = false
   return q
 }
 
@@ -125,7 +126,7 @@ export function installTouchControls(): void {
   bindHold(jump, 'jump')
   actions.append(fire, jump)
 
-  // --- Utilitaires haut-droit : son + plein écran ---
+  // --- Utilitaires haut-droit : son + pause + plein écran ---
   const utils = document.createElement('div')
   utils.className = 'tc-utils'
   const mute = makeButton('tc-mini', '🔊')
@@ -133,13 +134,19 @@ export function installTouchControls(): void {
     e.preventDefault()
     mute.textContent = sfx.toggleMute() ? '🔇' : '🔊'
   })
+  // Pause : aucun clavier sur téléphone, ce bouton est indispensable.
+  const pauseBtn = makeButton('tc-mini tc-pause', '⏸')
+  pauseBtn.addEventListener('pointerdown', (e) => {
+    e.preventDefault()
+    queued.pause = true
+  })
   const full = makeButton('tc-mini', '⛶')
   full.addEventListener('pointerdown', (e) => {
     e.preventDefault()
     if (document.fullscreenElement) void document.exitFullscreen()
     else void document.documentElement.requestFullscreen().catch(() => {})
   })
-  utils.append(mute, full)
+  utils.append(mute, pauseBtn, full)
 
   root.append(dpad, actions, utils)
   document.body.appendChild(root)

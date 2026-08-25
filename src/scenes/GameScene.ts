@@ -259,7 +259,7 @@ export class GameScene extends Phaser.Scene {
       fontSize: '8px', color: '#a9b3cf', fontFamily: 'monospace', letterSpacing: 1,
     }).setScrollFactor(0).setDepth(200)
 
-    this.add.text(6, 24, isTouchUI() ? '◀▶ MOVE  A JUMP  B HOLD=CHARGE' : '←→:move ↑:jump Z:charge P:pause', {
+    this.add.text(6, 24, isTouchUI() ? '◀▶ MOVE A JUMP B=CHARGE ⏸=PAUSE' : '←→:move ↑:jump Z:charge P:pause', {
       fontSize: '7px', color: '#5a6280', fontFamily: 'monospace',
     }).setScrollFactor(0).setDepth(200)
 
@@ -322,7 +322,8 @@ export class GameScene extends Phaser.Scene {
     this.tPrevJump = touchState.jump
     this.tPrevShoot = touchState.shoot
 
-    if (Phaser.Input.Keyboard.JustDown(this.pauseKey) || Phaser.Input.Keyboard.JustDown(this.escKey)) {
+    // Pause : touche P/ESC au clavier, bouton ⏸ du pad tactile sur mobile.
+    if (q.pause || Phaser.Input.Keyboard.JustDown(this.pauseKey) || Phaser.Input.Keyboard.JustDown(this.escKey)) {
       sfx.checkpoint()
       this.scene.launch('PauseScene')
       this.scene.pause()

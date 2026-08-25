@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { COMPANIONS } from '../companions'
 import { drawStarfield, drawVignette } from '../ui'
 import { sfx, startMusic } from '../audio'
+import { isTouchUI, touchState } from '../touch'
 
 /** Companion selection: pick the robot that will follow you through the stages. */
 export class CompanionScene extends Phaser.Scene {
@@ -12,6 +13,10 @@ export class CompanionScene extends Phaser.Scene {
   private nameText!: Phaser.GameObjects.Text
   private persText!: Phaser.GameObjects.Text
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
+  // État précédent des boutons virtuels (détection de front A/B ◀▶).
+  private tL = false
+  private tR = false
+  private tAct = false
 
   constructor() {
     super({ key: 'CompanionScene' })
@@ -46,6 +51,14 @@ export class CompanionScene extends Phaser.Scene {
       const x = startX + i * (cardW + gap)
       const card = this.add.rectangle(x, y, cardW, cardW + 8, 0x10141f, 1)
         .setStrokeStyle(1.5, c.bubble, 0.4)
+      // Tactile : taper une carte la sélectionne, re-taper la carte choisie confirme.
+      card.setInteractive({ useHandCursor: true })
+      card.on('pointerdown', () => {
+        if (this.selected === i) { this.confirm(); return }
+        this.selected = i
+        sfx.checkpoint()
+        this.render()
+      })
       this.cards.push(card)
       this.sprites.push(this.add.image(x, y - 6, c.texture).setScale(2))
       this.add.text(x, y + cardW / 2 - 6, c.name, {
@@ -64,7 +77,7 @@ export class CompanionScene extends Phaser.Scene {
       fontSize: '8px', color: '#8b93a8', fontFamily: 'monospace', fontStyle: 'italic',
     }).setOrigin(0.5)
 
-    this.add.text(width / 2, height - 14, '← → : CHOISIR     Z : CONFIRMER', {
+    this.add.text(width / 2, height - 14, isTouchUI() ? 'TAP : CHOISIR   RE-TAP : CONFIRMER' : '← → : CHOISIR     Z : CONFIRMER', {
       fontSize: '8px', color: '#5a6280', fontFamily: 'monospace', letterSpacing: 1,
     }).setOrigin(0.5)
 
@@ -74,6 +87,11 @@ export class CompanionScene extends Phaser.Scene {
     this.cursors = this.input.keyboard!.createCursorKeys()
     this.input.keyboard!.on('keydown-Z', () => this.confirm())
     this.input.keyboard!.on('keydown-ENTER', () => this.confirm())
+
+    // Appuis virtuels déjà en cours en arrivant : ignorés jusqu'au relâchement.
+    this.tL = touchState.left
+    this.tR = touchState.right
+    this.tAct = touchState.jump || touchState.shoot
 
     this.render()
   }
@@ -89,6 +107,12 @@ export class CompanionScene extends Phaser.Scene {
       sfx.checkpoint()
       this.render()
     }
+    // Pad virtuel ◀▶ / A-B (mobile) — sinon impossible de confirmer sur téléphone.
+    const l = touchState.left, r = touchState.right, act = touchState.jump || touchState.shoot
+    if (l && !this.tL) { this.selected = (this.selected + COMPANIONS.length - 1) % COMPANIONS.length; sfx.checkpoint(); this.render() }
+    if (r && !this.tR) { this.selected = (this.selected + 1) % COMPANIONS.length; sfx.checkpoint(); this.render() }
+    if (act && !this.tAct) this.confirm()
+    this.tL = l; this.tR = r; this.tAct = act
   }
 
   private render() {
