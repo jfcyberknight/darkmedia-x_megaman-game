@@ -7,6 +7,7 @@ import { Boss } from '../entities/Boss'
 import { Bullet } from '../objects/Bullet'
 import { drawVignette } from '../ui'
 import { sfx, startMusic, stopMusic } from '../audio'
+import { askAI } from '../ai'
 import { STAGES, DEFAULT_STAGE, type StageDef } from '../stages'
 import { touchState, isTouchUI, consumeTouchEdges } from '../touch'
 
@@ -28,6 +29,21 @@ export class GameScene extends Phaser.Scene {
   private bossTauntTimer = 6000
   private bossSpeech?: Phaser.GameObjects.Container
   private lastTaunt = ''
+  private companion!: Phaser.GameObjects.Image
+  private companionGlow!: Phaser.GameObjects.Image
+  private compBubble?: Phaser.GameObjects.Container
+  private compBusy = false
+  private compCooldown = 5000
+  private compSaid = new Set<string>()
+  private compT = 0
+  private readonly compLines: Record<string, string[]> = {
+    start: ['Sectoriel scanné. Fais-leur mordre la poussière, Blaster.'],
+    firstblood: ['Premier custodien neutralisé. Ça promet.'],
+    clear: ['Secteur purgé. Il reste... lui.'],
+    lowhp: ['Ton noyau flanche ! Chope une orbe, vite !'],
+    checkpoint: ['Position mémorisée. On pourra revenir ici.'],
+    power: ['Tu absorbes son pouvoir ? C’est... magnifique.'],
+  }
   private readonly fallbackTaunts: Record<string, string[]> = {
     intro: ['Ton existence prend fin ici, gardien.', 'Néon City m’appartient déjà.'],
     combat: ['Ta résistance est une erreur de programmation.', 'Je calcule déjà ta défaite.', "Chaque tir t'affaiblit. Chaque seconde me rend plus fort."],
@@ -217,6 +233,12 @@ export class GameScene extends Phaser.Scene {
         .setScale(0.5).setScrollFactor(0).setDepth(200)
     }
 
+    // ORION — support drone companion
+    this.companion = this.add.image(this.player.x - 20, this.player.y - 30, 'orb')
+      .setTint(0x4de3ff).setScale(0.9).setDepth(35)
+    this.companionGlow = this.add.image(this.companion.x, this.companion.y, 'glow')
+      .setTint(0x35e0ff).setBlendMode(Phaser.BlendModes.ADD).setScale(0.14).setAlpha(0.3).setDepth(34)
+
     // Audio: stage theme + mute toggle (M)
     sfx.unlock()
     startMusic('stage')
@@ -296,6 +318,19 @@ export class GameScene extends Phaser.Scene {
         this.bossTauntTimer = 9500
         void this.requestBossTaunt('combat')
       }
+    }
+
+    // ORION suit le joueur avec un léger retard
+    this.compT += delta
+    const tx = this.player.x + (this.player.flipX ? 20 : -20)
+    const ty = this.player.y - 30 + Math.sin(this.compT / 420) * 4
+    this.companion.x += (tx - this.companion.x) * 0.08
+    this.companion.y += (ty - this.companion.y) * 0.08
+    this.companionGlow.setPosition(this.companion.x, this.companion.y)
+    this.compCooldown -= delta
+    if (this.player.getHealth() <= 3 && !this.compSaid.has('lowhp') && this.compCooldown <= 0) {
+      this.compSaid.add('lowhp')
+      void this.companionSay('lowhp')
     }
   }
 
@@ -559,6 +594,7 @@ export class GameScene extends Phaser.Scene {
     this.player.powerUp = true
     this.registry.set('power', true)
     sfx.powerup()
+    void this.companionSay('power')
     this.cameras.main.flash(320, 255, 128, 96)
     this.spawnCollectBurst(x, y, 0xff6b5e)
     this.spawnExplosion(x, y, false)
@@ -634,6 +670,7 @@ export class GameScene extends Phaser.Scene {
           this.registry.set('cp', true)
           this.activateCheckpointVisual()
           sfx.checkpoint()
+          void this.companionSay('checkpoint')
           this.spawnCollectBurst(x, y - 8, 0x35e0ff)
           const t = this.add.text(x, y - 34, 'CHECKPOINT', {
             fontSize: '8px', color: '#9df2ff', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
@@ -766,6 +803,58 @@ export class GameScene extends Phaser.Scene {
         targets: [strip, t1, t2], alpha: 0, duration: 400,
         onComplete: () => { strip.destroy(); t1.destroy(); t2.destroy() },
       })
+      if (!this.compSaid.has('start')) {
+        this.compSaid.add('start')
+        void this.companionSay('start')
+      }
+    })
+  }
+
+  /** ORION comments on progression — async AI with canned fallbacks. */
+  private async companionSay(kind: string) {
+    if (this.compBusy || this.compCooldown > 0) return
+    this.compBusy = true
+    const hpPct = Math.round((this.player.getHealth() / 10) * 100)
+    const reply = await askAI(
+      "Tu es ORION, un petit drone de support loyal et espiègle qui accompagne BLASTER-01 dans Néon City. Réponds par UNE phrase courte (12 mots maximum), encourageante ou sarcastique. Sans guillemets.",
+      kind === 'start' ? 'Le stage commence. Un mot de soutien.'
+      : kind === 'firstblood' ? 'Le premier ennemi vient d’être détruit. Commente.'
+      : kind === 'clear' ? 'Tous les ennemis du secteur sont détruits. Commente.'
+      : kind === 'lowhp' ? `Les points de vie de BLASTER-01 sont à ${hpPct}%. Alerte-le.`
+      : kind === 'checkpoint' ? 'BLASTER-01 vient d’activer un checkpoint. Commente.'
+      : 'BLASTER-01 vient d’absorber le pouvoir du WAR MACHINE. Réagis.',
+      70, 7000)
+    const pool = this.compLines[kind] ?? this.compLines.start
+    const line = (reply && reply !== this.lastTaunt ? reply : pool[Math.floor(Math.random() * pool.length)])
+    this.showCompanionSpeech(line)
+    this.compCooldown = 8000
+    this.time.delayedCall(4200, () => { this.compBusy = false })
+  }
+
+  /** Cyan comm bubble, bottom-left. */
+  private showCompanionSpeech(text: string) {
+    this.compBubble?.destroy()
+    const { height } = this.cameras.main
+    const cont = this.add.container(0, 0).setScrollFactor(0).setDepth(230)
+    const box = this.add.rectangle(96, height - 26, 168, 30, 0x06101c, 0.88)
+      .setStrokeStyle(1.5, 0x35e0ff, 0.85)
+    const tag = this.add.text(20, height - 46, 'ORION', {
+      fontSize: '6px', color: '#9df2ff', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
+    })
+    const msg = this.add.text(96, height - 24, text, {
+      fontSize: '8px', color: '#d5ecf8', fontFamily: 'monospace',
+      wordWrap: { width: 150 }, align: 'center',
+    }).setOrigin(0.5, 0.5)
+    cont.add([box, tag, msg])
+    cont.setAlpha(0)
+    this.tweens.add({ targets: cont, alpha: 1, duration: 180 })
+    this.compBubble = cont
+    this.time.delayedCall(3800, () => {
+      if (!cont.active) return
+      this.tweens.add({ targets: cont, alpha: 0, duration: 300, onComplete: () => {
+        cont.destroy()
+        if (this.compBubble === cont) this.compBubble = undefined
+      } })
     })
   }
 
@@ -810,32 +899,14 @@ export class GameScene extends Phaser.Scene {
     this.bossTauntBusy = true
     const hpPct = Math.round(((this.boss?.getHealth() ?? 30) / 30) * 100)
     const playerHp = Math.round((this.player.getHealth() / 10) * 100)
-    let text = ''
-    try {
-      const ctrl = new AbortController()
-      const timer = setTimeout(() => ctrl.abort(), 7000)
-      const res = await fetch('/api/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: ctrl.signal,
-        body: JSON.stringify({
-          maxTokens: 70,
-          messages: [
-            { role: 'system', content: "Tu es WAR MACHINE, une IA de guerre corrompue de Néon City. Tu affrontes BLASTER-01, le dernier gardien loyal. Réponds par UNE seule phrase courte (12 mots maximum), froide et moqueuse. Sans guillemets, sans préfixe, sans didascalie." },
-            { role: 'user', content: kind === 'intro'
-              ? "Le combat commence. Une phrase d'ouverture menaçante."
-              : kind === 'enraged'
-                ? `Ton intégrité tombe à ${hpPct}%. Une phrase de rage.`
-                : `Combat en cours — ton intégrité ${hpPct}%, celle de BLASTER-01 ${playerHp}%. Une moquerie.` },
-          ],
-        }),
-      })
-      clearTimeout(timer)
-      const data = await res.json()
-      text = String(data?.result?.response ?? '').replace(/[\n\r"]+/g, ' ').trim().slice(0, 90)
-    } catch {
-      text = ''
-    }
+    const userLine = kind === 'intro'
+      ? 'Le combat commence. Une phrase d’ouverture menaçante.'
+      : kind === 'enraged'
+        ? `Ton intégrité tombe à ${hpPct}%. Une phrase de rage.`
+        : `Combat en cours — ton intégrité ${hpPct}%, celle de BLASTER-01 ${playerHp}%. Une moquerie.`
+    const text = (await askAI(
+      "Tu es WAR MACHINE, une IA de guerre corrompue de Néon City. Tu affrontes BLASTER-01, le dernier gardien loyal. Réponds par UNE seule phrase courte (12 mots maximum), froide et moqueuse. Sans guillemets, sans préfixe, sans didascalie.",
+      userLine, 70, 7000)) ?? ''
     if (text.length > 3 && text !== this.lastTaunt) {
       this.lastTaunt = text
       this.showBossSpeech(text)

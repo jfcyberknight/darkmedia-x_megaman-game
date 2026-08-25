@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { STAGES } from '../stages'
 import { drawStarfield, drawSkyline, drawVignette } from '../ui'
 import { startMusic } from '../audio'
+import { askAI } from '../ai'
 import { isTouchUI, touchState } from '../touch'
 
 export class StageSelectScene extends Phaser.Scene {
@@ -12,6 +13,9 @@ export class StageSelectScene extends Phaser.Scene {
   private cards: Phaser.GameObjects.Rectangle[] = []
   private cardGlows: Phaser.GameObjects.Image[] = []
   private nameText!: Phaser.GameObjects.Text
+  private descText!: Phaser.GameObjects.Text
+  private descCache = new Map<string, string>()
+  private descGen = 0
   private skyline!: Phaser.GameObjects.TileSprite
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
   private tL = false
@@ -89,6 +93,10 @@ export class StageSelectScene extends Phaser.Scene {
     }).setOrigin(0.5)
     this.nameText.setShadow(0, 0, '#35e0ff', 6, true, true)
 
+    this.descText = this.add.text(width / 2, height * 0.72 + 16, '', {
+      fontSize: '8px', color: '#8b93a8', fontFamily: 'monospace', fontStyle: 'italic',
+    }).setOrigin(0.5).setDepth(10)
+
     this.add.text(width / 2, height * 0.84, isTouchUI() ? 'TAP: SELECT   RE-TAP: PLAY' : '← → MOVE     Z CONFIRM', {
       fontSize: '8px', color: '#5a6280', fontFamily: 'monospace', letterSpacing: 1,
     }).setOrigin(0.5)
@@ -108,6 +116,7 @@ export class StageSelectScene extends Phaser.Scene {
     this.tAct = touchState.jump || touchState.shoot
 
     this.renderCursor()
+    void this.showStageDesc(STAGES[this.selected])
   }
 
   update() {
@@ -135,6 +144,8 @@ export class StageSelectScene extends Phaser.Scene {
     this.nameText.setText(STAGES[i].name)
     this.skyline.setTexture(`bg-far-${STAGES[i].id}`)
     this.renderCursor()
+    void this.showStageDesc(STAGES[i])
+    void this.showStageDesc(STAGES[this.selected])
   }
 
   private renderCursor() {
@@ -150,5 +161,30 @@ export class StageSelectScene extends Phaser.Scene {
     const stage = STAGES[this.selected]
     this.cameras.main.fadeOut(220, 0, 0, 0)
     this.time.delayedCall(240, () => this.scene.start('GameScene', { stage: stage.id, fresh: true }))
+  }
+
+  /** AI-generated one-line stage description (cached, canned fallback). */
+  private async showStageDesc(stage: (typeof STAGES)[number]) {
+    const gen = ++this.descGen
+    const cached = this.descCache.get(stage.id)
+    if (cached) {
+      this.descText.setText(cached)
+      return
+    }
+    this.descText.setText('...')
+    const FALLBACK: Record<string, string> = {
+      'neon-city': 'Les néons masquent la corruption qui ronge la cité.',
+      'toxic-plant': 'Ici, même la pluie ronge l’acier.',
+      'scorched-desert': 'Le sable a oublié le goût de l’eau.',
+      'frost-lab': 'Le froid garde les secrets mieux que les verrous.',
+      'sky-fortress': 'Le trône du WAR MACHINE. Le dernier étage avant la fin.',
+    }
+    const reply = await askAI(
+      'Tu décris des stages de jeu d’action rétro en UNE ligne poétique de 8 à 12 mots, ton sombre et évocateur. Sans guillemets, sans point final.',
+      `Stage « ${stage.name} » — univers: cité des machines corrompue par l’IA WAR MACHINE. Une ligne.`,
+      60, 6000)
+    const line = reply ?? FALLBACK[stage.id] ?? ''
+    this.descCache.set(stage.id, line)
+    if (gen === this.descGen) this.descText.setText(line)
   }
 }
