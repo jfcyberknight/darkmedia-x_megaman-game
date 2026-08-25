@@ -35,7 +35,7 @@ export class TitleScene extends Phaser.Scene {
       fontStyle: 'bold',
     }).setOrigin(0.5)
     title.setStroke('#0a0512', 4)
-    title.setShadow(0, 0, '#35e0ff', 10, true, true)
+    title.setShadow(0, 0, '#ff2436', 10, true, true)
     this.tweens.add({
       targets: title,
       alpha: { from: 0, to: 1 },
@@ -58,7 +58,7 @@ export class TitleScene extends Phaser.Scene {
       fontFamily: 'monospace',
       letterSpacing: 3,
     }).setOrigin(0.5)
-    prompt.setShadow(0, 0, '#35e0ff', 5, true, true)
+    prompt.setShadow(0, 0, '#ff2436', 5, true, true)
     this.tweens.add({ targets: prompt, alpha: { from: 1, to: 0.15 }, duration: 700, yoyo: true, repeat: -1 })
     void subtitle
 

@@ -38,7 +38,7 @@ export class CompanionScene extends Phaser.Scene {
       fontSize: '13px', color: '#e2e8f0', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 2,
     }).setOrigin(0.5)
     header.setStroke('#0a0512', 3)
-    header.setShadow(0, 0, '#35e0ff', 6, true, true)
+    header.setShadow(0, 0, '#ff2436', 6, true, true)
 
     const total = COMPANIONS.length
     const cardW = 60, gap = 14

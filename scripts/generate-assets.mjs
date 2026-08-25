@@ -562,34 +562,34 @@ savePreview(novaSprite(), 'comp-nova.png', 8)
   const T = 16
   const rnd = mulberry32(42)
   const t0 = C(T, T)
-  // t1 ground top
+  // t1 ground top — métal sombre, liseré et rivets rouge néon
   const t1 = C(T, T)
-  rect(t1, 0, 0, 15, 0, hex(0xd7e2f2))
-  rect(t1, 0, 1, 15, 2, hex(0x9db1d4))
-  rect(t1, 0, 3, 15, 9, hex(0x6b7fa3))
-  rect(t1, 0, 10, 15, 15, hex(0x42536f))
-  rect(t1, 0, 5, 15, 5, hex(0x54688a))
-  rect(t1, 0, 10, 15, 10, hex(0x36455e))
-  // bolts
-  px(t1, 3, 7, hex(0x2c3850)); px(t1, 12, 7, hex(0x2c3850))
-  px(t1, 2, 6, hex(0xc3d2ea)); px(t1, 11, 6, hex(0xc3d2ea))
-  // t2 ground body
+  rect(t1, 0, 0, 15, 0, hex(0x3a3d46))
+  rect(t1, 0, 1, 15, 2, hex(0x23252c))
+  rect(t1, 0, 3, 15, 9, hex(0x141619))
+  rect(t1, 0, 10, 15, 15, hex(0x0e0f12))
+  rect(t1, 0, 5, 15, 5, hex(0x1a1c21))
+  rect(t1, 0, 10, 15, 10, hex(0x101115))
+  // rivets rouge néon
+  px(t1, 3, 7, hex(0xff2436)); px(t1, 12, 7, hex(0xff2436))
+  px(t1, 2, 6, hex(0xffb3b8)); px(t1, 11, 6, hex(0xffb3b8))
+  // t2 ground body — métal sombre
   const t2 = C(T, T)
-  rect(t2, 0, 0, 15, 7, hex(0x54688a))
-  rect(t2, 0, 8, 15, 15, hex(0x3a4a66))
-  rect(t2, 0, 7, 15, 7, hex(0x2c3850))
-  rect(t2, 0, 15, 15, 15, hex(0x232d42))
-  px(t2, 4, 3, hex(0x6b7fa3)); px(t2, 11, 11, hex(0x4a5a7a))
-  px(t2, 8, 5, hex(0x2c3850)); px(t2, 3, 12, hex(0x2c3850))
-  // t3 platform slab
+  rect(t2, 0, 0, 15, 7, hex(0x1a1c21))
+  rect(t2, 0, 8, 15, 15, hex(0x101115))
+  rect(t2, 0, 7, 15, 7, hex(0x0e0f12))
+  rect(t2, 0, 15, 15, 15, hex(0x0a0b0e))
+  px(t2, 4, 3, hex(0x141619)); px(t2, 11, 11, hex(0x0e0f12))
+  px(t2, 8, 5, hex(0xff2436)); px(t2, 3, 12, hex(0xff2436))
+  // t3 platform slab — dalle sombre, arête et liseré rouge néon
   const t3 = C(T, T)
-  rect(t3, 0, 0, 15, 0, hex(0xeef4fc))
-  rect(t3, 0, 1, 15, 8, hex(0x8fa3c4))
-  rect(t3, 0, 9, 15, 12, hex(0x42536f))
-  rect(t3, 0, 13, 15, 14, hex(0x10141f))
-  rect(t3, 0, 12, 15, 12, hex(0x35e0ff))
-  px(t3, 3, 4, hex(0x2c3850)); px(t3, 12, 4, hex(0x2c3850))
-  px(t3, 2, 3, hex(0xc3d2ea)); px(t3, 13, 3, hex(0xc3d2ea))
+  rect(t3, 0, 0, 15, 0, hex(0xffb3b8))
+  rect(t3, 0, 1, 15, 8, hex(0x1a1c21))
+  rect(t3, 0, 9, 15, 12, hex(0x0e0f12))
+  rect(t3, 0, 13, 15, 14, hex(0x0a0b0e))
+  rect(t3, 0, 12, 15, 12, hex(0xff2436))
+  px(t3, 3, 4, hex(0xff2436)); px(t3, 12, 4, hex(0xff2436))
+  px(t3, 2, 3, hex(0xffb3b8)); px(t3, 13, 3, hex(0xffb3b8))
   const sheet = stitch([t0, t1, t2, t3])
   save(sheet, 'tileset.png')
   savePreview(sheet, 'tileset.png', 6)
@@ -597,10 +597,10 @@ savePreview(novaSprite(), 'comp-nova.png', 8)
 
 // ============================ STAGE BACKGROUNDS 512x224 (pixel skylines) ============================
 const STAGE_ART = {
-  'neon-city': { far: [0x2a2150, 0x191536], mid: [0x1b1638, 0x100d24], window: 0xffd166, windowAlt: 0x7dd3fc, sign: [0xf472b6, 0x22d3ee] },
+  'neon-city': { far: [0x2a0d12, 0x160709], mid: [0x1a080c, 0x0d0405], window: 0xff2436, windowAlt: 0xff7a8a, sign: [0xff2436, 0xffb3b8] },
   'toxic-plant': { far: [0x14301f, 0x0a1a10], mid: [0x0e2416, 0x071409], window: 0xa3e635, windowAlt: 0x4ade80, sign: [0x4ade80, 0xa3e635] },
   'scorched-desert': { far: [0x3a1f0e, 0x1f1006], mid: [0x291508, 0x170b04], window: 0xfbbf24, windowAlt: 0xf59e0b, sign: [0xfb923c, 0xfbbf24] },
-  'frost-lab': { far: [0x16325c, 0x0b1a30], mid: [0x102640, 0x081426], window: 0xbae6fd, windowAlt: 0x60a5fa, sign: [0x60a5fa, 0xbae6fd] },
+  'frost-lab': { far: [0x2a0d12, 0x160709], mid: [0x1a080c, 0x0d0405], window: 0xff7a8a, windowAlt: 0xff2436, sign: [0xff2436, 0xffb3b8] },
   'sky-fortress': { far: [0x401a33, 0x200a18], mid: [0x2a1122, 0x170812], window: 0xf9a8d4, windowAlt: 0xf472b6, sign: [0xf472b6, 0xf9a8d4] },
 }
 const BW = 512, BH = 224

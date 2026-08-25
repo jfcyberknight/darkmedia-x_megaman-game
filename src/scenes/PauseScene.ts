@@ -39,9 +39,9 @@ export class PauseScene extends Phaser.Scene {
       .setStrokeStyle(1.5, 0x3a4358, 1).setDepth(1)
 
     const title = this.add.text(width / 2, height / 2 - 60, 'PAUSE', {
-      fontSize: '16px', color: '#9df2ff', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 4,
+      fontSize: '16px', color: '#ffb3b8', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 4,
     }).setOrigin(0.5).setDepth(2)
-    title.setShadow(0, 0, '#35e0ff', 8, true, true)
+    title.setShadow(0, 0, '#ff2436', 8, true, true)
 
     this.add.text(width / 2 - 84, height / 2 - 34, 'ARMES', {
       fontSize: '7px', color: '#5a6280', fontFamily: 'monospace', letterSpacing: 2,
@@ -91,14 +91,14 @@ export class PauseScene extends Phaser.Scene {
     // REPRENDRE : cliquable/tappable (et raccourcis clavier inchangés).
     const resumeText = this.add.text(width / 2, height / 2 + 62,
       isTouchUI() ? '▶ REPRENDRE   (◀▶ ARME · A/B ÉQUIPER · ⏸)' : '↑↓ : ARME     Z : ÉQUIPER     P : REPRENDRE', {
-      fontSize: '8px', color: isTouchUI() ? '#9df2ff' : '#5a6280',
+      fontSize: '8px', color: isTouchUI() ? '#ffb3b8' : '#5a6280',
       fontFamily: 'monospace', backgroundColor: isTouchUI() ? '#10141f' : undefined,
       padding: isTouchUI() ? { x: 6, y: 3 } : {},
     }).setOrigin(0.5).setDepth(2)
     resumeText.setInteractive({ useHandCursor: true })
     resumeText.on('pointerdown', () => this.doResume())
 
-    this.cursor = this.add.triangle(width / 2 - 72, height / 2 - 14, 0, 3, 0, 9, 7, 6, 0x9df2ff).setDepth(2)
+    this.cursor = this.add.triangle(width / 2 - 72, height / 2 - 14, 0, 3, 0, 9, 7, 6, 0xffb3b8).setDepth(2)
 
     const resume = () => this.doResume()
     this.input.keyboard!.on('keydown-P', resume)

@@ -47,7 +47,7 @@ export class StageSelectScene extends Phaser.Scene {
       fontSize: '14px', color: '#e2e8f0', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 6,
     }).setOrigin(0.5)
     header.setStroke('#0a0512', 3)
-    header.setShadow(0, 0, '#35e0ff', 6, true, true)
+    header.setShadow(0, 0, '#ff2436', 6, true, true)
 
     // Layout cards in one row, centered
     const total = STAGES.length
@@ -91,7 +91,7 @@ export class StageSelectScene extends Phaser.Scene {
     this.nameText = this.add.text(width / 2, height * 0.72, STAGES[this.selected].name, {
       fontSize: '11px', color: '#e2e8f0', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 6,
     }).setOrigin(0.5)
-    this.nameText.setShadow(0, 0, '#35e0ff', 6, true, true)
+    this.nameText.setShadow(0, 0, '#ff2436', 6, true, true)
 
     this.descText = this.add.text(width / 2, height * 0.72 + 16, '', {
       fontSize: '8px', color: '#8b93a8', fontFamily: 'monospace', fontStyle: 'italic',

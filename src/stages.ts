@@ -17,7 +17,7 @@ export const STAGES: StageDef[] = [
     name: 'NEON CITY',
     skyTop: 0x2b1e4e, skyBottom: 0x0d0e15,
     farColor: 0x241d3f, midColor: 0x191530,
-    accent: 0x34d2ee,
+    accent: 0xff2436,
   },
   {
     id: 'toxic-plant',
@@ -38,7 +38,7 @@ export const STAGES: StageDef[] = [
     name: 'FROST LAB',
     skyTop: 0x14325e, skyBottom: 0x071222,
     farColor: 0x102540, midColor: 0x0a1a2e,
-    accent: 0x93c5fd,
+    accent: 0xff7a8a,
   },
   {
     id: 'sky-fortress',

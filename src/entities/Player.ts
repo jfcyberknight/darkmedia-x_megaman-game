@@ -239,10 +239,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (level >= 2) {
       const cycle = this.powerUp
         ? [0xff6b5e, 0xffd166, 0xffffff]
-        : [0xffffff, 0xffd166, 0x66f0ff]
+        : [0xffffff, 0xffd166, 0xff6b5e]
       tint = cycle[Math.floor(this.scene.time.now / 90) % 3]
     } else {
-      tint = level === 1 ? 0x66f0ff : 0x35e0ff
+      tint = level === 1 ? 0xff6b5e : 0xff2436
     }
     this.chargeGlow.setTint(tint)
     this.chargeHalo.setTint(tint)

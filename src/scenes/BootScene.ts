@@ -29,7 +29,7 @@ export class BootScene extends Phaser.Scene {
       fontStyle: 'bold',
       letterSpacing: 2,
     }).setOrigin(0.5)
-    studio.setShadow(0, 0, '#35e0ff', 9, true, true)
+    studio.setShadow(0, 0, '#ff2436', 9, true, true)
 
     const presents = this.add.text(width / 2, height / 2 + 14, 'p r e s e n t s', {
       fontSize: '8px',

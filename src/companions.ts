@@ -16,8 +16,8 @@ export const COMPANIONS: CompanionDef[] = [
     id: 'orion',
     name: 'ORION',
     texture: 'comp-orion',
-    tint: 0x35e0ff,
-    bubble: 0x35e0ff,
+    tint: 0xff2436,
+    bubble: 0xff2436,
     tagline: 'Éclaireur fidèle',
     persona: 'Tu es ORION, un drone éclaireur loyal et espiègle qui accompagne BLASTER-01 dans Néon City.',
     lines: {

@@ -517,7 +517,7 @@ export class GameScene extends Phaser.Scene {
     this.hpBar.fillStyle(0x1a2030, 1).fillRoundedRect(x, y, w, h, 3)
     if (frac > 0) {
       const fw = Math.max(10, w * frac)
-      this.hpBar.fillGradientStyle(0x8df2ff, 0x35e0ff, 0x2b6bcb, 0x1d3f8f, 1)
+      this.hpBar.fillGradientStyle(0xff8a94, 0xff2436, 0xa11024, 0x6e0f16, 1)
       this.hpBar.fillRoundedRect(x, y, fw, h, 4)
       this.hpBar.fillStyle(0xffffff, 0.28).fillRoundedRect(x + 1, y + 1, Math.max(2, fw - 2), 2, 1)
     }
@@ -534,7 +534,7 @@ export class GameScene extends Phaser.Scene {
     this.weBar.fillStyle(0x0a0d16, 0.75).fillRoundedRect(x - 2, y - 2, w + 4, h + 4, 3)
     this.weBar.fillStyle(0x1a2030, 1).fillRect(x, y, w, h)
     if (frac > 0) {
-      this.weBar.fillGradientStyle(0xffc857, 0xff9a3c, 0xb87808, 0x8a5a06, 1)
+      this.weBar.fillGradientStyle(0xff8a94, 0xff2436, 0xa11024, 0x6e0f16, 1)
       this.weBar.fillRect(x, y, Math.max(2, w * frac), h)
     }
     this.weBar.fillStyle(0x0a0d16, 0.5)
@@ -598,7 +598,7 @@ export class GameScene extends Phaser.Scene {
   /** One-frame muzzle flash at the buster tip. */
   spawnMuzzleFlash(x: number, y: number, scale = 0.1, flame = false) {
     const halo = this.add.image(x, y, 'glow')
-      .setTint(flame ? 0xffb37a : 0x9df2ff).setBlendMode(Phaser.BlendModes.ADD).setScale(scale).setDepth(50)
+      .setTint(flame ? 0xffb37a : 0xffb3b8).setBlendMode(Phaser.BlendModes.ADD).setScale(scale).setDepth(50)
     const core = this.add.circle(x, y, 1.5 + scale * 8, 0xffffff).setBlendMode(Phaser.BlendModes.ADD).setDepth(51)
     this.tweens.add({
       targets: [halo, core], alpha: 0, scale: 1.9, duration: 80,
@@ -612,7 +612,7 @@ export class GameScene extends Phaser.Scene {
     // se lisait comme une barre cyan/verte sur le héros).
     const beam = this.add.image(x, y, 'glow')
       .setBlendMode(Phaser.BlendModes.ADD).setDepth(38)
-      .setTint(0x9df2ff).setScale(0.85, 1.5).setAlpha(0)
+      .setTint(0xffb3b8).setScale(0.85, 1.5).setAlpha(0)
     this.tweens.add({
       targets: beam, alpha: { from: 0.45, to: 0 }, scale: 1.3, duration: 380,
       ease: 'Cubic.Out', onComplete: () => beam.destroy(),
@@ -624,7 +624,7 @@ export class GameScene extends Phaser.Scene {
       angle: { min: 250, max: 290 },
       scale: { start: 0.09, end: 0 },
       lifespan: 540,
-      tint: [0x9df2ff, 0xffffff, 0x35e0ff],
+      tint: [0xffb3b8, 0xffffff, 0xff2436],
       blendMode: Phaser.BlendModes.ADD,
       emitting: false,
     })
@@ -632,7 +632,7 @@ export class GameScene extends Phaser.Scene {
     this.time.delayedCall(620, () => p.destroy())
 
     // Onde d'apparition circulaire.
-    const ring = this.add.circle(x, y, 4).setStrokeStyle(2, 0x9df2ff, 1)
+    const ring = this.add.circle(x, y, 4).setStrokeStyle(2, 0xffb3b8, 1)
     this.tweens.add({
       targets: ring, radius: 32, alpha: 0, duration: 400,
       ease: 'Cubic.Out', onComplete: () => ring.destroy(),
@@ -756,9 +756,9 @@ export class GameScene extends Phaser.Scene {
   private showAllTargetsDown() {
     const { width } = this.cameras.main
     const t = this.add.text(width / 2, 76, 'ALL TARGETS DOWN', {
-      fontSize: '10px', color: '#9df2ff', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 2,
+      fontSize: '10px', color: '#ffb3b8', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 2,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(300).setAlpha(0)
-    t.setShadow(0, 0, '#35e0ff', 6, true, true)
+    t.setShadow(0, 0, '#ff2436', 6, true, true)
     this.tweens.add({ targets: t, alpha: 1, duration: 350, yoyo: true, hold: 900,
       onComplete: () => t.destroy() })
   }
@@ -802,9 +802,9 @@ export class GameScene extends Phaser.Scene {
           img.setTint(0x7dfca2)
           sfx.checkpoint()
           void this.companionSay('checkpoint')
-          this.spawnCollectBurst(x, y - 8, 0x35e0ff)
+          this.spawnCollectBurst(x, y - 8, 0xff2436)
           const t = this.add.text(x, y - 34, 'CHECKPOINT', {
-            fontSize: '8px', color: '#9df2ff', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
+            fontSize: '8px', color: '#ffb3b8', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
           }).setOrigin(0.5).setDepth(120).setAlpha(0)
           this.tweens.add({ targets: t, alpha: 1, y: y - 40, duration: 500, ease: 'Cubic.Out',
             onComplete: () => this.tweens.add({ targets: t, alpha: 0, delay: 900, duration: 400, onComplete: () => t.destroy() }) })
@@ -935,7 +935,7 @@ export class GameScene extends Phaser.Scene {
     const strip = this.add.rectangle(width / 2, height - 22, width, 34, 0x05060c, 0)
       .setScrollFactor(0).setDepth(240)
     const t1 = this.add.text(width / 2, height - 32, `MISSION 01 — ${this.stage.name}`, {
-      fontSize: '8px', color: '#9df2ff', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
+      fontSize: '8px', color: '#ffb3b8', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(241).setAlpha(0)
     const t2 = this.add.text(width / 2, height - 18, 'Libérez le secteur. Détruisez le WAR MACHINE.', {
       fontSize: '8px', color: '#e2e8f0', fontFamily: 'monospace',
@@ -984,7 +984,7 @@ export class GameScene extends Phaser.Scene {
     const box = this.add.rectangle(96, height - 26, 168, 30, 0x06101c, 0.88)
       .setStrokeStyle(1.5, this.compData.bubble, 0.85)
     const tag = this.add.text(20, height - 46, this.compData.name, {
-      fontSize: '6px', color: '#9df2ff', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
+      fontSize: '6px', color: '#ffb3b8', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
     })
     const msg = this.add.text(96, height - 24, '', {
       fontSize: '8px', color: '#d5ecf8', fontFamily: 'monospace',
