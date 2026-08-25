@@ -36,6 +36,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
   private volleyShots = 3
   private invulnerable = false
   private enraged = false
+  private baseTint = 0xffffff
 
   constructor(
     scene: Phaser.Scene,
@@ -43,10 +44,12 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     y: number,
     target: { x: number; y: number },
     onHpChange: (hp: number, max: number) => void,
+    tint?: number,
   ) {
     super(scene, x, y, 'boss')
     this.target = target
     this.onHpChange = onHpChange
+    this.baseTint = tint ?? 0xffffff
 
     scene.add.existing(this)
     scene.physics.add.existing(this)
@@ -54,6 +57,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     this.body!.setSize(25, 24)
     this.body!.setOffset(9, 10)
     this.setCollideWorldBounds(true)
+    this.setTint(this.baseTint)
     this.play('boss-idle')
   }
 
@@ -64,7 +68,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
       this.enraged = true
       this.setTintFill(0xff6b5e)
       this.scene.time.delayedCall(220, () => {
-        if (this.active) this.clearTint()
+        if (this.active) this.setTint(this.baseTint)
       })
       sfx.telegraph()
       ;(this.scene as Phaser.Scene & { onBossEnraged?(): void }).onBossEnraged?.()
@@ -126,7 +130,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     this.setVelocityX(0)
     this.setTintFill(0xffffff)
     this.scene.time.delayedCall(90, () => {
-      if (this.active) this.clearTint()
+      if (this.active) this.setTint(this.baseTint)
     })
     sfx.telegraph()
   }
@@ -186,7 +190,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
 
     this.setTintFill(0xffffff)
     this.scene.time.delayedCall(60, () => {
-      if (this.active) this.clearTint()
+      if (this.active) this.setTint(this.baseTint)
       this.invulnerable = false
     })
 

@@ -19,11 +19,13 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
   private chaseSpeed = 46
   private aggroRange = 110
   private target: { x: number; y: number }
+  private baseTint = 0xffffff
 
-  constructor(scene: Phaser.Scene, x: number, y: number, target?: { x: number; y: number }) {
+  constructor(scene: Phaser.Scene, x: number, y: number, target?: { x: number; y: number }, tint?: number) {
     super(scene, x, y, 'enemy')
     this.startX = x
     this.target = target ?? { x, y }
+    this.baseTint = tint ?? 0xffffff
 
     scene.add.existing(this)
     scene.physics.add.existing(this)
@@ -32,6 +34,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
     this.body!.setOffset(4, 4)
     this.setCollideWorldBounds(true)
     this.setVelocityX(this.patrolSpeed)
+    this.setTint(this.baseTint)
     this.play('enemy-walk')
   }
 
@@ -81,10 +84,10 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
         .spawnExplosion(this.x, this.y)
       this.disableBody(true, true)
     } else {
-      // Full white hit-flash damage feedback
+      // Full white hit-flash damage feedback, puis retour à la teinte du stage.
       this.setTintFill(0xffffff)
       this.scene.time.delayedCall(70, () => {
-        if (this.active) this.clearTint()
+        if (this.active) this.setTint(this.baseTint)
       })
     }
   }

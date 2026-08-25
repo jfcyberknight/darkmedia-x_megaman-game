@@ -8,11 +8,13 @@ export class Flyer extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
   private baseY: number
   private t = Math.random() * 2000
   private target: { x: number; y: number }
+  private baseTint = 0xffffff
 
-  constructor(scene: Phaser.Scene, x: number, y: number, target: { x: number; y: number }) {
+  constructor(scene: Phaser.Scene, x: number, y: number, target: { x: number; y: number }, tint?: number) {
     super(scene, x, y, 'flyer')
     this.baseY = y
     this.target = target
+    this.baseTint = tint ?? 0xffffff
 
     scene.add.existing(this)
     scene.physics.add.existing(this)
@@ -20,6 +22,7 @@ export class Flyer extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
     ;(this.body as Phaser.Physics.Arcade.Body).allowGravity = false
     this.body!.setSize(12, 7)
     this.body!.setOffset(4, 4)
+    this.setTint(this.baseTint)
     this.play('flyer-fly')
   }
 
@@ -54,7 +57,7 @@ export class Flyer extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
     } else {
       this.setTintFill(0xffffff)
       this.scene.time.delayedCall(70, () => {
-        if (this.active) this.clearTint()
+        if (this.active) this.setTint(this.baseTint)
       })
     }
   }

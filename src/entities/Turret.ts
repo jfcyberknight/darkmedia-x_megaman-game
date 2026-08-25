@@ -8,10 +8,12 @@ export class Turret extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
   private cooldown = 1200
   private target: { x: number; y: number }
   private telegraphing = 0
+  private baseTint = 0xffffff
 
-  constructor(scene: Phaser.Scene, x: number, y: number, target: { x: number; y: number }) {
+  constructor(scene: Phaser.Scene, x: number, y: number, target: { x: number; y: number }, tint?: number) {
     super(scene, x, y, 'turret')
     this.target = target
+    this.baseTint = tint ?? 0xffffff
 
     scene.add.existing(this)
     scene.physics.add.existing(this)
@@ -21,6 +23,7 @@ export class Turret extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
     // Hitbox centrée et généreuse : l'ancien décalage (3,8) plaquait le corps
     // en bas (Y 260-270) et les balles du joueur (Y~258) passaient au-dessus.
     this.body!.setSize(16, 16)
+    this.setTint(this.baseTint)
     this.setFlipX(target.x < x)
   }
 
@@ -45,7 +48,7 @@ export class Turret extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
 
   private fire() {
     this.cooldown = 1500
-    this.clearTint()
+    this.setTint(this.baseTint) // retour à la teinte du stage après le telegraph
     sfx.turretShot()
     const sx = this.x + (this.flipX ? -10 : 10)
     const sy = this.y + 1
@@ -64,7 +67,7 @@ export class Turret extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
     } else {
       this.setTintFill(0xffffff)
       this.scene.time.delayedCall(70, () => {
-        if (this.active) this.clearTint()
+        if (this.active) this.setTint(this.baseTint)
       })
     }
   }

@@ -766,9 +766,9 @@ export class GameScene extends Phaser.Scene {
   private spawnEnemies() {
     for (const d of this.ents.enemies) {
       let enemy: StageEnemy
-      if (d.kind === 'flyer') enemy = new Flyer(this, d.x, d.y, this.player)
-      else if (d.kind === 'turret') enemy = new Turret(this, d.x, d.y, this.player)
-      else enemy = new Enemy(this, d.x, d.y, this.player)
+      if (d.kind === 'flyer') enemy = new Flyer(this, d.x, d.y, this.player, this.stage.accent)
+      else if (d.kind === 'turret') enemy = new Turret(this, d.x, d.y, this.player, this.stage.accent)
+      else enemy = new Enemy(this, d.x, d.y, this.player, this.stage.accent)
       this.enemies.add(enemy as unknown as Phaser.Physics.Arcade.Sprite)
       this.enemyCount++
     }
@@ -881,7 +881,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private spawnBoss() {
-    const boss = new Boss(this, this.ents.bossX, 262, this.player, (hp, max) => this.drawBossBar(hp, max))
+    const boss = new Boss(this, this.ents.bossX, 262, this.player, (hp, max) => this.drawBossBar(hp, max), this.stage.accent)
     this.boss = boss
     this.bossActive = true
     // Colliders sur les DEUX couches : sans `ground`, le boss tombait à
