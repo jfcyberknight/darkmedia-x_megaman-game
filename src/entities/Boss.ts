@@ -9,11 +9,21 @@ interface BossScene extends Phaser.Scene {
   spawnShockwave(x: number, y: number, dir: number): void
 }
 
+/** Ce que la séquence de destruction doit pouvoir faire clignoter sur le boss. */
+export interface BossFlashTarget {
+  x: number
+  y: number
+  active: boolean
+  setTintFill(color?: number): unknown
+  clearTint(): unknown
+}
+
 /** WAR MACHINE — walks toward the player and cycles telegraphed attacks:
  *  aimed volley, dash charge, jump slam with ground shockwaves. Enrages below 50% HP. */
 export class Boss extends Phaser.Physics.Arcade.Sprite {
   private health = 30
   private maxHealth = 30
+  private dead = false
   private target: { x: number; y: number }
   private onHpChange: (hp: number, max: number) => void
 
@@ -48,7 +58,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
   }
 
   update(delta = 16.67) {
-    if (!this.active) return
+    if (this.dead || !this.active) return
 
     if (!this.enraged && this.health <= this.maxHealth / 2) {
       this.enraged = true
@@ -186,10 +196,21 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
   }
 
   private defeat() {
-    ;(this.scene as Phaser.Scene & { bossDefeated(): void }).bossDefeated()
-    ;(this.scene as Phaser.Scene & { spawnExplosion(x: number, y: number, big?: boolean): void })
-      .spawnExplosion(this.x, this.y, true)
-    this.disableBody(true, true)
+    // Gel du boss : il reste VISIBLE pendant la séquence de destruction
+    // (explosions en chaîne -> méga-blast), puis disparaît via onDone.
+    this.dead = true
+    this.invulnerable = true
+    this.setVelocityX(0)
+    this.setVelocityY(0)
+
+    const sc = this.scene as Phaser.Scene & {
+      bossDefeated(): void
+      bossDeathSequence?(target: BossFlashTarget, onDone: () => void): void
+    }
+    sc.bossDefeated()
+    const finish = () => this.disableBody(true, true)
+    if (sc.bossDeathSequence) sc.bossDeathSequence(this, finish)
+    else finish()
     this.onHpChange(0, this.maxHealth)
   }
 

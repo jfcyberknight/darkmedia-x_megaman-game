@@ -4,7 +4,7 @@
  * Run: node scripts/generate-assets.mjs
  */
 import { PNG } from 'pngjs'
-import { writeFileSync, readFileSync, mkdirSync } from 'node:fs'
+import { writeFileSync, readFileSync, mkdirSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -129,15 +129,25 @@ function savePreview(c, file, scale = 4) {
   writeFileSync(join(previewDir, file), PNG.sync.write(png))
 }
 
-// --------------------------- palette (X spirit) ---------------------------
+// --------------------------- palette (héros noir + néon rouge) ---------------------------
 const A = {
-  hi: hex(0x8ab8ff), top: hex(0x3b7dff), mid: hex(0x2a5cd0), lo: hex(0x1c40a8), deep: hex(0x122a6e),
-  white: hex(0xeef3fc), whiteLo: hex(0xb9cbe6),
-  gem: hex(0x4de3ff), gemHi: hex(0xc8f6ff),
-  joint: hex(0x18203a), gun: hex(0x93a2bd), gunLo: hex(0x3a435c),
-  skin: hex(0xf6cfa4), skinLo: hex(0xd9a878), eye: hex(0x1c2c50),
-  boot: hex(0x2f5fd0), bootLo: hex(0x16265e),
-  outline: hex(0x10142a),
+  hi: hex(0x3b3f4a),      // reflet armure (ardoise)
+  top: hex(0x23262e),     // armure noire supérieure
+  mid: hex(0x16181e),     // armure noire
+  lo: hex(0x0d0e12),      // ombre
+  deep: hex(0x07080b),    // profond
+  white: hex(0x262932),   // plaque poitrail (ardoise sombre)
+  whiteLo: hex(0x14161b), // poitrail ombré
+  gem: hex(0xff2436),     // gemme / énergie néon rouge
+  gemHi: hex(0xffb0b8),   // gemme reflet (rose clair)
+  joint: hex(0x0d0e12),   // articulations noires
+  gun: hex(0xff2436),     // canon néon rouge
+  gunLo: hex(0x6e0f16),   // canon ombré
+  skin: hex(0xf0c9a6), skinLo: hex(0xcfa07c), // visage humain pâle
+  eye: hex(0xff2436),     // œil néon rouge
+  boot: hex(0x23262e), bootLo: hex(0x0d0e12), // bottes noires
+  armorHi: hex(0x3b3f4a), // reflet botte
+  outline: hex(0x07080b),
 }
 
 // ============================ PLAYER 22x30 x8 ============================
@@ -652,26 +662,30 @@ for (const [id, art] of Object.entries(STAGE_ART)) {
 }
 
 // ============================ LEVEL JSON PATCH (16px tiles) ============================
+// Patch appliqué à CHAQUE level-<id>.json (le jeu charge un niveau par stage).
 {
-  const levelPath = join(outDir, 'level.json')
-  const level = JSON.parse(readFileSync(levelPath, 'utf8'))
-  level.tilewidth = 16
-  level.tileheight = 16
-  for (const ts of level.tilesets) {
-    ts.tilewidth = 16
-    ts.tileheight = 16
-    ts.imagewidth = 64
-    ts.imageheight = 16
+  const levelFiles = readdirSync(outDir).filter((f) => /^level-.*\.json$/.test(f))
+  for (const name of levelFiles) {
+    const levelPath = join(outDir, name)
+    const level = JSON.parse(readFileSync(levelPath, 'utf8'))
+    level.tilewidth = 16
+    level.tileheight = 16
+    for (const ts of level.tilesets) {
+      ts.tilewidth = 16
+      ts.tileheight = 16
+      ts.imagewidth = 64
+      ts.imageheight = 16
+    }
+    // Keep the ground fill down to the last row (row 19) — but ONLY under
+    // columns that already have ground in row 18, so generated pits stay open
+    // (otherwise the player would land in the pit bottom instead of falling).
+    const ground = level.layers.find((l) => l.name === 'ground')
+    const W = level.width
+    for (let x = 0; x < W; x++) {
+      if (ground.data[18 * W + x] !== 0) ground.data[19 * W + x] = 3
+    }
+    writeFileSync(levelPath, JSON.stringify(level))
   }
-  // Keep the ground fill down to the last row (row 19) — but ONLY under
-  // columns that already have ground in row 18, so generated pits stay open
-  // (otherwise the player would land in the pit bottom instead of falling).
-  const ground = level.layers.find((l) => l.name === 'ground')
-  const W = level.width
-  for (let x = 0; x < W; x++) {
-    if (ground.data[18 * W + x] !== 0) ground.data[19 * W + x] = 3
-  }
-  writeFileSync(levelPath, JSON.stringify(level))
 }
 
 console.log('SNES-style pixel assets generated in', outDir)

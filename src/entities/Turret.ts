@@ -5,7 +5,7 @@ import { sfx } from '../audio'
 /** Static turret: fires aimed shots at the player when in range and line of height. */
 export class Turret extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
   private health = 3
-  private cooldown = 1400
+  private cooldown = 1200
   private target: { x: number; y: number }
   private telegraphing = 0
 
@@ -34,23 +34,24 @@ export class Turret extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
     this.cooldown -= delta
     const dx = this.target.x - this.x
     const dy = this.target.y - this.y
-    if (this.cooldown <= 0 && Math.abs(dx) < 112 && Math.abs(dy) < 30) {
+    // Portée et hauteur élargies : la tourelle tire aussi sur les plateformes.
+    if (this.cooldown <= 0 && Math.abs(dx) < 140 && Math.abs(dy) < 70) {
       this.setFlipX(dx < 0)
-      this.telegraphing = 320
+      this.telegraphing = 260
       this.setTint(0xff9d8a)
       sfx.telegraph()
     }
   }
 
   private fire() {
-    this.cooldown = 2100
+    this.cooldown = 1500
     this.clearTint()
     sfx.turretShot()
     const sx = this.x + (this.flipX ? -10 : 10)
     const sy = this.y + 1
     ;(this.scene as Phaser.Scene & {
       spawnEnemyBullet(x: number, y: number, tx: number, ty: number, speed?: number, tint?: number): void
-    }).spawnEnemyBullet(sx, sy, this.target.x, this.target.y, 72, 0xff5546)
+    }).spawnEnemyBullet(sx, sy, this.target.x, this.target.y, 85, 0xff5546)
   }
 
   takeDamage(amount: number) {

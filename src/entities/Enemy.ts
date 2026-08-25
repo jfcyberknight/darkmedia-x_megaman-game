@@ -15,10 +15,15 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
   private patrolDistance = 30
   private startX = 0
   private health = 2
+  // Poursuite : le marcheur fonce sur le joueur repéré à proximité.
+  private chaseSpeed = 46
+  private aggroRange = 110
+  private target: { x: number; y: number }
 
-  constructor(scene: Phaser.Scene, x: number, y: number) {
+  constructor(scene: Phaser.Scene, x: number, y: number, target?: { x: number; y: number }) {
     super(scene, x, y, 'enemy')
     this.startX = x
+    this.target = target ?? { x, y }
 
     scene.add.existing(this)
     scene.physics.add.existing(this)
@@ -31,12 +36,29 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
   }
 
   update(_delta = 16.67) {
+    if (!this.active) return
     const body = this.body as Phaser.Physics.Arcade.Body
 
-    if (this.active && body.blocked.right) {
+    // Tombé dans un trou en pourchassant : nettoyage (sinon chute infinie).
+    if (this.y > 310) {
+      ;(this.scene as Phaser.Scene & { onEnemyFell?(e: StageEnemy): void }).onEnemyFell?.(this)
+      this.disableBody(true, true)
+      return
+    }
+
+    // Poursuite : fonce sur le joueur repéré à proximité (et assez à plat).
+    const dx = this.target.x - this.x
+    if (Math.abs(dx) < this.aggroRange && Math.abs(this.target.y - this.y) < 64) {
+      this.setVelocityX(Math.sign(dx) * this.chaseSpeed)
+      this.setFlipX(dx < 0)
+      return
+    }
+
+    // Patrouille d'origine sinon.
+    if (body.blocked.right) {
       this.setVelocityX(-this.patrolSpeed)
       this.setFlipX(true)
-    } else if (this.active && body.blocked.left) {
+    } else if (body.blocked.left) {
       this.setVelocityX(this.patrolSpeed)
       this.setFlipX(false)
     }

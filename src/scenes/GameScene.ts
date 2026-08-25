@@ -103,7 +103,7 @@ export class GameScene extends Phaser.Scene {
     const comp = getCompanion(this.registry.get('companion'))
     this.load.image(comp.texture, `assets/${comp.texture}.png`)
     this.load.image('tileset', 'assets/tileset.png')
-    this.load.tilemapTiledJSON('level', 'assets/level.json')
+    this.load.tilemapTiledJSON('level', `assets/level-${this.stage.id}.json`)
     this.load.spritesheet('player', 'assets/player.png', { frameWidth: 22, frameHeight: 30 })
     this.load.spritesheet('enemy', 'assets/enemy.png', { frameWidth: 22, frameHeight: 22 })
     this.load.spritesheet('boss', 'assets/boss.png', { frameWidth: 44, frameHeight: 44 })
@@ -117,7 +117,7 @@ export class GameScene extends Phaser.Scene {
     this.load.image(`bg-far-${this.stage.id}`, `assets/bg-far-${this.stage.id}.png`)
     this.load.image(`bg-mid-${this.stage.id}`, `assets/bg-mid-${this.stage.id}.png`)
     this.load.image('haze', 'assets/haze.png')
-    this.load.json('level-entities', 'assets/level-entities.json')
+    this.load.json('level-entities', `assets/entities-${this.stage.id}.json`)
   }
 
   create() {
@@ -767,10 +767,17 @@ export class GameScene extends Phaser.Scene {
       let enemy: StageEnemy
       if (d.kind === 'flyer') enemy = new Flyer(this, d.x, d.y, this.player)
       else if (d.kind === 'turret') enemy = new Turret(this, d.x, d.y, this.player)
-      else enemy = new Enemy(this, d.x, d.y)
+      else enemy = new Enemy(this, d.x, d.y, this.player)
       this.enemies.add(enemy as unknown as Phaser.Physics.Arcade.Sprite)
       this.enemyCount++
     }
+  }
+
+  /** Un marcheur est tombé dans un trou en pourchassant : ajuster le compteur. */
+  onEnemyFell(e: StageEnemy) {
+    if (!e.active) return
+    this.enemyCount--
+    if (this.enemyCount <= 0) this.showAllTargetsDown()
   }
 
   /** Several holographic checkpoints: touching one moves the respawn point there. */
@@ -1184,15 +1191,92 @@ export class GameScene extends Phaser.Scene {
     p.takeDamage(1, bo.x < p.x ? 1 : -1)
   }
 
-  /** Called by the Boss when its HP reaches zero: drops its power core. */
+  /** Called by the Boss when its HP reaches zero: hides its HUD bar.
+   *  Le corps du boss reste visible : c'est bossDeathSequence qui l'achève. */
   bossDefeated() {
     this.bossActive = false
     this.bossBar.clear()
     this.bossName.setVisible(false)
-    sfx.bigExplode()
-    if (this.boss) {
-      this.spawnOrb(this.boss.x, this.boss.y - 10, 'core')
+  }
+
+  /**
+   * Destruction du WAR MACHINE en trois temps (~2,2 s) :
+   *  1. explosions en chaîne sur le corps, flashs blancs
+   *  2. méga-blast final : flash écran, grosse secousse, ondes de choc, débris
+   *  3. le noyau de pouvoir apparaît une fois l'onde passée
+   */
+  bossDeathSequence(
+    target: { x: number; y: number; active: boolean; setTintFill(color?: number): unknown; clearTint(): unknown },
+    onDone: () => void,
+  ) {
+    // Position figée à la mort : les explosions se placent sur le corps.
+    const bx = target.x
+    const by = target.y
+
+    let n = 0
+    const chain = this.time.addEvent({
+      delay: 150,
+      repeat: 9,
+      callback: () => {
+        n++
+        const ox = Phaser.Math.Between(-22, 22)
+        const oy = Phaser.Math.Between(-20, 16)
+        this.spawnExplosion(bx + ox, by + oy, n % 3 === 0)
+        if (n % 2 === 1) sfx.explode()
+        // Clignotement blanc du châssis pendant que ça explose.
+        if (n <= 6 && target.active) {
+          target.setTintFill(0xffffff)
+          this.time.delayedCall(70, () => { if (target.active) target.clearTint() })
+        }
+      },
+    })
+
+    // Méga-blast final.
+    this.time.delayedCall(1600, () => {
+      chain.remove()
+      if (target.active) target.clearTint()
+      sfx.bigExplode()
+      this.cameras.main.flash(300, 255, 255, 255)
+      this.cameras.main.shake(420, 0.009)
+      this.spawnExplosion(bx, by, true)
+      this.bossShockwaveRings(bx, by)
+      this.spawnDebris(bx, by)
+    })
+
+    // Le noyau apparaît une fois l'onde passée.
+    this.time.delayedCall(2150, onDone)
+  }
+
+  /** Triple anneau d'onde de choc (blanc -> ambre -> rouge). */
+  private bossShockwaveRings(x: number, y: number) {
+    const specs = [
+      { color: 0xffffff, max: 92, dur: 480, delay: 0 },
+      { color: 0xffd166, max: 66, dur: 520, delay: 90 },
+      { color: 0xff5546, max: 44, dur: 560, delay: 180 },
+    ]
+    for (const s of specs) {
+      const ring = this.add.circle(x, y, 6).setStrokeStyle(3, s.color, 1).setDepth(120)
+      this.tweens.add({
+        targets: ring, radius: s.max, alpha: 0, delay: s.delay, duration: s.dur,
+        ease: 'Cubic.Out', onComplete: () => ring.destroy(),
+      })
     }
+  }
+
+  /** Débris incandescents projetés vers le haut, retombant avec gravité. */
+  private spawnDebris(x: number, y: number) {
+    const p = this.add.particles(x, y, 'glow', {
+      speed: { min: 60, max: 170 },
+      angle: { min: 200, max: 340 },
+      gravityY: 220,
+      scale: { start: 0.14, end: 0 },
+      lifespan: { min: 500, max: 900 },
+      tint: [0xffd166, 0xff9a3c, 0xff5546, 0xffffff],
+      blendMode: Phaser.BlendModes.ADD,
+      emitting: false,
+    })
+    p.explode(34)
+    this.time.delayedCall(1000, () => p.destroy())
   }
 
   private handleBulletHitEnemy(

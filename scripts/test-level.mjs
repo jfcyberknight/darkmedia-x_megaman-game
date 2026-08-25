@@ -8,10 +8,11 @@
 import { chromium } from 'playwright'
 
 const BASE_URL = process.argv[2] || 'http://localhost:5174/'
+const STAGE = process.argv[3] || 'neon-city'
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
-const level = await (await fetch(BASE_URL + 'assets/level.json')).json()
-const ents = await (await fetch(BASE_URL + 'assets/level-entities.json')).json()
+const level = await (await fetch(BASE_URL + `assets/level-${STAGE}.json`)).json()
+const ents = await (await fetch(BASE_URL + `assets/entities-${STAGE}.json`)).json()
 const W = level.width, GT = 17, TILE = 16
 const g = level.layers.find((l) => l.name === 'ground').data
 const hasGroundCol = (tx) => { for (let y = GT - 4; y < level.height; y++) if (g[y * W + tx] !== 0) return true; return false }
