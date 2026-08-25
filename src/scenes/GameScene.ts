@@ -826,17 +826,18 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleBulletHitBoss(
-    bullet: Phaser.Types.Physics.Arcade.GameObjectWithBody,
-    boss: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+    a: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+    b: Phaser.Types.Physics.Arcade.GameObjectWithBody,
   ) {
-    const b = bullet as Bullet
-    const bo = boss as Boss
-    if (!b.active || !bo.active) return
-    if (!b.canHit(bo)) return
-    this.spawnSparks(b.x, b.y)
-    bo.takeDamage(b.damage)
-    if (b.pierce) b.markHit(bo)
-    else b.disableBody(true, true)
+    // L'ordre des arguments d'overlap n'est pas garanti : identifier la balle.
+    const bullet = a instanceof Bullet ? a : (b as Bullet)
+    const bo = (a instanceof Bullet ? b : a) as Boss
+    if (!bullet.active || !bo.active) return
+    if (!bullet.canHit(bo)) return
+    this.spawnSparks(bullet.x, bullet.y)
+    bo.takeDamage(bullet.damage)
+    if (bullet.pierce) bullet.markHit(bo)
+    else bullet.disableBody(true, true)
   }
 
   private handlePlayerHitBoss(
@@ -861,16 +862,17 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleBulletHitEnemy(
-    bullet: Phaser.Types.Physics.Arcade.GameObjectWithBody,
-    enemyObj: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+    a: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+    b: Phaser.Types.Physics.Arcade.GameObjectWithBody,
   ) {
-    const b = bullet as Bullet
-    const e = enemyObj as unknown as StageEnemy
-    if (!b.active || !e.active) return
-    if (!b.canHit(e)) return
+    // L'ordre des arguments d'overlap n'est pas garanti : identifier la balle.
+    const bullet = a instanceof Bullet ? a : (b as Bullet)
+    const e = (a instanceof Bullet ? b : a) as unknown as StageEnemy
+    if (!bullet.active || !e.active) return
+    if (!bullet.canHit(e)) return
 
-    this.spawnSparks(b.x, b.y)
-    e.takeDamage(b.damage)
+    this.spawnSparks(bullet.x, bullet.y)
+    e.takeDamage(bullet.damage)
 
     if (!e.active) {
       this.enemyCount--
@@ -878,8 +880,8 @@ export class GameScene extends Phaser.Scene {
       if (this.enemyCount <= 0) this.showAllTargetsDown()
     }
 
-    if (b.pierce) b.markHit(e)
-    else b.disableBody(true, true)
+    if (bullet.pierce) bullet.markHit(e)
+    else bullet.disableBody(true, true)
   }
 
   private handlePlayerHitEnemy(
