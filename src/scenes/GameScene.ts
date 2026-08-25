@@ -105,14 +105,14 @@ export class GameScene extends Phaser.Scene {
     this.load.image('tileset', 'assets/tileset.png')
     this.load.tilemapTiledJSON('level', `assets/level-${this.stage.id}.json`)
     this.load.spritesheet('player', 'assets/player.png', { frameWidth: 22, frameHeight: 30 })
-    this.load.spritesheet('enemy', 'assets/enemy.png', { frameWidth: 22, frameHeight: 22 })
-    this.load.spritesheet('boss', 'assets/boss.png', { frameWidth: 44, frameHeight: 44 })
+    this.load.spritesheet('enemy', `assets/enemy-${this.stage.id}.png`, { frameWidth: 22, frameHeight: 22 })
+    this.load.spritesheet('boss', `assets/boss-${this.stage.id}.png`, { frameWidth: 44, frameHeight: 44 })
     this.load.image('bullet', 'assets/bullet.png')
     this.load.image('bullet-mid', 'assets/bullet-mid.png')
     this.load.image('bullet-big', 'assets/bullet-big.png')
     this.load.image('orb', 'assets/orb.png')
-    this.load.spritesheet('flyer', 'assets/flyer.png', { frameWidth: 20, frameHeight: 14 })
-    this.load.image('turret', 'assets/turret.png')
+    this.load.spritesheet('flyer', `assets/flyer-${this.stage.id}.png`, { frameWidth: 20, frameHeight: 14 })
+    this.load.image('turret', `assets/turret-${this.stage.id}.png`)
     this.load.image('checkpoint', 'assets/checkpoint.png')
     this.load.image(`bg-far-${this.stage.id}`, `assets/bg-far-${this.stage.id}.png`)
     this.load.image(`bg-mid-${this.stage.id}`, `assets/bg-mid-${this.stage.id}.png`)
@@ -432,30 +432,30 @@ export class GameScene extends Phaser.Scene {
         repeat: -1,
       })
     }
-    if (!this.anims.exists('enemy-walk')) {
-      this.anims.create({
-        key: 'enemy-walk',
-        frames: this.anims.generateFrameNumbers('enemy', { start: 0, end: 1 }),
-        frameRate: 6,
-        repeat: -1,
-      })
-    }
-    if (!this.anims.exists('flyer-fly')) {
-      this.anims.create({
-        key: 'flyer-fly',
-        frames: this.anims.generateFrameNumbers('flyer', { start: 0, end: 1 }),
-        frameRate: 10,
-        repeat: -1,
-      })
-    }
-    if (!this.anims.exists('boss-idle')) {
-      this.anims.create({
-        key: 'boss-idle',
-        frames: this.anims.generateFrameNumbers('boss', { start: 0, end: 1 }),
-        frameRate: 4,
-        repeat: -1,
-      })
-    }
+    // Anims d'ennemis recréées à chaque stage : la texture 'enemy'/'flyer'/'boss'
+    // change selon le stage, il faut donc régénérer les frames (sinon les anims
+    // gardaient les frames de la première texture chargée).
+    this.anims.remove('enemy-walk')
+    this.anims.create({
+      key: 'enemy-walk',
+      frames: this.anims.generateFrameNumbers('enemy', { start: 0, end: 1 }),
+      frameRate: 6,
+      repeat: -1,
+    })
+    this.anims.remove('flyer-fly')
+    this.anims.create({
+      key: 'flyer-fly',
+      frames: this.anims.generateFrameNumbers('flyer', { start: 0, end: 1 }),
+      frameRate: 10,
+      repeat: -1,
+    })
+    this.anims.remove('boss-idle')
+    this.anims.create({
+      key: 'boss-idle',
+      frames: this.anims.generateFrameNumbers('boss', { start: 0, end: 1 }),
+      frameRate: 4,
+      repeat: -1,
+    })
   }
 
   private createTilemap() {
@@ -766,9 +766,9 @@ export class GameScene extends Phaser.Scene {
   private spawnEnemies() {
     for (const d of this.ents.enemies) {
       let enemy: StageEnemy
-      if (d.kind === 'flyer') enemy = new Flyer(this, d.x, d.y, this.player, this.stage.accent)
-      else if (d.kind === 'turret') enemy = new Turret(this, d.x, d.y, this.player, this.stage.accent)
-      else enemy = new Enemy(this, d.x, d.y, this.player, this.stage.accent)
+      if (d.kind === 'flyer') enemy = new Flyer(this, d.x, d.y, this.player)
+      else if (d.kind === 'turret') enemy = new Turret(this, d.x, d.y, this.player)
+      else enemy = new Enemy(this, d.x, d.y, this.player)
       this.enemies.add(enemy as unknown as Phaser.Physics.Arcade.Sprite)
       this.enemyCount++
     }
@@ -881,7 +881,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private spawnBoss() {
-    const boss = new Boss(this, this.ents.bossX, 262, this.player, (hp, max) => this.drawBossBar(hp, max), this.stage.accent)
+    const boss = new Boss(this, this.ents.bossX, 262, this.player, (hp, max) => this.drawBossBar(hp, max))
     this.boss = boss
     this.bossActive = true
     // Colliders sur les DEUX couches : sans `ground`, le boss tombait à

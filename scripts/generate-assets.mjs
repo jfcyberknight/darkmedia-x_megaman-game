@@ -281,7 +281,7 @@ save(playerSheet, 'player.png')
 savePreview(playerSheet, 'player.png', 5)
 
 // ============================ ENEMY 22x22 x2 ============================
-const E = {
+let E = {
   hi: hex(0xffe9a8), top: hex(0xffd34d), mid: hex(0xe0a825), lo: hex(0xb87808),
   dark: hex(0x5e3c04), eyeW: hex(0xffffff), eyeB: hex(0x1c2c50),
   outline: hex(0x3a2604),
@@ -322,7 +322,7 @@ save(enemySheet, 'enemy.png')
 savePreview(enemySheet, 'enemy.png', 6)
 
 // ============================ BOSS 44x44 x2 ============================
-const B = {
+let B = {
   hi: hex(0xa9c2e8), top: hex(0x6f86b8), mid: hex(0x46557a), lo: hex(0x27304a), deep: hex(0x161c2c),
   eye: hex(0xff4d4d), eyeHi: hex(0xffe1d0), amber: hex(0xffc857), orange: hex(0xff9a3c),
   outline: hex(0x0c101c),
@@ -393,7 +393,7 @@ function flyerFrame(phase) {
 save(stitch([flyerFrame(0), flyerFrame(1)]), 'flyer.png')
 
 // ============================ TURRET 18x20 ============================
-{
+function turretFrame() {
   const c = C(18, 20)
   rect(c, 3, 16, 15, 19, B.lo)
   rect(c, 4, 15, 14, 16, B.mid)
@@ -403,7 +403,38 @@ save(stitch([flyerFrame(0), flyerFrame(1)]), 'flyer.png')
   px(c, 16, 11, hex(0xff6b5e))
   px(c, 9, 8, B.amber)
   outline(c, B.outline)
-  save(c, 'turret.png')
+  return c
+}
+save(turretFrame(), 'turret.png')
+
+// ---------- variantes d'ennemis PAR STAGE (palette de la couleur du stage) ----------
+const STAGE_ACCENTS = {
+  'neon-city': 0xff2436, 'toxic-plant': 0x4ade80, 'scorched-desert': 0xfb923c,
+  'frost-lab': 0x93c5fd, 'sky-fortress': 0xf472b6,
+}
+const blend = (a, b, t) => {
+  const ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255
+  const br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255
+  return (((ar + (br - ar) * t) | 0) << 16) | (((ag + (bg - ag) * t) | 0) << 8) | ((ab + (bb - ab) * t) | 0)
+}
+const enemyPalette = (acc) => ({
+  hi: hex(blend(acc, 0xffffff, 0.5)), top: hex(blend(acc, 0xffffff, 0.18)), mid: hex(acc),
+  lo: hex(blend(acc, 0x000000, 0.3)), dark: hex(blend(acc, 0x000000, 0.55)),
+  eyeW: hex(0xffffff), eyeB: hex(0x0d0e12), outline: hex(blend(acc, 0x000000, 0.82)),
+})
+const bossPalette = (acc) => ({
+  hi: hex(blend(acc, 0xffffff, 0.55)), top: hex(blend(acc, 0xffffff, 0.2)), mid: hex(acc),
+  lo: hex(blend(acc, 0x000000, 0.35)), deep: hex(blend(acc, 0x000000, 0.6)),
+  eye: hex(0xff4d4d), eyeHi: hex(0xffe1d0), amber: hex(0xffc857), orange: hex(0xff9a3c),
+  outline: hex(blend(acc, 0x000000, 0.85)),
+})
+for (const [id, acc] of Object.entries(STAGE_ACCENTS)) {
+  E = enemyPalette(acc)
+  B = bossPalette(acc)
+  save(stitch([enemyFrame(0), enemyFrame(1)]), `enemy-${id}.png`)
+  save(stitch([bossFrame(false), bossFrame(true)]), `boss-${id}.png`)
+  save(stitch([flyerFrame(0), flyerFrame(1)]), `flyer-${id}.png`)
+  save(turretFrame(), `turret-${id}.png`)
 }
 
 // ============================ CHECKPOINT 10x28 ============================
