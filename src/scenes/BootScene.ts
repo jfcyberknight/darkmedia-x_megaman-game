@@ -9,9 +9,10 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Shared UI textures used across menus and gameplay
+    // Shared textures used across scenes (the intro shows the hero before GameScene loads)
     this.load.image('vignette', 'assets/vignette.png')
     this.load.image('glow', 'assets/glow.png')
+    this.load.spritesheet('player', 'assets/player.png', { frameWidth: 22, frameHeight: 30 })
   }
 
   create() {

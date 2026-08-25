@@ -72,6 +72,13 @@ try {
   if (!inGame) process.exit(1)
   await sleep(1000)
 
+  // Physique : clamp delta actif + pas fixe désactivé
+  const phys = await page.evaluate(() => {
+    const w = window.__game.scene.getScene('GameScene').physics.world
+    return { clamp: w.update.toString().includes('33.4'), fixedStep: w.fixedStep }
+  })
+  console.log(`Physique: clamp=${phys.clamp ? 'actif' : 'ABSENT'}, fixedStep=${phys.fixedStep} -> ${phys.clamp && !phys.fixedStep ? 'OK' : 'FAIL'}`)
+
   // FPS mesuré
   const fps = await page.evaluate(
     () =>
@@ -123,38 +130,37 @@ try {
   await sleep(900)
   await page.evaluate(() => {
     const s = window.__game.scene.getScene('GameScene')
-    window.__diagSeen = new Set(s.bullets.getChildren().filter((b) => b.active))
+    s.bullets.getChildren().forEach((b) => { if (b.active) b.disableBody(true, true) }) // mesure propre
+    window.__diagSeen = new Set()
     s.player.setPosition(340, 250)
     s.player.body.reset(340, 250)
   })
   await tap('.tc-dir:nth-child(1)') // face à gauche
   await tap('.tc-fire')
-  await sleep(1200)
-  const persist = await page.evaluate(() => {
+  await sleep(600)
+  const fly = await page.evaluate(() => {
     const s = window.__game.scene.getScene('GameScene')
     const b = s.bullets.getChildren().find((x) => x.active && !window.__diagSeen.has(x))
     return b ? { alive: true, dist: Math.round(Math.abs(b.x - b.spawnX)) } : { alive: false, dist: 0 }
   })
-  console.log(`Portée: vivante à +1,2 s -> ${persist.alive ? 'OK' : 'FAIL'} (dist=${persist.dist}px)`)
-  if (!persist.alive || THROTTLE > 1) {
-    const dbg = await page.evaluate(() => {
-      const s = window.__game.scene.getScene('GameScene')
-      return {
-        actifs: s.bullets.getChildren().filter((b) => b.active)
-          .map((b) => ({ x: Math.round(b.x), sx: Math.round(b.spawnX) })),
-        seen: window.__diagSeen ? window.__diagSeen.size : -1,
-        px: Math.round(s.player.x),
-      }
-    })
-    console.log(`  DEBUG balles actives: ${JSON.stringify(dbg.actifs)} vues=${dbg.seen} joueur@${dbg.px}`)
-  }
+  console.log(`Vol: dist=${fly.dist}px à +0,6 s -> ${fly.alive && fly.dist >= 50 ? 'OK' : 'FAIL'}${fly.alive ? '' : ' (obstacle décor)'}`)
   if (THROTTLE > 1) {
-    await sleep(1000)
-    const persist2 = await page.evaluate(() => {
-      const s = window.__game.scene.getScene('GameScene')
-      return s.bullets.getChildren().some((x) => x.active && !window.__diagSeen.has(x))
-    })
-    console.log(`Portée (throttlé): vivante à +2,2 s -> ${persist2 ? 'OK' : 'FAIL (disparue en plein vol !)'}`)
+    // Discriminant du bug signalé : l'ancienne limite temporelle (1400 ms
+    // réel) tuait la balle après ~50-90 px à bas FPS. La limite en distance
+    // doit la laisser parcourir ~200 px quel que soit le framerate.
+    let maxDist = 0
+    const tEnd = Date.now() + 6000
+    while (Date.now() - tEnd < 6000) {
+      const r = await page.evaluate(() => {
+        const s = window.__game.scene.getScene('GameScene')
+        const b = s.bullets.getChildren().find((x) => x.active && !window.__diagSeen.has(x))
+        return b ? Math.round(Math.abs(b.x - b.spawnX)) : -1
+      })
+      if (r < 0) break // balle terminée (mur ou portée)
+      if (r > maxDist) maxDist = r
+      await sleep(150)
+    }
+    console.log(`Portée (throttlé): distance parcourue ${maxDist}px -> ${maxDist >= 150 ? 'OK' : 'FAIL (disparue en plein vol !)'}`)
   }
 
   // --- 3. Dégât de contact : téléport SUR l'ennemi (overlap garanti quel
@@ -187,6 +193,7 @@ try {
     s.player.body.reset(e.x - 36, e.y - 2)
     return null
   })
+  await tap('.tc-dir:nth-child(2)') // face à droite (vers l'ennemi)
   for (let i = 0; i < 4; i++) {
     await tap('.tc-fire')
     await sleep(450)

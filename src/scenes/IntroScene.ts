@@ -118,8 +118,10 @@ export class IntroScene extends Phaser.Scene {
       sfx.telegraph()
     }
     if (slide.beat === 'hero') {
-      this.tweens.add({ targets: this.hero, alpha: 1, duration: 500 })
+      // stop the pulse tweens first, or they keep overriding the fade-out
+      this.eyes.forEach(e => this.tweens.killTweensOf(e))
       this.eyes.forEach(e => this.tweens.add({ targets: e, alpha: 0, duration: 600 }))
+      this.tweens.add({ targets: this.hero, alpha: 1, duration: 500 })
       sfx.checkpoint()
     }
     if (slide.beat === 'mission') {
