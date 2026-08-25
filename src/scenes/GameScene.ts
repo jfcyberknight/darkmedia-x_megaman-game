@@ -244,7 +244,7 @@ export class GameScene extends Phaser.Scene {
     // Boss HP bar must exist before the boss spawns (spawn draws it once).
     // Top-right placement so it never covers the player.
     this.bossBar = this.add.graphics().setScrollFactor(0).setDepth(200)
-    this.bossName = this.add.text(536, 4, 'WAR MACHINE', {
+    this.bossName = this.add.text(536, 4, this.stage.boss, {
       fontSize: '8px', color: '#ff9d9d', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
     }).setScrollFactor(0).setDepth(200).setVisible(false)
     this.spawnBoss()
@@ -732,7 +732,7 @@ export class GameScene extends Phaser.Scene {
     this.spawnExplosion(x, y, false)
 
     const { width } = this.cameras.main
-    const t = this.add.text(width / 2, 58, 'WAR MACHINE POWER ABSORBED', {
+    const t = this.add.text(width / 2, 58, `${this.stage.boss} POWER ABSORBED`, {
       fontSize: '12px', color: '#ffb3a8', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(300).setAlpha(0).setScale(0.8)
     t.setStroke('#1a0505', 3)
@@ -937,7 +937,7 @@ export class GameScene extends Phaser.Scene {
     const t1 = this.add.text(width / 2, height - 32, `MISSION 01 — ${this.stage.name}`, {
       fontSize: '8px', color: '#ffb3b8', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(241).setAlpha(0)
-    const t2 = this.add.text(width / 2, height - 18, 'Libérez le secteur. Détruisez le WAR MACHINE.', {
+    const t2 = this.add.text(width / 2, height - 18, `Libérez le secteur. Détruisez le ${this.stage.boss}.`, {
       fontSize: '8px', color: '#e2e8f0', fontFamily: 'monospace',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(241).setAlpha(0)
     this.tweens.add({ targets: strip, fillAlpha: 0.78, duration: 350 })
@@ -967,7 +967,7 @@ export class GameScene extends Phaser.Scene {
       : kind === 'clear' ? 'Tous les ennemis du secteur sont détruits. Commente.'
       : kind === 'lowhp' ? `Les points de vie de BLASTER-01 sont à ${hpPct}%. Alerte-le.`
       : kind === 'checkpoint' ? 'BLASTER-01 vient d’activer un checkpoint. Commente.'
-      : 'BLASTER-01 vient d’absorber le pouvoir du WAR MACHINE. Réagis.',
+      : `BLASTER-01 vient d’absorber le pouvoir du ${this.stage.boss}. Réagis.`,
       70, 7000)
     const pool = this.compData.lines[kind] ?? this.compData.lines.start
     const line = (reply && reply !== this.lastTaunt ? reply : pool[Math.floor(Math.random() * pool.length)])
@@ -1019,7 +1019,7 @@ export class GameScene extends Phaser.Scene {
       fontSize: '20px', color: '#ff3524', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 6,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(241).setAlpha(0)
     warn.setShadow(0, 0, '#ff3524', 10, true, true)
-    const name = this.add.text(width / 2, height / 2 + 8, 'WAR MACHINE — GARDIEN CORROMPU', {
+    const name = this.add.text(width / 2, height / 2 + 8, `${this.stage.boss} — GARDIEN CORROMPU`, {
       fontSize: '9px', color: '#ffb3a8', fontFamily: 'monospace', letterSpacing: 1,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(241).setAlpha(0)
     this.tweens.add({ targets: warn, alpha: 1, duration: 200, yoyo: true, repeat: 3 })
@@ -1051,7 +1051,7 @@ export class GameScene extends Phaser.Scene {
         ? `Ton intégrité tombe à ${hpPct}%. Une phrase de rage.`
         : `Combat en cours — ton intégrité ${hpPct}%, celle de BLASTER-01 ${playerHp}%. Une moquerie.`
     const text = (await askAI(
-      "Tu es WAR MACHINE, une IA de guerre corrompue de Néon City. Tu affrontes BLASTER-01, le dernier gardien loyal. Réponds par UNE seule phrase courte (12 mots maximum), froide et moqueuse. Sans guillemets, sans préfixe, sans didascalie.",
+      `Tu es ${this.stage.boss}, une IA de guerre corrompue gardienne de ce secteur. Tu affrontes BLASTER-01, le dernier gardien loyal. Réponds par UNE seule phrase courte (12 mots maximum), froide et moqueuse. Sans guillemets, sans préfixe, sans didascalie.`,
       userLine, 70, 7000)) ?? ''
     if (text.length > 3 && text !== this.lastTaunt) {
       this.lastTaunt = text
@@ -1089,7 +1089,7 @@ export class GameScene extends Phaser.Scene {
     const cont = this.add.container(0, 0).setScrollFactor(0).setDepth(230)
     const box = this.add.rectangle(width / 2, 66, width - 24, 30, 0x12060a, 0.88)
       .setStrokeStyle(1.5, 0xff5546, 0.9)
-    const tag = this.add.text(width / 2 - (width - 24) / 2 + 8, 54, 'WAR MACHINE', {
+    const tag = this.add.text(width / 2 - (width - 24) / 2 + 8, 54, this.stage.boss, {
       fontSize: '6px', color: '#ff9d8a', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
     })
     const msg = this.add.text(width / 2, 69, '', {

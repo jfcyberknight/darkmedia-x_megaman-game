@@ -327,48 +327,67 @@ let B = {
   eye: hex(0xff4d4d), eyeHi: hex(0xffe1d0), amber: hex(0xffc857), orange: hex(0xff9a3c),
   outline: hex(0x0c101c),
 }
-function bossFrame(pulse) {
+// ----- 5 boss distincts (un par stage) : silhouettes différentes, palette du stage -----
+function bossHumanoid(pulse) { // neon-city : humanoïde arme-lourde
   const c = C(44, 44)
-  // treads
-  rect(c, 10, 38, 19, 42, B.deep)
-  rect(c, 25, 38, 34, 42, B.deep)
-  rect(c, 12, 37, 17, 38, B.mid)
-  rect(c, 27, 37, 32, 38, B.mid)
-  // torso
-  rect(c, 12, 28, 32, 38, B.mid)
-  rect(c, 12, 28, 16, 38, B.top)
-  rect(c, 28, 30, 32, 38, B.lo)
-  // reactor core
-  const r = pulse ? 4 : 3
-  ell(c, 22, 33, r, r, hex(0xfff6d8))
-  // hull dome
-  ell(c, 22, 19, 16, 12, B.mid)
-  ell(c, 22, 18, 15, 11, B.top)
-  ell(c, 15, 13, 6, 4, B.hi)
-  // orange accent stripes
-  seg(c, 10, 27, 17, 24, B.orange)
-  seg(c, 34, 24, 27, 27, B.orange)
-  // top plate + lights
-  rect(c, 15, 5, 29, 9, B.lo)
-  rect(c, 16, 4, 28, 5, B.mid)
-  for (const lx of [18, 22, 26]) px(c, lx, 6, B.amber)
-  // eye visor
-  rect(c, 10, 18, 34, 23, hex(0x12060a))
-  rect(c, 13, 20, 31, 21, pulse ? B.eye : hex(0xff6b5e))
-  rect(c, 17, 20, 25, 20, B.eyeHi)
-  // shoulder pods
-  ell(c, 6, 19, 4, 5, B.mid)
-  ell(c, 6, 19, 2.5, 3, B.lo)
-  px(c, 6, 19, hex(0xff6b5e))
-  ell(c, 38, 19, 4, 5, B.mid)
-  ell(c, 38, 19, 2.5, 3, B.lo)
-  px(c, 38, 19, hex(0xff6b5e))
-  seg(c, 5, 15, 2, 10, B.lo)
-  seg(c, 39, 15, 42, 10, B.lo)
-  outline(c, B.outline)
-  return c
+  rect(c, 15, 36, 20, 42, B.deep); rect(c, 24, 36, 29, 42, B.deep)
+  rect(c, 15, 24, 29, 38, B.mid); rect(c, 15, 24, 19, 38, B.top); rect(c, 26, 28, 29, 38, B.lo)
+  ell(c, 22, 31, pulse ? 3 : 2, pulse ? 3 : 2, hex(0xfff6d8))
+  rect(c, 17, 9, 27, 22, B.top); rect(c, 17, 9, 25, 12, B.hi)
+  rect(c, 18, 15, 26, 19, hex(0x12060a)); rect(c, 19, 16, 25, 17, pulse ? B.eye : hex(0xff6b5e)); rect(c, 22, 16, 24, 17, B.eyeHi)
+  rect(c, 30, 26, 39, 34, B.mid); rect(c, 34, 24, 39, 36, B.lo); ell(c, 36, 30, 3, 4, B.top); px(c, 39, 30, hex(0xff6b5e))
+  rect(c, 12, 26, 15, 33, B.lo)
+  px(c, 20, 4, B.amber); px(c, 20, 5, B.amber); px(c, 20, 6, B.lo)
+  outline(c, B.outline); return c
 }
-const bossSheet = stitch([bossFrame(false), bossFrame(true)])
+function bossBlob(pulse) { // toxic-plant : masse épineuse
+  const c = C(44, 44)
+  ell(c, 22, 30, 16, 12, B.mid); ell(c, 22, 28, 15, 10, B.top); ell(c, 15, 25, 6, 5, B.hi)
+  rect(c, 12, 38, 32, 42, B.lo); rect(c, 8, 40, 36, 42, B.deep)
+  for (const [sx, sy] of [[10, 18], [16, 12], [22, 9], [28, 12], [34, 18]]) { px(c, sx, sy, B.amber); px(c, sx, sy + 1, B.lo) }
+  rect(c, 16, 32, 28, 35, hex(0x0d0702)); px(c, 18, 32, 0xffffff); px(c, 26, 32, 0xffffff)
+  px(c, 16, 22, pulse ? B.eye : hex(0xff6b5e)); px(c, 28, 22, pulse ? B.eye : hex(0xff6b5e))
+  outline(c, B.outline); return c
+}
+function bossQuad(pulse) { // scorched-desert : quadrupède à foreuse
+  const c = C(44, 44)
+  rect(c, 8, 24, 36, 36, B.mid); rect(c, 8, 24, 14, 36, B.top); rect(c, 30, 28, 36, 36, B.lo)
+  ell(c, 7, 30, 3, 6, B.lo); px(c, 10, 30, B.amber); px(c, 11, 30, B.amber); px(c, 12, 30, B.amber)
+  for (const lx of [10, 18, 26, 34]) rect(c, lx, 36, lx + 4, 42, B.deep)
+  ell(c, 22, 20, 8, 6, B.top); rect(c, 18, 17, 26, 23, hex(0x12060a)); rect(c, 19, 18, 25, 19, pulse ? B.eye : hex(0xff6b5e)); rect(c, 22, 18, 24, 19, B.eyeHi)
+  px(c, 32, 18, B.amber); px(c, 34, 16, hex(0xff9a3c)); px(c, 36, 14, hex(0xff9a3c))
+  outline(c, B.outline); return c
+}
+function bossGolem(pulse) { // frost-lab : golem de glace à cristaux
+  const c = C(44, 44)
+  rect(c, 12, 22, 32, 38, B.mid); rect(c, 12, 22, 18, 38, B.top); rect(c, 28, 28, 32, 38, B.lo)
+  rect(c, 15, 38, 20, 42, B.deep); rect(c, 24, 38, 29, 42, B.deep)
+  rect(c, 16, 8, 28, 22, B.top); rect(c, 18, 6, 26, 8, B.hi)
+  rect(c, 18, 14, 26, 17, hex(0x0a0d12)); rect(c, 20, 14, 24, 17, pulse ? B.eye : hex(0xff6b5e))
+  for (const sx of [10, 34]) { px(c, sx, 16, B.hi); px(c, sx, 17, B.top); px(c, sx, 18, B.lo); px(c, sx, 19, B.lo) }
+  ell(c, 22, 30, pulse ? 3 : 2, pulse ? 3 : 2, hex(0xfff6d8))
+  outline(c, B.outline); return c
+}
+function bossWinged(pulse) { // sky-fortress : mech ailé
+  const c = C(44, 44)
+  for (const side of [-1, 1]) for (let i = 0; i < 4; i++) rect(c, 22 + side * (i + 2), 14 + i * 2, 22 + side * (i + 3), 18 + i * 2, B.lo)
+  ell(c, 22, 24, 9, 12, B.mid); ell(c, 22, 22, 8, 10, B.top); ell(c, 17, 16, 3, 3, B.hi)
+  rect(c, 15, 6, 29, 7, B.amber)
+  rect(c, 17, 20, 27, 26, hex(0x12060a)); rect(c, 18, 21, 26, 23, pulse ? B.eye : hex(0xff6b5e))
+  px(c, 20, 38, B.orange); px(c, 24, 40, B.orange); px(c, 28, 38, hex(0xff9a3c))
+  outline(c, B.outline); return c
+}
+const BOSS_KINDS = { 'neon-city': 'humanoid', 'toxic-plant': 'blob', 'scorched-desert': 'quad', 'frost-lab': 'golem', 'sky-fortress': 'winged' }
+function bossFrame(pulse, kind = 'humanoid') {
+  switch (kind) {
+    case 'quad': return bossQuad(pulse)
+    case 'golem': return bossGolem(pulse)
+    case 'winged': return bossWinged(pulse)
+    case 'blob': return bossBlob(pulse)
+    default: return bossHumanoid(pulse)
+  }
+}
+const bossSheet = stitch([bossFrame(false, 'humanoid'), bossFrame(true, 'humanoid')])
 save(bossSheet, 'boss.png')
 savePreview(bossSheet, 'boss.png', 6)
 
@@ -432,7 +451,7 @@ for (const [id, acc] of Object.entries(STAGE_ACCENTS)) {
   E = enemyPalette(acc)
   B = bossPalette(acc)
   save(stitch([enemyFrame(0), enemyFrame(1)]), `enemy-${id}.png`)
-  save(stitch([bossFrame(false), bossFrame(true)]), `boss-${id}.png`)
+  save(stitch([bossFrame(false, BOSS_KINDS[id]), bossFrame(true, BOSS_KINDS[id])]), `boss-${id}.png`)
   save(stitch([flyerFrame(0), flyerFrame(1)]), `flyer-${id}.png`)
   save(turretFrame(), `turret-${id}.png`)
 }
