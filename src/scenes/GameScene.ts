@@ -268,7 +268,9 @@ export class GameScene extends Phaser.Scene {
       return true
     })
 
-    if (this.bossActive && this.boss?.active) {
+    if (this.bossActive && this.bossIntroDone && this.boss?.active) {
+      // Le boss n'entre en action qu'après son écran WARNING (x>660) :
+      // sinon il marche vers le joueur dès le spawn et rencontre le niveau.
       this.boss.update(delta)
       this.drawBossBar()
     }
