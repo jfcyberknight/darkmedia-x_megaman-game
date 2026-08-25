@@ -40,14 +40,10 @@ installTouchControls()
 // l'input Phaser, donc on écoute aussi au niveau document.
 installAudioGestures()
 
-// Clamp du delta physique à ~33 ms (30 fps plancher) : au-delà, le jeu ralentit
-// plutôt que de laisser les corps sauter à travers les tuiles (tunneling).
-// Différé à 'ready' : le plugin physique n'existe pas encore à la construction.
-game.events.once(Phaser.Core.Events.READY, () => {
-  const world = (game as unknown as { physics: Phaser.Physics.Arcade.ArcadePhysics }).physics.world
-  const worldUpdate = world.update.bind(world)
-  world.update = (time: number, delta: number) => worldUpdate(time, Math.min(delta, 33.4))
-})
+// Le clamp du delta physique est installé dans GameScene.create() (garde
+// statique) : `physics` s'injecte par scène dans Phaser 3, il n'existe pas
+// de `game.physics` — un patch au niveau Game plante au boot.
+
 // Exposed for headless debugging probes only.
 ;(window as unknown as { __game?: Phaser.Game; __track?: () => string | null }).__game = game
 ;(window as unknown as { __track?: () => string | null }).__track = getTrack

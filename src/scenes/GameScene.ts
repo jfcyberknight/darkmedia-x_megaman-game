@@ -84,6 +84,15 @@ export class GameScene extends Phaser.Scene {
   create() {
     this.createAnimations()
 
+    // Clamp du delta physique à ~33 ms (plancher 30 fps) : au-delà, le jeu
+    // ralentit au lieu de laisser les corps traverser les tuiles (tunneling).
+    const world = this.physics.world
+    if (!(world as unknown as { _deltaClamped?: boolean })._deltaClamped) {
+      ;(world as unknown as { _deltaClamped?: boolean })._deltaClamped = true
+      const worldUpdate = world.update.bind(world)
+      world.update = (time: number, delta: number) => worldUpdate(time, Math.min(delta, 33.4))
+    }
+
     this.cameras.main.setBounds(0, 0, WORLD_W, WORLD_H)
     this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H)
 

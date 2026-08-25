@@ -6,8 +6,8 @@ import { isTouchUI, touchState } from '../touch'
 
 export class StageSelectScene extends Phaser.Scene {
   private selected = 0
-  private cardSize = 48
-  private cardSpacing = 12
+  private cardSize = 40
+  private cardSpacing = 8
   private cursor!: Phaser.GameObjects.Rectangle
   private cards: Phaser.GameObjects.Rectangle[] = []
   private cardGlows: Phaser.GameObjects.Image[] = []
