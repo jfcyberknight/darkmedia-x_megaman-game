@@ -40,7 +40,7 @@ jobs:
       contents: read
       deployments: write
     steps:
-      - name: Checkout (fournit wrangler.toml : nom du projet, output dir, binding AI)
+      - name: Checkout (fournit wrangler.toml — projet, output dir et binding AI)
         uses: actions/checkout@v4
 
       - name: Download build artifact
