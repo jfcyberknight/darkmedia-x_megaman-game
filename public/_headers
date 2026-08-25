@@ -1,0 +1,11 @@
+# Cloudflare Pages — politiques de cache.
+# Les assets statiques (sprites, textures, niveaux) sont référencés par un
+# chemin SANS hash : sans revalidation, un navigateur garde l'ancienne version
+# après un déploiement (ex. sprite bleu au lieu du nouveau). On force une
+# revalidation à chaque chargement -> toujours la dernière version déployée.
+/assets/*
+  Cache-Control: no-cache, max-age=0, must-revalidate
+
+# index.html : toujours frais (chaque déploiement change le bundle hashé).
+/*
+  Cache-Control: no-cache, max-age=0, must-revalidate
