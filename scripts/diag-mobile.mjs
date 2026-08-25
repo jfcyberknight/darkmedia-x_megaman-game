@@ -99,21 +99,27 @@ try {
   const bulletsAfter = await page.evaluate(() => window.__game.scene.getScene('GameScene').bullets.countActive(true))
   console.log(`Tir: balles actives ${bulletsBefore} → ${bulletsAfter} -> ${bulletsAfter > bulletsBefore ? 'OK' : 'FAIL'}`)
 
-  // --- 3. Dégât de contact : téléport AU SOL face à un walker (corps qui
-  // se chevauchent : demi-largeurs 6 + 11 = 17 > distance 12) ---
-  const hp0 = await page.evaluate(() => {
+  // --- 3. Dégât de contact : téléport SUR l'ennemi (overlap garanti quel
+  // que soit son sens de patrouille) ---
+  const dbg = await page.evaluate(() => {
     const s = window.__game.scene.getScene('GameScene')
     const e = s.enemies.getFirstAlive()
-    const x = e.x - 12
-    const y = e.y - 2 // aligne le bas du corps joueur sur celui de l'ennemi
+    const x = e.x
+    const y = e.y - 2
     s.player.setPosition(x, y)
     s.player.body.reset(x, y)
     s.player.body.setVelocity(0, 0)
-    return s.player.getHealth()
+    const pb = s.player.body, eb = e.body
+    return {
+      p: [Math.round(pb.left), Math.round(pb.right), Math.round(pb.top), Math.round(pb.bottom)],
+      e: [Math.round(eb.left), Math.round(eb.right), Math.round(eb.top), Math.round(eb.bottom)],
+      pEnabled: pb.enable, eEnabled: eb.enable,
+    }
   })
+  console.log(`Corps joueur [L,R,T,B]=${dbg.p} enable=${dbg.pEnabled} | ennemi ${dbg.e} enable=${dbg.eEnabled}`)
   await sleep(1400)
   const hp1 = await page.evaluate(() => window.__game.scene.getScene('GameScene').player.getHealth())
-  console.log(`Contact: HP ${hp0} → ${hp1} -> ${hp1 < hp0 ? 'OK' : 'FAIL (passe au travers !)'}`)
+  console.log(`Contact: HP 10 → ${hp1} -> ${hp1 < 10 ? 'OK' : 'FAIL (passe au travers !)'}`)
 
   // --- 4. Balle tue l'ennemi : tir en face à face ---
   const killed = await page.evaluate(async () => {
