@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import { drawStarfield, drawSkyline, drawVignette } from '../ui'
 import { sfx, startMusic } from '../audio'
-import { isTouchUI } from '../touch'
+import { isTouchUI, touchState } from '../touch'
 
 interface Slide {
   lines: string[]
@@ -19,6 +19,7 @@ const SLIDES: Slide[] = [
 /** Narrative prologue: who you are, what happened, why you fight. */
 export class IntroScene extends Phaser.Scene {
   private slideIndex = 0
+  private prevAct = false
   private textObj!: Phaser.GameObjects.Text
   private hint!: Phaser.GameObjects.Text
   private typing = false
@@ -64,32 +65,43 @@ export class IntroScene extends Phaser.Scene {
 
     this.showSlide(0)
 
-    const advance = () => {
-      sfx.unlock()
-      startMusic('menu')
-      if (this.typing) {
-        // finish typing instantly
-        this.typeEvent?.remove()
-        const slide = SLIDES[this.slideIndex]
-        this.textObj.setText(slide.lines.join('\n'))
-        this.typing = false
-        return
-      }
-      this.slideIndex++
-      if (this.slideIndex >= SLIDES.length) {
-        this.scene.start('TitleScene')
-      } else {
-        this.showSlide(this.slideIndex)
-      }
-    }
-    this.input.keyboard!.on('keydown-Z', advance)
-    this.input.keyboard!.on('keydown-ENTER', advance)
+    // Un bouton déjà enfoncé en arrivant ne compte pas.
+    this.prevAct = touchState.jump || touchState.shoot
+
+    this.input.keyboard!.on('keydown-Z', () => this.advance())
+    this.input.keyboard!.on('keydown-ENTER', () => this.advance())
     // Mobile: tap anywhere to advance.
-    this.input.on('pointerdown', advance)
+    this.input.on('pointerdown', () => this.advance())
     this.input.keyboard!.once('keydown', () => {
       sfx.unlock()
       startMusic('menu')
     })
+  }
+
+  update() {
+    // A/B (pad virtuel) font aussi avancer le texte.
+    const act = touchState.jump || touchState.shoot
+    if (act && !this.prevAct) this.advance()
+    this.prevAct = act
+  }
+
+  private advance() {
+    sfx.unlock()
+    startMusic('menu')
+    if (this.typing) {
+      // finish typing instantly
+      this.typeEvent?.remove()
+      const slide = SLIDES[this.slideIndex]
+      this.textObj.setText(slide.lines.join('\n'))
+      this.typing = false
+      return
+    }
+    this.slideIndex++
+    if (this.slideIndex >= SLIDES.length) {
+      this.scene.start('TitleScene')
+    } else {
+      this.showSlide(this.slideIndex)
+    }
   }
 
   private showSlide(i: number) {

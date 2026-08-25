@@ -1,9 +1,12 @@
 import Phaser from 'phaser'
 import { drawStarfield, drawSkyline, drawVignette } from '../ui'
 import { sfx, startMusic } from '../audio'
-import { isTouchUI } from '../touch'
+import { isTouchUI, touchState } from '../touch'
 
 export class TitleScene extends Phaser.Scene {
+  private starting = false
+  private prevAct = false
+
   constructor() {
     super({ key: 'TitleScene' })
   }
@@ -68,11 +71,11 @@ export class TitleScene extends Phaser.Scene {
 
     drawVignette(this, 0.5)
 
-    const start = () => {
-      sfx.unlock()
-      startMusic('menu')
-      this.scene.start('StageSelectScene')
-    }
+    // Un bouton virtuel déjà enfoncé en arrivant ici ne compte pas
+    // (appui hérité de l'écran précédent).
+    this.prevAct = touchState.jump || touchState.shoot
+
+    const start = () => this.startGame()
     this.input.keyboard!.on('keydown-Z', start)
     this.input.keyboard!.on('keydown-ENTER', start)
     this.input.keyboard!.on('keydown-SPACE', start)
@@ -85,5 +88,21 @@ export class TitleScene extends Phaser.Scene {
     }
     this.input.keyboard!.once('keydown', wake)
     this.input.once('pointerdown', wake)
+  }
+
+  update() {
+    // Les boutons virtuels DOM (A/B) ne déclenchent pas l'input Phaser :
+    // on les surveille ici pour démarrer au pad aussi.
+    const act = touchState.jump || touchState.shoot
+    if (!this.starting && act && !this.prevAct) this.startGame()
+    this.prevAct = act
+  }
+
+  private startGame() {
+    if (this.starting) return
+    this.starting = true
+    sfx.unlock()
+    startMusic('menu')
+    this.scene.start('StageSelectScene')
   }
 }

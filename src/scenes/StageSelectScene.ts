@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import { STAGES } from '../stages'
 import { drawStarfield, drawSkyline, drawVignette } from '../ui'
 import { startMusic } from '../audio'
-import { isTouchUI } from '../touch'
+import { isTouchUI, touchState } from '../touch'
 
 export class StageSelectScene extends Phaser.Scene {
   private selected = 0
@@ -14,6 +14,10 @@ export class StageSelectScene extends Phaser.Scene {
   private nameText!: Phaser.GameObjects.Text
   private skyline!: Phaser.GameObjects.TileSprite
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
+  private tL = false
+  private tR = false
+  private tAct = false
+  private confirming = false
 
   constructor() {
     super({ key: 'StageSelectScene' })
@@ -100,12 +104,28 @@ export class StageSelectScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-Z', () => this.confirm())
     this.input.keyboard!.on('keydown-ENTER', () => this.confirm())
 
+    // Appuis déjà en cours en arrivant ici : ignorés jusqu'au relâchement.
+    this.tL = touchState.left
+    this.tR = touchState.right
+    this.tAct = touchState.jump || touchState.shoot
+
     this.renderCursor()
   }
 
   update() {
     if (Phaser.Input.Keyboard.JustDown(this.cursors.left!)) this.move(-1)
     if (Phaser.Input.Keyboard.JustDown(this.cursors.right!)) this.move(1)
+
+    // Pad virtuel : ◀▶ sélectionnent, A/B confirment.
+    const l = touchState.left
+    const r = touchState.right
+    const act = touchState.jump || touchState.shoot
+    if (l && !this.tL) this.move(-1)
+    if (r && !this.tR) this.move(1)
+    if (act && !this.tAct) this.confirm()
+    this.tL = l
+    this.tR = r
+    this.tAct = act
   }
 
   private move(dir: number) {
@@ -127,6 +147,8 @@ export class StageSelectScene extends Phaser.Scene {
   }
 
   private confirm() {
+    if (this.confirming) return
+    this.confirming = true
     const stage = STAGES[this.selected]
     this.cameras.main.fadeOut(220, 0, 0, 0)
     this.time.delayedCall(240, () => this.scene.start('GameScene', { stage: stage.id, fresh: true }))

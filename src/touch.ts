@@ -32,6 +32,9 @@ function isTouchDevice(): boolean {
 function bindHold(el: HTMLElement, key: keyof TouchState) {
   const press = (e: PointerEvent) => {
     e.preventDefault()
+    // Capture du pointeur : si le doigt glisse hors du bouton, il reste
+    // « posé » jusqu'au relâchement (sinon mouvement = perte de l'appui).
+    try { el.setPointerCapture(e.pointerId) } catch { /* sans importance */ }
     el.classList.add('tb-active')
     touchState[key] = true
   }
@@ -42,8 +45,8 @@ function bindHold(el: HTMLElement, key: keyof TouchState) {
   }
   el.addEventListener('pointerdown', press)
   el.addEventListener('pointerup', release)
-  el.addEventListener('pointerleave', release)
   el.addEventListener('pointercancel', release)
+  el.addEventListener('lostpointercapture', release)
   // Long-press : empêcher menu contextuel / sélection.
   el.addEventListener('contextmenu', (e) => e.preventDefault())
 }

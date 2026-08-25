@@ -69,8 +69,9 @@
                  text-shadow: 0 0 6px rgba(255, 85, 70, 0.6); }
       .tc-jump { width: 76px; height: 76px; font-size: 20px; }
       .tb-active {
-        background: rgba(53, 224, 255, 0.25);
-        transform: scale(0.92);
+        /* Pas de transform ici : un bouton qui rétrécit sous le doigt déclenche
+           des pointerleave parasites. On ne fait qu'éclaircir. */
+        background: rgba(53, 224, 255, 0.3);
       }
       .tc-utils {
         position: absolute;

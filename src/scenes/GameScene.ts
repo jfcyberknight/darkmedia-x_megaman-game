@@ -58,6 +58,9 @@ export class GameScene extends Phaser.Scene {
       this.registry.set('lives', 3)
     }
     this.cpActive = this.registry.get('cp') === true
+    // Appuis tactiles hérités de l'écran précédent : ignorés au spawn.
+    this.tPrevJump = touchState.jump
+    this.tPrevShoot = touchState.shoot
   }
 
   preload() {

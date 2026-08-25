@@ -22,8 +22,8 @@ Sur écran tactile, un **D-pad virtuel + boutons** apparaît automatiquement :
 | **B** | Tir — tap = tir rapide, **maintenu** = charge, relâcher = tir chargé |
 | 🔊 / ⛶ (haut-droit) | Son on/off · Plein écran |
 
-Menus : tap pour avancer dans l'intro ; sur la sélection de stage, tap = sélection,
-re-tap sur la carte sélectionnée = confirmer. Le clavier reste fonctionnel en parallèle.
+Menus : tap ou **A/B** pour avancer dans l'intro ; sur la sélection de stage,
+tap sur une carte ou ◀▶ + **A/B** pour confirmer. Le clavier reste fonctionnel en parallèle.
 
 > 🔊 **Pas de son sur mobile ?** Touchez l'écran une fois (le contexte audio se
 > débloque au premier geste). Sur **iOS**, le switch silencieux du téléphone
