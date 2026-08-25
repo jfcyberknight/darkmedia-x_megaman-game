@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { drawStarfield, drawSkyline, drawVignette } from '../ui'
 import { sfx, startMusic } from '../audio'
+import { isTouchUI } from '../touch'
 
 interface Slide {
   lines: string[]
@@ -54,7 +55,7 @@ export class IntroScene extends Phaser.Scene {
     this.textObj = this.add.text(width / 2, height * 0.52, '', {
       fontSize: '10px', color: '#dbe6f8', fontFamily: 'monospace', align: 'center', lineSpacing: 4,
     }).setOrigin(0.5).setDepth(10)
-    this.hint = this.add.text(width / 2, height - 16, 'Z : CONTINUER', {
+    this.hint = this.add.text(width / 2, height - 16, isTouchUI() ? 'TOUCHER POUR CONTINUER' : 'Z : CONTINUER', {
       fontSize: '7px', color: '#5a6280', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(10).setAlpha(0.7)
     void this.hint

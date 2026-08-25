@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { STAGES } from '../stages'
 import { drawStarfield, drawSkyline, drawVignette } from '../ui'
 import { startMusic } from '../audio'
+import { isTouchUI } from '../touch'
 
 export class StageSelectScene extends Phaser.Scene {
   private selected = 0
@@ -86,7 +87,7 @@ export class StageSelectScene extends Phaser.Scene {
     }).setOrigin(0.5)
     this.nameText.setShadow(0, 0, '#35e0ff', 6, true, true)
 
-    this.add.text(width / 2, height * 0.84, '← → MOVE   Z/TAP CONFIRM', {
+    this.add.text(width / 2, height * 0.84, isTouchUI() ? 'TAP: SELECT   RE-TAP: PLAY' : '← → MOVE     Z CONFIRM', {
       fontSize: '8px', color: '#5a6280', fontFamily: 'monospace', letterSpacing: 1,
     }).setOrigin(0.5)
 

@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { drawStarfield, drawSkyline, drawVignette } from '../ui'
 import { sfx, startMusic } from '../audio'
+import { isTouchUI } from '../touch'
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -48,7 +49,7 @@ export class TitleScene extends Phaser.Scene {
     }).setOrigin(0.5)
 
     // Prompt blinking
-    const prompt = this.add.text(width / 2, height * 0.66, 'PRESS  Z  TO START', {
+    const prompt = this.add.text(width / 2, height * 0.66, isTouchUI() ? 'TAP  TO  START' : 'PRESS  Z  TO START', {
       fontSize: '11px',
       color: '#ffffff',
       fontFamily: 'monospace',
@@ -58,7 +59,7 @@ export class TitleScene extends Phaser.Scene {
     this.tweens.add({ targets: prompt, alpha: { from: 1, to: 0.15 }, duration: 700, yoyo: true, repeat: -1 })
     void subtitle
 
-    this.add.text(width / 2, height * 0.78, '← → MOVE     ↑ JUMP     Z SHOOT', {
+    this.add.text(width / 2, height * 0.78, isTouchUI() ? '◀▶ MOVE   A JUMP   B SHOOT' : '← → MOVE     ↑ JUMP     Z SHOOT', {
       fontSize: '8px',
       color: '#5a6280',
       fontFamily: 'monospace',
