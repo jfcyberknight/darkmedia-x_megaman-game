@@ -99,8 +99,20 @@ try {
   const bulletsAfter = await page.evaluate(() => window.__game.scene.getScene('GameScene').bullets.countActive(true))
   console.log(`Tir: balles actives ${bulletsBefore} → ${bulletsAfter} -> ${bulletsAfter > bulletsBefore ? 'OK' : 'FAIL'}`)
 
+  // --- 2b. ANTI-LATCH : tap ultra-court (press+release dans la même frame),
+  // puis tap normal — les DEUX doivent produire une balle ---
+  await sleep(900) // cooldown + retombée
+  const fire = page.locator('.tc-fire')
+  await fire.dispatchEvent('pointerdown')
+  await fire.dispatchEvent('pointerup') // 0 ms : le pire cas possible
+  await sleep(200)
+  const bUltra = await page.evaluate(() => window.__game.scene.getScene('GameScene').bullets.countActive(true))
+  await tap('.tc-fire')
+  await sleep(200)
+  const bSecond = await page.evaluate(() => window.__game.scene.getScene('GameScene').bullets.countActive(true))
+  console.log(`Anti-latch: ultra-court=${bUltra > 0 ? 'balle' : 'RIEN'}, 2e tap=${bSecond > 0 ? 'balle' : 'RIEN'} -> ${bUltra > 0 && bSecond > 0 ? 'OK' : 'FAIL (verrouillé !)'}`)
+
   // --- 3. Dégât de contact : téléport SUR l'ennemi (overlap garanti quel
-  // que soit son sens de patrouille) ---
   const dbg = await page.evaluate(() => {
     const s = window.__game.scene.getScene('GameScene')
     const e = s.enemies.getFirstAlive()

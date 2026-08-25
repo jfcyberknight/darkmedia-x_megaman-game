@@ -76,7 +76,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     jumpHeld: boolean,
     shootPressed: boolean,
     shootHeld: boolean,
-    shootReleased: boolean,
     delta: number,
   ) {
     const body = this.body as Phaser.Physics.Arcade.Body
@@ -180,7 +179,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.chargeTime = this.scene.time.now - this.chargeStart
       this.updateChargeVisual()
     }
-    if (this.charging && shootReleased) {
+    // Release = the button simply isn't held anymore (NOT an edge event):
+    // un tap plus court qu'une frame peut faire loupé l'edge de relâchement,
+    // et charging resterait true pour toujours → plus aucune balle possible.
+    if (this.charging && !shootHeld) {
       this.chargeTime = this.scene.time.now - this.chargeStart
       const level = this.chargeLevel()
       if (level >= 2) this.shoot('big')

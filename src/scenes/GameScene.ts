@@ -232,7 +232,6 @@ export class GameScene extends Phaser.Scene {
     const jumpHeld = this.cursors.up!.isDown || touchState.jump
     const shootHeld = this.shootKey.isDown || touchState.shoot
     const shootPressed = Phaser.Input.Keyboard.JustDown(this.shootKey) || (touchState.shoot && !this.tPrevShoot) || q.shoot
-    const shootReleased = Phaser.Input.Keyboard.JustUp(this.shootKey) || (!touchState.shoot && this.tPrevShoot)
     this.tPrevJump = touchState.jump
     this.tPrevShoot = touchState.shoot
 
@@ -247,7 +246,7 @@ export class GameScene extends Phaser.Scene {
       this.tweens.add({ targets: this.muteToast, alpha: 0, duration: 900, delay: 500 })
     }
 
-    this.player.update(left, right, jump, jumpHeld, shootPressed, shootHeld, shootReleased, delta)
+    this.player.update(left, right, jump, jumpHeld, shootPressed, shootHeld, delta)
     this.drawHpBar()
 
     // Energy orbs: gentle magnet toward the player when close.
