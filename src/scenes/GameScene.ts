@@ -24,6 +24,15 @@ export class GameScene extends Phaser.Scene {
   private checkpoint!: Phaser.GameObjects.Image
   private cpActive = false
   private bossIntroDone = false
+  private bossTauntBusy = false
+  private bossTauntTimer = 6000
+  private bossSpeech?: Phaser.GameObjects.Container
+  private lastTaunt = ''
+  private readonly fallbackTaunts: Record<string, string[]> = {
+    intro: ['Ton existence prend fin ici, gardien.', 'Néon City m’appartient déjà.'],
+    combat: ['Ta résistance est une erreur de programmation.', 'Je calcule déjà ta défaite.', "Chaque tir t'affaiblit. Chaque seconde me rend plus fort."],
+    enraged: ['ASSEZ ! Je vais te rayer de mes registres !', 'Mes circuits brûlent... ta fin approche !'],
+  }
   private boss?: Boss
   private bossBar!: Phaser.GameObjects.Graphics
   private bossName!: Phaser.GameObjects.Text
@@ -282,6 +291,11 @@ export class GameScene extends Phaser.Scene {
       // sinon il marche vers le joueur dès le spawn et rencontre le niveau.
       this.boss.update(delta)
       this.drawBossBar()
+      this.bossTauntTimer -= delta
+      if (this.bossTauntTimer <= 0 && !this.bossTauntBusy) {
+        this.bossTauntTimer = 9500
+        void this.requestBossTaunt('combat')
+      }
     }
   }
 
@@ -781,6 +795,85 @@ export class GameScene extends Phaser.Scene {
         targets: [top, bottom, warn, name], alpha: 0, duration: 350,
         onComplete: () => { top.destroy(); bottom.destroy(); warn.destroy(); name.destroy() },
       })
+      void this.requestBossTaunt('intro')
+    })
+  }
+
+  /** Called by the Boss when it enrages (HP <= 50%). */
+  onBossEnraged() {
+    void this.requestBossTaunt('enraged')
+  }
+
+  /** AI-generated taunt via /api/ai — async, never blocks; falls back to canned lines. */
+  private async requestBossTaunt(kind: 'intro' | 'combat' | 'enraged') {
+    if (this.bossTauntBusy || !this.bossActive) return
+    this.bossTauntBusy = true
+    const hpPct = Math.round(((this.boss?.getHealth() ?? 30) / 30) * 100)
+    const playerHp = Math.round((this.player.getHealth() / 10) * 100)
+    let text = ''
+    try {
+      const ctrl = new AbortController()
+      const timer = setTimeout(() => ctrl.abort(), 7000)
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: ctrl.signal,
+        body: JSON.stringify({
+          maxTokens: 70,
+          messages: [
+            { role: 'system', content: "Tu es WAR MACHINE, une IA de guerre corrompue de Néon City. Tu affrontes BLASTER-01, le dernier gardien loyal. Réponds par UNE seule phrase courte (12 mots maximum), froide et moqueuse. Sans guillemets, sans préfixe, sans didascalie." },
+            { role: 'user', content: kind === 'intro'
+              ? "Le combat commence. Une phrase d'ouverture menaçante."
+              : kind === 'enraged'
+                ? `Ton intégrité tombe à ${hpPct}%. Une phrase de rage.`
+                : `Combat en cours — ton intégrité ${hpPct}%, celle de BLASTER-01 ${playerHp}%. Une moquerie.` },
+          ],
+        }),
+      })
+      clearTimeout(timer)
+      const data = await res.json()
+      text = String(data?.result?.response ?? '').replace(/[\n\r"]+/g, ' ').trim().slice(0, 90)
+    } catch {
+      text = ''
+    }
+    if (text.length > 3 && text !== this.lastTaunt) {
+      this.lastTaunt = text
+      this.showBossSpeech(text)
+    } else {
+      const pool = this.fallbackTaunts[kind] ?? this.fallbackTaunts.combat
+      const pick = pool[Math.floor(Math.random() * pool.length)]
+      if (pick !== this.lastTaunt) {
+        this.lastTaunt = pick
+        this.showBossSpeech(pick)
+      }
+    }
+    this.time.delayedCall(4300, () => { this.bossTauntBusy = false })
+  }
+
+  /** Comm-line speech bubble under the boss bar. */
+  private showBossSpeech(text: string) {
+    this.bossSpeech?.destroy()
+    const { width } = this.cameras.main
+    const cont = this.add.container(0, 0).setScrollFactor(0).setDepth(230)
+    const box = this.add.rectangle(width / 2, 66, width - 24, 30, 0x12060a, 0.88)
+      .setStrokeStyle(1.5, 0xff5546, 0.9)
+    const tag = this.add.text(width / 2 - (width - 24) / 2 + 8, 54, 'WAR MACHINE', {
+      fontSize: '6px', color: '#ff9d8a', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
+    })
+    const msg = this.add.text(width / 2, 69, text, {
+      fontSize: '9px', color: '#ffd9d2', fontFamily: 'monospace',
+      wordWrap: { width: width - 56 }, align: 'center',
+    }).setOrigin(0.5, 0.5)
+    cont.add([box, tag, msg])
+    cont.setAlpha(0)
+    this.tweens.add({ targets: cont, alpha: 1, duration: 180 })
+    this.bossSpeech = cont
+    this.time.delayedCall(3800, () => {
+      if (!cont.active) return
+      this.tweens.add({ targets: cont, alpha: 0, duration: 300, onComplete: () => {
+        cont.destroy()
+        if (this.bossSpeech === cont) this.bossSpeech = undefined
+      } })
     })
   }
 

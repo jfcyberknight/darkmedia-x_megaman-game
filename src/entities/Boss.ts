@@ -57,6 +57,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
         if (this.active) this.clearTint()
       })
       sfx.telegraph()
+      ;(this.scene as Phaser.Scene & { onBossEnraged?(): void }).onBossEnraged?.()
     }
 
     this.stateTime += delta
