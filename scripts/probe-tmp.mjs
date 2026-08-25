@@ -19,29 +19,45 @@ await page.evaluate(() => {
   const s = window.__game.scene.getScene('GameScene')
   s.enemies.getChildren().forEach((e) => e.disableBody(true, true))
 })
-
-for (let essai = 1; essai <= 6; essai++) {
-  await page.evaluate(() => {
-    const s = window.__game.scene.getScene('GameScene')
-    s.bullets.getChildren().forEach((b) => { if (b.active) b.disableBody(true, true) })
-    s.player.setPosition(320, 147); s.player.body.reset(320, 147)
-  })
-  let el = page.locator('.tc-dir:nth-child(2)').first(); await el.dispatchEvent('pointerdown'); await sleep(130); await el.dispatchEvent('pointerup')
-  el = page.locator('.tc-fire').first(); await el.dispatchEvent('pointerdown'); await sleep(130); await el.dispatchEvent('pointerup')
-  let maxDist = 0, samples = []
-  const tEnd = Date.now() + 2000
-  while (Date.now() - tEnd < 2000) {
-    const r = await page.evaluate(() => {
+const plateformes = [
+  ['A x96-144 y224', 120, 211],
+  ['B x192-240 y192', 216, 179],
+  ['C x288-352 y160', 320, 147],
+  ['D x464-496 y192', 480, 179],
+  ['E x544-592 y144', 568, 131],
+  ['F x672-704 y176', 688, 163],
+]
+let fails = 0
+for (const [nom, x, py] of plateformes) {
+  for (const dir of ['droite', 'gauche']) {
+    await page.evaluate(() => {
       const s = window.__game.scene.getScene('GameScene')
-      const b = s.bullets.getChildren().find((x) => x.active)
-      if (!b) return { dead: true }
-      return { dead: false, x: Math.round(b.x * 10) / 10, sx: Math.round(b.spawnX), bl: b.body.blocked.right }
+      s.bullets.getChildren().forEach((b) => { if (b.active) b.disableBody(true, true) })
     })
-    if (r.dead) { samples.push('MORTE'); break }
-    samples.push(Math.round(r.x - r.sx))
-    maxDist = Math.max(maxDist, r.x - r.sx)
-    await sleep(70)
+    const px = dir === 'droite' ? x - 8 : x + 8 // laisser la place de voler
+    await page.evaluate(({ px, py }) => {
+      const s = window.__game.scene.getScene('GameScene')
+      s.player.setPosition(px, py); s.player.body.reset(px, py)
+    }, { px, py })
+    const btn = dir === 'droite' ? '.tc-dir:nth-child(2)' : '.tc-dir:nth-child(1)'
+    let el = page.locator(btn).first(); await el.dispatchEvent('pointerdown'); await sleep(130); await el.dispatchEvent('pointerup')
+    el = page.locator('.tc-fire').first(); await el.dispatchEvent('pointerdown'); await sleep(130); await el.dispatchEvent('pointerup')
+    let maxDist = 0
+    const tEnd = Date.now() + 2200
+    while (Date.now() - tEnd < 2200) {
+      const r = await page.evaluate(() => {
+        const s = window.__game.scene.getScene('GameScene')
+        const b = s.bullets.getChildren().find((x) => x.active)
+        return b ? Math.round(Math.abs(b.x - b.spawnX)) : -1
+      })
+      if (r < 0) break
+      maxDist = Math.max(maxDist, r)
+      await sleep(120)
+    }
+    const ok = maxDist >= 100
+    if (!ok) fails++
+    console.log(`${nom} ${dir}: ${maxDist}px ${ok ? '✓' : '⚠️'}`)
   }
-  console.log(`essai ${essai}: maxDist=${Math.round(maxDist)}px trace=${samples.join(',')}`)
 }
+console.log(fails === 0 ? 'TOUS OK' : `${fails} échecs`)
 await browser.close()

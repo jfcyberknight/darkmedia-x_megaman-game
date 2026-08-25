@@ -1,0 +1,8 @@
+name = "megaman-game"
+compatibility_date = "2026-08-24"
+pages_build_output_dir = "dist"
+
+# Workers AI binding — wrangler pages deploy l'applique au déploiement,
+# la Function /api/ai y accède via env.AI
+[ai]
+binding = "AI"
