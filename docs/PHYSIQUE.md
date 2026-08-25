@@ -26,6 +26,12 @@ aux vitesses ou aux durées de vie.
    le même clamp.
 4. Vitesse max horizontale corps : 120 px/s (`setMaxVelocity`) → 2 px par
    frame clampée : aucun tunneling possible sur tuiles 16 px.
+5. **Tout corps recyclé via `group.get()` doit être réinitialisé avec
+   `body.reset(x, y)`** dans son `activate()` : `disableBody` ne remplace pas
+   les flags `blocked/touching`, et une balle morte sur un mur recyclait son
+   corps avec `blocked.right=true` → toutes les balles suivantes naissaient
+   mortes (avancée d'1 px) jusqu'au respawn du niveau. C'était le bug
+   « les balles ne sortent pas / avancent de 1 mm sur le 2e plateau ».
 
 ## Symptômes historiques (avant correctif)
 
