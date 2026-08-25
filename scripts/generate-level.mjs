@@ -32,6 +32,17 @@ function buildLevel(spec) {
   const setP = (y, x, v) => { plat[y][x] = v }
   const fillGround = (x) => { setG(GT, x, GID_TOP); setG(GT + 1, x, GID_FILL); setG(GT + 2, x, GID_FILL) }
   const clearGround = (x) => { setG(GT, x, 0); setG(GT + 1, x, 0); setG(GT + 2, x, 0) }
+  // Puits de saut de mur : deux murs hauts (gap 3 tuiles) + dalle au sommet,
+  // trou sous la dalle. Le joueur grimpe par sauts de mur (impossible au saut normal).
+  const shaft = (sx, H) => {
+    const x2 = sx + 3
+    for (const wx of [sx, x2]) {
+      setG(GT - H, wx, GID_TOP)
+      for (let y = GT - H + 1; y <= GT + 2; y++) setG(y, wx, GID_FILL)
+    }
+    for (let x = sx; x <= x2; x++) setG(GT - H, x, GID_TOP) // dalle au sommet
+    for (let x = sx + 1; x < x2; x++) clearGround(x)         // trou dessous
+  }
 
   for (let x = 0; x < W; x++) fillGround(x)
   for (const [x, w] of spec.pits ?? []) for (let c = x; c < x + w; c++) clearGround(c)
@@ -40,6 +51,10 @@ function buildLevel(spec) {
     for (let y = GT - h + 1; y <= GT + 2; y++) setG(y, x, GID_FILL)
   }
   for (const [x, row, w] of spec.plats ?? []) for (let c = x; c < x + w; c++) setP(row, c, GID_PLAT)
+  // Puits de saut de mur : deux murs hauts espacés de `gap` avec, au sommet,
+  // une dalle qui relie ; le fond est un trou (tomber = mort). Le joueur DOIT
+  // grimper en saut de mur pour le franchir (impossible au saut normal).
+  for (const [sx, H] of spec.shafts ?? []) shaft(sx, H)
 
   const enemies = []
   for (const x of spec.walkers ?? []) enemies.push({ kind: 'walker', x: x * TILE + 8, y: GT * TILE - 10 })

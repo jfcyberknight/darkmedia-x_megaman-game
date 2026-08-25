@@ -55,6 +55,22 @@ for (const [x, row] of plats) {
   if (row !== 10 && row !== 11) errors.push(`plat @${x} : row ${row} (doit être 10 ou 11)`)
 }
 
+// Puits de saut de mur (sections "compétence")
+const shafts = spec.shafts ?? []
+for (const [sx, H] of shafts) {
+  const x2 = sx + 3
+  if (!Number.isInteger(H) || H < 4 || H > 8) errors.push(`shaft @${sx} : hauteur ${H} hors de [4,8]`)
+  if (sx < 14) errors.push(`shaft @${sx} : trop près du spawn`)
+  if (x2 + 1 > ARENA) errors.push(`shaft @${sx} : dans/après l'arène`)
+  for (let x = sx; x <= x2; x++) {
+    if (inPit(x)) errors.push(`shaft @${sx} : chevauche un trou @${x}`)
+    if (wallCols.has(x)) errors.push(`shaft @${sx} : chevauche un mur @${x}`)
+  }
+  for (const en of [...walkers, ...turrets]) if (en >= sx && en <= x2) errors.push(`shaft @${sx} : ennemi au sol @${en} dedans`)
+  for (const x of cps) if (x >= sx && x <= x2) errors.push(`shaft @${sx} : checkpoint @${x} dedans`)
+  for (const x of orbs) if (x >= sx && x <= x2) errors.push(`shaft @${sx} : orbe @${x} dedans`)
+}
+
 // Ennemis au sol (marcheurs + tourelles)
 for (const x of [...walkers, ...turrets]) {
   if (!Number.isInteger(x)) errors.push(`ennemi @${x} : position non entière`)

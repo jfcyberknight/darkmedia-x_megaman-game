@@ -70,11 +70,8 @@ try {
     const p = s?.player
     return { ok: !!p, x: Math.round(p?.x ?? -9999), y: Math.round(p?.y ?? -9999), hp: p?.getHealth?.() ?? -1, lives: s.registry.get('lives'), cpX: s.registry.get('cpX') ?? null, bossIntro: s.bossIntroDone === true }
   })
-
-  // Nav jusqu'à GameScene par touches clavier Z (toutes les scènes y répondent,
-  // y compris CompanionScene qui ne réagit pas aux boutons tactiles).
-  await waitScene('IntroScene', 10000)
-  const inGame = await (async () => {
+  // Navigation clavier Z jusqu'à GameScene (réutilisable après un reload).
+  const navToGame = async () => {
     const t0 = Date.now()
     while (Date.now() - t0 < 30000) {
       const sc = await scenes()
@@ -83,7 +80,12 @@ try {
       await sleep(340)
     }
     return (await scenes()).includes('GameScene')
-  })()
+  }
+
+  // Nav jusqu'à GameScene par touches clavier Z (toutes les scènes y répondent,
+  // y compris CompanionScene qui ne réagit pas aux boutons tactiles).
+  await waitScene('IntroScene', 10000)
+  const inGame = await navToGame()
   check('GameScene chargée (long niveau)', inGame)
   await sleep(1000)
 
@@ -107,7 +109,12 @@ try {
     for (const [a] of pits) { if (a > px - 8 && px > a - 12 && st.y < 300) { act = true; break } }
     if (!act) for (const wx of walls) { if (wx > px - 8 && px > wx - 18) { act = true; break } }
     if (!act) {
-      const blocked = await page.evaluate(() => window.__game.scene.getScene('GameScene').player?.body?.blocked?.right === true)
+      // Saut contre les DEUX murs (gauche ET droite) : nécessaire pour grimper
+      // les puits de saut de mur.
+      const blocked = await page.evaluate(() => {
+        const b = window.__game.scene.getScene('GameScene').player?.body
+        return !!b && (b.blocked.right === true || b.blocked.left === true)
+      })
       if (blocked) act = true
     }
     if (act) { await jump.dispatchEvent('pointerdown'); await sleep(350); await jump.dispatchEvent('pointerup'); await sleep(100) }
@@ -123,44 +130,66 @@ try {
   const pit = pits[Math.min(2, pits.length - 1)]
   let lvBefore = end.ok ? end.lives : null
   if (!end.ok) {
-    // repartir une partie proprement pour tester la mécanique
+    // La partie s'est finie (game over pendant la traversée) : repartir proprement.
     await page.reload({ waitUntil: 'load' })
-    await waitScene('GameScene', 20000)
+    await waitScene('IntroScene', 10000)
+    await navToGame()
     lvBefore = (await state()).lives
   }
-  await page.evaluate(([px]) => {
-    const s = window.__game.scene.getScene('GameScene')
-    s.player.setPosition(px, 250); s.player.body.reset(px, 250); s.player.body.setVelocity(0, 0)
-  }, [pit[0] + 4])
-  await right.dispatchEvent('pointerdown'); await sleep(1400); await right.dispatchEvent('pointerup')
-  let after = null
-  const tD = Date.now() + 4000
-  while (Date.now() < tD) { after = await state(); if (after.lives < lvBefore) break; await sleep(250) }
-  check('trou : le joueur tombe et perd une vie', !!after && after.lives < lvBefore, `vies ${lvBefore}→${after?.lives}`)
+  const st0 = await state()
+  if (st0.ok) {
+    let placed = false
+    try {
+      placed = await page.evaluate(([px]) => {
+        const s = window.__game.scene.getScene('GameScene')
+        if (!s || !s.player) return false
+        s.player.setPosition(px, 250); s.player.body.reset(px, 250); s.player.body.setVelocity(0, 0)
+        return true
+      }, [pit[0] + 4])
+    } catch { placed = false }
+    if (!placed) {
+      check('trou : le joueur tombe et perd une vie', false, 'joueur indisponible')
+    } else {
+      await right.dispatchEvent('pointerdown'); await sleep(1400); await right.dispatchEvent('pointerup')
+      let after = null
+      const tD = Date.now() + 4000
+      while (Date.now() < tD) { after = await state(); if (after.lives < lvBefore) break; await sleep(250) }
+      check('trou : le joueur tombe et perd une vie', !!after && after.lives < lvBefore, `vies ${lvBefore}→${after?.lives}`)
+    }
+  } else {
+    check('trou : le joueur tombe et perd une vie', false, 'impossible de relancer GameScene')
+  }
 
   // --- Checkpoint : respawn positionné au dernier checkpoint touché ---
-  await page.evaluate(() => {
-    const s = window.__game.scene.getScene('GameScene')
-    const cps = s.checkpoints
-    if (cps && cps.length) { const c = cps[1]; s.player.setPosition(c.x, c.y - 20); s.player.body.reset(c.x, c.y - 20) }
-  })
-  await sleep(900)
+  const ck0 = await state()
+  if (ck0.ok) {
+    await page.evaluate(() => {
+      const s = window.__game.scene.getScene('GameScene')
+      if (!s || !s.player) return
+      const cps = s.checkpoints
+      if (cps && cps.length) { const c = cps[1]; s.player.setPosition(c.x, c.y - 20); s.player.body.reset(c.x, c.y - 20) }
+    }).catch(() => {})
+    await sleep(900)
+  }
   const ck = await state()
-  check('checkpoint touché → point de respawn enregistré', ck.cpX !== null && ck.cpX > 0, `cpX=${ck.cpX}`)
+  check('checkpoint touché → point de respawn enregistré', ck.ok && ck.cpX !== null && ck.cpX > 0, `cpX=${ck.cpX}`)
 
   // --- Boss touchable dans la nouvelle arène ---
-  await page.evaluate(([bx]) => {
-    const s = window.__game.scene.getScene('GameScene')
-    const x = (s.boss?.active ? s.boss.x : bx) - 70
-    s.player.setPosition(x, 250); s.player.body.reset(x, 250); s.player.body.setVelocity(0, 0)
-  }, [ents.bossX])
-  await sleep(400)
-  await tap('.tc-dir:nth-child(2)') // orienter vers la droite (le boss)
-  for (let i = 0; i < 6; i++) { await tap('.tc-fire'); await sleep(320) }
+  if (ck.ok) {
+    await page.evaluate(([bx]) => {
+      const s = window.__game.scene.getScene('GameScene')
+      if (!s || !s.player) return
+      const x = (s.boss?.active ? s.boss.x : bx) - 70
+      s.player.setPosition(x, 250); s.player.body.reset(x, 250); s.player.body.setVelocity(0, 0)
+    }, [ents.bossX]).catch(() => {})
+    await sleep(400)
+    await tap('.tc-dir:nth-child(2)') // orienter vers la droite (le boss)
+    for (let i = 0; i < 6; i++) { await tap('.tc-fire'); await sleep(320) }
+  }
   const bh = await page.evaluate(() => {
     const s = window.__game.scene.getScene('GameScene')
-    return { hp: s.boss?.active ? s.boss.getHealth() : -1 }
-  })
+    return { hp: s?.boss?.active ? s.boss.getHealth() : -1 }
+  }).catch(() => ({ hp: -1 }))
   check('boss touchable (HP baisse au tir)', bh.hp >= 0 && bh.hp < 30, `bossHp=${bh.hp}/30`)
 
   // En local, l'absence de binding Workers AI fait un 404 sur /api/ai : attendu.
