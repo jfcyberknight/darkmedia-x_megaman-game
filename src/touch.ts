@@ -17,6 +17,20 @@ export interface TouchState {
 
 export const touchState: TouchState = { left: false, right: false, jump: false, shoot: false }
 
+/**
+ * Appuis survenus ENTRE deux frames de jeu (tap plus court qu'un rendu,
+ * typique sur téléphone à bas FPS). Consommés par GameScene à la frame
+ * suivante : aucun appui ne peut être perdu.
+ */
+const queued = { jump: false, shoot: false }
+
+export function consumeTouchEdges(): { jump: boolean; shoot: boolean } {
+  const q = { jump: queued.jump, shoot: queued.shoot }
+  queued.jump = false
+  queued.shoot = false
+  return q
+}
+
 /** L'overlay tactile est-il actif (appareil tactile détecté) ? */
 export function isTouchUI(): boolean {
   return document.getElementById('touch-ui') !== null
@@ -30,23 +44,34 @@ function isTouchDevice(): boolean {
 
 /** Bouton générique : maintient un flag tant que le doigt est posé. */
 function bindHold(el: HTMLElement, key: keyof TouchState) {
-  const press = (e: PointerEvent) => {
+  const press = (e: Event) => {
     e.preventDefault()
-    // Capture du pointeur : si le doigt glisse hors du bouton, il reste
-    // « posé » jusqu'au relâchement (sinon mouvement = perte de l'appui).
-    try { el.setPointerCapture(e.pointerId) } catch { /* sans importance */ }
+    if (key === 'jump') queued.jump = true
+    if (key === 'shoot') queued.shoot = true
     el.classList.add('tb-active')
     touchState[key] = true
   }
-  const release = (e: PointerEvent) => {
+  const release = (e: Event) => {
     e.preventDefault()
     el.classList.remove('tb-active')
     touchState[key] = false
   }
-  el.addEventListener('pointerdown', press)
-  el.addEventListener('pointerup', release)
-  el.addEventListener('pointercancel', release)
-  el.addEventListener('lostpointercapture', release)
+  if (typeof window.PointerEvent !== 'undefined') {
+    el.addEventListener('pointerdown', press as EventListener)
+    el.addEventListener('pointerup', release as EventListener)
+    el.addEventListener('pointercancel', release as EventListener)
+    el.addEventListener('lostpointercapture', release as EventListener)
+    // Capture du pointeur : si le doigt glisse hors du bouton, il reste
+    // « posé » jusqu'au relâchement (sinon mouvement = perte de l'appui).
+    el.addEventListener('pointerdown', (e) => {
+      try { (el as HTMLElement).setPointerCapture((e as PointerEvent).pointerId) } catch { /* sans importance */ }
+    })
+  } else {
+    // Vieux navigateurs sans Pointer Events (iOS ≤ 12, WebViews anciens).
+    el.addEventListener('touchstart', press as EventListener, { passive: false })
+    el.addEventListener('touchend', release as EventListener)
+    el.addEventListener('touchcancel', release as EventListener)
+  }
   // Long-press : empêcher menu contextuel / sélection.
   el.addEventListener('contextmenu', (e) => e.preventDefault())
 }

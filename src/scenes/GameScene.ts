@@ -8,7 +8,7 @@ import { Bullet } from '../objects/Bullet'
 import { drawVignette } from '../ui'
 import { sfx, startMusic, stopMusic } from '../audio'
 import { STAGES, DEFAULT_STAGE, type StageDef } from '../stages'
-import { touchState, isTouchUI } from '../touch'
+import { touchState, isTouchUI, consumeTouchEdges } from '../touch'
 
 const WORLD_W = 800
 const WORLD_H = 320
@@ -223,13 +223,15 @@ export class GameScene extends Phaser.Scene {
     if (!this.bossIntroDone && this.player.x > 660) this.bossWarning()
 
     // Merge keyboard + touch (virtual pad). Touch edges are computed against
-    // the previous frame so tap/hold/release semantics match the keyboard.
+    // the previous frame, plus a queue for taps shorter than one rendered
+    // frame (low-FPS phones) so no press is ever lost.
+    const q = consumeTouchEdges()
     const left = this.cursors.left!.isDown || touchState.left
     const right = this.cursors.right!.isDown || touchState.right
-    const jump = Phaser.Input.Keyboard.JustDown(this.cursors.up!) || (touchState.jump && !this.tPrevJump)
+    const jump = Phaser.Input.Keyboard.JustDown(this.cursors.up!) || (touchState.jump && !this.tPrevJump) || q.jump
     const jumpHeld = this.cursors.up!.isDown || touchState.jump
     const shootHeld = this.shootKey.isDown || touchState.shoot
-    const shootPressed = Phaser.Input.Keyboard.JustDown(this.shootKey) || (touchState.shoot && !this.tPrevShoot)
+    const shootPressed = Phaser.Input.Keyboard.JustDown(this.shootKey) || (touchState.shoot && !this.tPrevShoot) || q.shoot
     const shootReleased = Phaser.Input.Keyboard.JustUp(this.shootKey) || (!touchState.shoot && this.tPrevShoot)
     this.tPrevJump = touchState.jump
     this.tPrevShoot = touchState.shoot
