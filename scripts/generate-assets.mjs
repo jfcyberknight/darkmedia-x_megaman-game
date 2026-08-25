@@ -414,6 +414,80 @@ save(stitch([flyerFrame(0), flyerFrame(1)]), 'flyer.png')
   save(c, 'checkpoint.png')
 }
 
+// ============================ COMPAGNONS 14x16 ============================
+const O = {
+  hi: hex(0xc8f6ff), top: hex(0x4de3ff), mid: hex(0x1e9cc8), lo: hex(0x0e5f86),
+  eye: hex(0x083a52), dark: hex(0x18203a), flame: hex(0xffd166),
+}
+function orionSprite() {
+  const c = C(14, 16)
+  px(c, 7, 0, A.gem); px(c, 7, 1, O.lo)                    // antenne
+  ell(c, 7, 6, 4.5, 4, O.mid)                               // dôme
+  ell(c, 7, 5, 3.5, 3, O.top)
+  px(c, 5, 4, O.hi); px(c, 6, 3, O.hi)
+  rect(c, 5, 6, 9, 8, O.eye)                                // visière
+  rect(c, 6, 7, 8, 7, A.gem)                                // œil cyan
+  px(c, 7, 7, A.gemHi)
+  rect(c, 5, 10, 9, 13, O.mid)                              // corps
+  rect(c, 6, 11, 8, 11, O.top)
+  rect(c, 5, 14, 9, 14, O.lo)                               // jupe
+  px(c, 6, 15, O.flame); px(c, 8, 15, O.flame)              // propulseurs
+  outline(c, [10, 16, 30])
+  return c
+}
+save(orionSprite(), 'comp-orion.png')
+savePreview(orionSprite(), 'comp-orion.png', 8)
+
+const BL = {
+  hi: hex(0xffe9a8), top: hex(0xffc857), mid: hex(0xd99a1e), lo: hex(0x8a5a06),
+  visor: hex(0x1c1428), glow: hex(0xfff3c4), dark: hex(0x3a2a08), outline: hex(0x2a1a02),
+}
+function boltSprite() {
+  const c = C(14, 16)
+  rect(c, 3, 1, 10, 7, BL.mid)                              // tête carrée
+  rect(c, 3, 1, 10, 2, BL.top)
+  px(c, 4, 2, BL.hi)
+  rect(c, 4, 4, 9, 6, BL.visor)                             // visière
+  rect(c, 5, 5, 8, 5, hex(0xffd166))                        // lueur
+  px(c, 3, 3, BL.hi); px(c, 10, 3, BL.lo)
+  rect(c, 4, 8, 10, 13, BL.mid)                             // corps
+  rect(c, 5, 9, 9, 12, BL.top)
+  rect(c, 6, 10, 8, 10, BL.lo)                              // trappe
+  rect(c, 2, 9, 3, 12, BL.lo)                               // bras
+  rect(c, 11, 9, 12, 12, BL.lo)
+  rect(c, 5, 14, 6, 15, BL.dark)                            // jambes
+  rect(c, 8, 14, 9, 15, BL.dark)
+  px(c, 5, 15, hex(0x1c1428)); px(c, 9, 15, hex(0x1c1428))
+  outline(c, BL.outline)
+  return c
+}
+save(boltSprite(), 'comp-bolt.png')
+savePreview(boltSprite(), 'comp-bolt.png', 8)
+
+const NV = {
+  hi: hex(0xffd0ea), top: hex(0xf472b6), mid: hex(0xc2418f), lo: hex(0x7a1f5c),
+  eyeW: hex(0xffffff), eyeB: hex(0x2a0a20), flame: hex(0x9df2ff), outline: hex(0x2a0a20),
+}
+function novaSprite() {
+  const c = C(14, 16)
+  ell(c, 7, 7, 5.5, 5.5, NV.mid)                            // orbe
+  ell(c, 7, 6.5, 5, 5, NV.top)
+  ell(c, 5, 5, 2, 1.6, NV.hi)
+  // nageoires
+  seg(c, 2, 6, 0, 4, NV.lo); seg(c, 2, 8, 0, 10, NV.lo)
+  seg(c, 12, 6, 14, 4, NV.lo); seg(c, 12, 8, 14, 10, NV.lo)
+  // grand œil
+  ell(c, 7, 7, 2.8, 2.8, NV.eyeW)
+  ell(c, 8, 7.5, 1.4, 1.6, NV.eyeB)
+  px(c, 7, 6, NV.eyeW)
+  // propulseur
+  px(c, 6, 13, NV.flame); px(c, 7, 14, NV.flame); px(c, 8, 13, NV.flame)
+  outline(c, NV.outline)
+  return c
+}
+save(novaSprite(), 'comp-nova.png')
+savePreview(novaSprite(), 'comp-nova.png', 8)
+
 // ============================ BULLETS / ORB ============================
 {
   const c = C(8, 5)

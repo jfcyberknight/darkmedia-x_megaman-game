@@ -8,6 +8,7 @@ import { Bullet } from '../objects/Bullet'
 import { drawVignette } from '../ui'
 import { sfx, startMusic, stopMusic } from '../audio'
 import { askAI } from '../ai'
+import { getCompanion, type CompanionDef } from '../companions'
 import { STAGES, DEFAULT_STAGE, type StageDef } from '../stages'
 import { touchState, isTouchUI, consumeTouchEdges } from '../touch'
 
@@ -29,6 +30,7 @@ export class GameScene extends Phaser.Scene {
   private bossTauntTimer = 6000
   private bossSpeech?: Phaser.GameObjects.Container
   private lastTaunt = ''
+  private compData!: CompanionDef
   private companion!: Phaser.GameObjects.Image
   private companionGlow!: Phaser.GameObjects.Image
   private compBubble?: Phaser.GameObjects.Container
@@ -36,14 +38,6 @@ export class GameScene extends Phaser.Scene {
   private compCooldown = 5000
   private compSaid = new Set<string>()
   private compT = 0
-  private readonly compLines: Record<string, string[]> = {
-    start: ['Sectoriel scanné. Fais-leur mordre la poussière, Blaster.'],
-    firstblood: ['Premier custodien neutralisé. Ça promet.'],
-    clear: ['Secteur purgé. Il reste... lui.'],
-    lowhp: ['Ton noyau flanche ! Chope une orbe, vite !'],
-    checkpoint: ['Position mémorisée. On pourra revenir ici.'],
-    power: ['Tu absorbes son pouvoir ? C’est... magnifique.'],
-  }
   private readonly fallbackTaunts: Record<string, string[]> = {
     intro: ['Ton existence prend fin ici, gardien.', 'Néon City m’appartient déjà.'],
     combat: ['Ta résistance est une erreur de programmation.', 'Je calcule déjà ta défaite.', "Chaque tir t'affaiblit. Chaque seconde me rend plus fort."],
@@ -89,6 +83,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload() {
+    const comp = getCompanion(this.registry.get('companion'))
+    this.load.image(comp.texture, `assets/${comp.texture}.png`)
     this.load.image('tileset', 'assets/tileset.png')
     this.load.tilemapTiledJSON('level', 'assets/level.json')
     this.load.spritesheet('player', 'assets/player.png', { frameWidth: 22, frameHeight: 30 })
@@ -233,11 +229,12 @@ export class GameScene extends Phaser.Scene {
         .setScale(0.5).setScrollFactor(0).setDepth(200)
     }
 
-    // ORION — support drone companion
-    this.companion = this.add.image(this.player.x - 20, this.player.y - 30, 'orb')
-      .setTint(0x4de3ff).setScale(0.9).setDepth(35)
+    // Compagnon — drone choisi sur l'écran de sélection
+    this.compData = getCompanion(this.registry.get('companion'))
+    this.companion = this.add.image(this.player.x - 20, this.player.y - 30, this.compData.texture)
+      .setTint(this.compData.tint).setScale(1).setDepth(35)
     this.companionGlow = this.add.image(this.companion.x, this.companion.y, 'glow')
-      .setTint(0x35e0ff).setBlendMode(Phaser.BlendModes.ADD).setScale(0.14).setAlpha(0.3).setDepth(34)
+      .setTint(this.compData.bubble).setBlendMode(Phaser.BlendModes.ADD).setScale(0.14).setAlpha(0.3).setDepth(34)
 
     // Audio: stage theme + mute toggle (M)
     sfx.unlock()
@@ -816,7 +813,7 @@ export class GameScene extends Phaser.Scene {
     this.compBusy = true
     const hpPct = Math.round((this.player.getHealth() / 10) * 100)
     const reply = await askAI(
-      "Tu es ORION, un petit drone de support loyal et espiègle qui accompagne BLASTER-01 dans Néon City. Réponds par UNE phrase courte (12 mots maximum), encourageante ou sarcastique. Sans guillemets.",
+      this.compData.persona + ' Réponds par UNE phrase courte (12 mots maximum), sans guillemets.',
       kind === 'start' ? 'Le stage commence. Un mot de soutien.'
       : kind === 'firstblood' ? 'Le premier ennemi vient d’être détruit. Commente.'
       : kind === 'clear' ? 'Tous les ennemis du secteur sont détruits. Commente.'
@@ -824,7 +821,7 @@ export class GameScene extends Phaser.Scene {
       : kind === 'checkpoint' ? 'BLASTER-01 vient d’activer un checkpoint. Commente.'
       : 'BLASTER-01 vient d’absorber le pouvoir du WAR MACHINE. Réagis.',
       70, 7000)
-    const pool = this.compLines[kind] ?? this.compLines.start
+    const pool = this.compData.lines[kind] ?? this.compData.lines.start
     const line = (reply && reply !== this.lastTaunt ? reply : pool[Math.floor(Math.random() * pool.length)])
     this.showCompanionSpeech(line)
     this.compCooldown = 8000
@@ -837,17 +834,18 @@ export class GameScene extends Phaser.Scene {
     const { height } = this.cameras.main
     const cont = this.add.container(0, 0).setScrollFactor(0).setDepth(230)
     const box = this.add.rectangle(96, height - 26, 168, 30, 0x06101c, 0.88)
-      .setStrokeStyle(1.5, 0x35e0ff, 0.85)
-    const tag = this.add.text(20, height - 46, 'ORION', {
+      .setStrokeStyle(1.5, this.compData.bubble, 0.85)
+    const tag = this.add.text(20, height - 46, this.compData.name, {
       fontSize: '6px', color: '#9df2ff', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
     })
-    const msg = this.add.text(96, height - 24, text, {
+    const msg = this.add.text(96, height - 24, '', {
       fontSize: '8px', color: '#d5ecf8', fontFamily: 'monospace',
       wordWrap: { width: 150 }, align: 'center',
     }).setOrigin(0.5, 0.5)
     cont.add([box, tag, msg])
     cont.setAlpha(0)
     this.tweens.add({ targets: cont, alpha: 1, duration: 180 })
+    this.typeInto(msg, text)
     this.compBubble = cont
     this.time.delayedCall(3800, () => {
       if (!cont.active) return
@@ -921,6 +919,21 @@ export class GameScene extends Phaser.Scene {
     this.time.delayedCall(4300, () => { this.bossTauntBusy = false })
   }
 
+  /** Machine-à-écrire : révèle le texte caractère par caractère. */
+  private typeInto(msg: Phaser.GameObjects.Text, full: string) {
+    msg.setText('')
+    let i = 0
+    this.time.addEvent({
+      delay: 18,
+      repeat: Math.max(0, full.length - 1),
+      callback: () => {
+        if (!msg.active) return
+        i++
+        msg.setText(full.slice(0, i))
+      },
+    })
+  }
+
   /** Comm-line speech bubble under the boss bar. */
   private showBossSpeech(text: string) {
     this.bossSpeech?.destroy()
@@ -931,13 +944,14 @@ export class GameScene extends Phaser.Scene {
     const tag = this.add.text(width / 2 - (width - 24) / 2 + 8, 54, 'WAR MACHINE', {
       fontSize: '6px', color: '#ff9d8a', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
     })
-    const msg = this.add.text(width / 2, 69, text, {
+    const msg = this.add.text(width / 2, 69, '', {
       fontSize: '9px', color: '#ffd9d2', fontFamily: 'monospace',
       wordWrap: { width: width - 56 }, align: 'center',
     }).setOrigin(0.5, 0.5)
     cont.add([box, tag, msg])
     cont.setAlpha(0)
     this.tweens.add({ targets: cont, alpha: 1, duration: 180 })
+    this.typeInto(msg, text)
     this.bossSpeech = cont
     this.time.delayedCall(3800, () => {
       if (!cont.active) return

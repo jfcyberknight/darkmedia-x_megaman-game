@@ -98,7 +98,7 @@ export class IntroScene extends Phaser.Scene {
     }
     this.slideIndex++
     if (this.slideIndex >= SLIDES.length) {
-      this.scene.start('TitleScene')
+      this.scene.start('CompanionScene')
     } else {
       this.showSlide(this.slideIndex)
     }

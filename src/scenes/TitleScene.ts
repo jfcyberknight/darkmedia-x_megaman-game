@@ -86,6 +86,10 @@ export class TitleScene extends Phaser.Scene {
       sfx.unlock()
       startMusic('menu')
     }
+    this.input.keyboard!.on('keydown-C', () => {
+      sfx.unlock()
+      this.scene.start('CompanionScene')
+    })
     this.input.keyboard!.once('keydown', wake)
     this.input.once('pointerdown', wake)
   }
