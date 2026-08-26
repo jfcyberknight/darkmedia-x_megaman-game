@@ -278,9 +278,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Tir en éventail (RAM) : balles supplémentaires à ±angle.
     const spread = w.burst ?? 1
     const angles = spread === 1 ? [0] : spread === 3 ? [-0.28, 0, 0.28] : [-0.4, 0, 0.4]
+    // Point de sortie du CANON (bord avant, hauteur de ceinture) — pas du
+    // visage. Le sprite (22x30, origine au centre) a son buster à x+10 / y+7
+    // quand il fait face à droite ; `dir` inverse le tout à gauche.
+    const muzzleX = this.x + dir * 10
+    const muzzleY = this.y + 7
     for (const a of angles) {
       const key = type === 'normal' ? 'bullet' : type === 'mid' ? 'bullet-mid' : 'bullet-big'
-      const bullet = this.bullets.get(this.x + dir * 8, this.y - 1, key) as Bullet
+      const bullet = this.bullets.get(muzzleX, muzzleY, key) as Bullet
       if (!bullet) continue
       bullet.activate(dir, type, dmg, weapon)
       if (a !== 0) {
@@ -296,7 +301,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     else sfx.shootBig()
     ;(this.scene as Phaser.Scene & {
       spawnMuzzleFlash(x: number, y: number, scale?: number, flame?: boolean): void
-    }).spawnMuzzleFlash(this.x + dir * 8, this.y - 1, flashScale, weapon !== 'buster')
+    }).spawnMuzzleFlash(muzzleX, muzzleY, flashScale, weapon !== 'buster')
     this.scene.cameras.main.shake(type === 'normal' ? 25 : 60, type === 'normal' ? 0.001 : 0.002)
   }
 
