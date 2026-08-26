@@ -33,6 +33,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private invulnToken = 0
   private facingRight = true
   private bullets: Phaser.Physics.Arcade.Group
+  /** Échelle visuelle + physique du robot (plus grand à l'écran). */
+  private static readonly PLAYER_SCALE = 1.25
   private lastShot = 0
   private shootCooldown = 220
   /** Multiplicateur de cadence de tir (pouvoir compagnon 'rapide' : < 1 = plus rapide). */
@@ -72,6 +74,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     this.body!.setSize(12, 20)
     this.body!.setOffset(5, 8)
+    // Robot plus grand à l'écran (×1.25) : comme le boss (setScale), le corps
+    // physique suit l'échelle (la hitbox reste proportionnelle au sprite).
+    this.setScale(Player.PLAYER_SCALE)
     this.setCollideWorldBounds(true)
     this.setMaxVelocity(120, this.maxFall)
   }
@@ -208,11 +213,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   /** Squash & stretch feedback (returns to 1:1 quickly). */
   private squash(sx: number, sy: number) {
-    this.setScale(sx, sy)
+    const base = Player.PLAYER_SCALE
+    this.setScale(base * sx, base * sy)
     this.scene.tweens.add({
       targets: this,
-      scaleX: 1,
-      scaleY: 1,
+      scaleX: base,
+      scaleY: base,
       duration: 150,
       ease: 'Quad.Out',
     })
@@ -281,8 +287,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Point de sortie du CANON (bord avant, hauteur de ceinture) — pas du
     // visage. Le sprite (22x30, origine au centre) a son buster à x+10 / y+7
     // quand il fait face à droite ; `dir` inverse le tout à gauche.
-    const muzzleX = this.x + dir * 10
-    const muzzleY = this.y + 7
+    const oz = Player.PLAYER_SCALE
+    const muzzleX = this.x + dir * 10 * oz
+    const muzzleY = this.y + 7 * oz
     for (const a of angles) {
       const key = type === 'normal' ? 'bullet' : type === 'mid' ? 'bullet-mid' : 'bullet-big'
       const bullet = this.bullets.get(muzzleX, muzzleY, key) as Bullet
