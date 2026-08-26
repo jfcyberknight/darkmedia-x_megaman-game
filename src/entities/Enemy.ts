@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { sfx } from '../audio'
+import type { Difficulty } from '../difficulty'
 
 /** Structural type shared by every hostile in the stage (walker, flyer, turret, boss). */
 export interface StageEnemy {
@@ -21,11 +22,17 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
   private target: { x: number; y: number }
   private baseTint = 0xffffff
 
-  constructor(scene: Phaser.Scene, x: number, y: number, target?: { x: number; y: number }, tint?: number) {
+  constructor(scene: Phaser.Scene, x: number, y: number, target?: { x: number; y: number }, tint?: number, diff?: Difficulty) {
     super(scene, x, y, 'enemy')
     this.startX = x
     this.target = target ?? { x, y }
     this.baseTint = tint ?? 0xffffff
+    // Difficulté du stage : vie + vitesse.
+    const hpMult = diff?.hpMult ?? 1
+    const spdMult = diff?.speedMult ?? 1
+    this.health = Math.max(1, Math.round(2 * hpMult))
+    this.patrolSpeed = 20 * spdMult
+    this.chaseSpeed = this.patrolSpeed * 2.3 // ~46/20
 
     scene.add.existing(this)
     scene.physics.add.existing(this)

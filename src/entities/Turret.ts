@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { StageEnemy } from './Enemy'
 import { sfx } from '../audio'
+import type { Difficulty } from '../difficulty'
 
 /** Static turret: fires aimed shots at the player when in range and line of height. */
 export class Turret extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
@@ -10,10 +11,15 @@ export class Turret extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
   private telegraphing = 0
   private baseTint = 0xffffff
 
-  constructor(scene: Phaser.Scene, x: number, y: number, target: { x: number; y: number }, tint?: number) {
+  constructor(scene: Phaser.Scene, x: number, y: number, target: { x: number; y: number }, tint?: number, diff?: Difficulty) {
     super(scene, x, y, 'turret')
     this.target = target
     this.baseTint = tint ?? 0xffffff
+    // Difficulté du stage : + de vie et cadence plus rapide.
+    const hpMult = diff?.hpMult ?? 1
+    const spdMult = diff?.speedMult ?? 1
+    this.health = Math.max(1, Math.round(3 * hpMult))
+    this.cooldown = Math.max(700, Math.round(1200 / spdMult))
 
     scene.add.existing(this)
     scene.physics.add.existing(this)

@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { StageEnemy } from './Enemy'
 import { sfx } from '../audio'
+import type { Difficulty } from '../difficulty'
 
 /** Hovering drone: drifts in place, chases the player when close. */
 export class Flyer extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
@@ -9,12 +10,20 @@ export class Flyer extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
   private t = Math.random() * 2000
   private target: { x: number; y: number }
   private baseTint = 0xffffff
+  private chaseSpeed = 42
+  private driftSpeed = 11
 
-  constructor(scene: Phaser.Scene, x: number, y: number, target: { x: number; y: number }, tint?: number) {
+  constructor(scene: Phaser.Scene, x: number, y: number, target: { x: number; y: number }, tint?: number, diff?: Difficulty) {
     super(scene, x, y, 'flyer')
     this.baseY = y
     this.target = target
     this.baseTint = tint ?? 0xffffff
+    // Difficulté du stage : vie + vitesse de poursuite.
+    const hpMult = diff?.hpMult ?? 1
+    const spdMult = diff?.speedMult ?? 1
+    this.health = Math.max(1, Math.round(2 * hpMult))
+    this.chaseSpeed = 42 * spdMult
+    this.driftSpeed = 11 * spdMult
 
     scene.add.existing(this)
     scene.physics.add.existing(this)
@@ -35,10 +44,10 @@ export class Flyer extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
     const chase = Math.abs(dx) < 170 && Math.abs(dy) < 200
     let hoverY: number
     if (chase) {
-      this.setVelocityX(Math.sign(dx) * 42)
+      this.setVelocityX(Math.sign(dx) * this.chaseSpeed)
       hoverY = this.target.y - 10
     } else {
-      this.setVelocityX(Math.cos(this.t / 900) * 11)
+      this.setVelocityX(Math.cos(this.t / 900) * this.driftSpeed)
       hoverY = this.baseY + Math.sin(this.t / 430) * 3
     }
     // On glisse toujours en vitesse verticale vers la cible (pas de setY brutal),

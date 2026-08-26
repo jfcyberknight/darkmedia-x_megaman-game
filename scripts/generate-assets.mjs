@@ -608,6 +608,100 @@ savePreview(novaSprite(), 'comp-nova.png', 8)
   save(cap, 'capsule.png')
 }
 
+// ============================ PROJECTILES COMPAGNON (distincts) ============================
+// ORION (tir) : dard énergétique cyan filant vers la droite.
+{
+  const c = C(12, 6)
+  ell(c, 4, 3, 4.6, 2.4, hex(0x0e5f86))            // liseré sombre
+  ell(c, 4, 3, 3.6, 1.9, hex(0x35e0ff))            // corps
+  ell(c, 4, 3, 2.2, 1.0, hex(0xc8f6ff))            // cœur
+  seg(c, 1, 3, 9, 3, hex(0xc8f6ff))                // traînée vive
+  px(c, 10, 3, hex(0xffffff)); px(c, 11, 3, hex(0xffffff)) // pointe
+  save(c, 'comp-orion-shot.png')
+  savePreview(c, 'comp-orion-shot.png', 8)
+}
+// NOVA (explosion) : orbe déflagrant rose-orangé.
+{
+  const c = C(10, 10)
+  ell(c, 5, 5, 4.6, 4.6, hex(0x7a1f5c))            // liseré sombre
+  ell(c, 5, 5, 3.8, 3.8, hex(0xf472b6))            // corps
+  ell(c, 5, 5, 2, 2, hex(0xffc4e2))                // cœur
+  px(c, 5, 5, hex(0xffffff))
+  px(c, 9, 2, hex(0xffd166)); px(c, 2, 9, hex(0xffd166)) // étincelles
+  px(c, 9, 8, hex(0xffd166)); px(c, 2, 2, hex(0xffd166))
+  save(c, 'comp-nova-missile.png')
+  savePreview(c, 'comp-nova-missile.png', 8)
+}
+// BOLT (bouclier) : champ hexagonal cyan-jaune.
+{
+  const c = C(20, 20)
+  // hexagone : sommets à (±8,0),(±4,±7)
+  const pts = [[5, 2], [15, 2], [20, 10], [15, 18], [5, 18], [0, 10]]
+  const loop = [...pts, pts[0]]
+  for (let i = 0; i < pts.length; i++) seg(c, loop[i][0], loop[i][1], loop[i + 1][0], loop[i + 1][1], hex(0xffc857))
+  seg(c, 5, 2, 15, 18, hex(0xffc857)); seg(c, 15, 2, 5, 18, hex(0xffc857)) // croix de maintien
+  ell(c, 10, 10, 3.2, 3.2, hex(0x93c5fd))
+  px(c, 10, 10, hex(0xcfe6ff))
+  save(c, 'comp-bolt-field.png')
+  savePreview(c, 'comp-bolt-field.png', 8)
+}
+// FLASH de tir (muzzle) : étoile additive, teintée à l'usage.
+{
+  const c = C(10, 10)
+  seg(c, 5, 1, 5, 9, hex(0xffffff))
+  seg(c, 1, 5, 9, 5, hex(0xffffff))
+  seg(c, 2, 2, 8, 8, hex(0xffffff)); seg(c, 2, 8, 8, 2, hex(0xffffff))
+  px(c, 5, 4, hex(0xffe9a8)); px(c, 4, 5, hex(0xffe9a8)); px(c, 6, 5, hex(0xffe9a8)); px(c, 5, 6, hex(0xffe9a8))
+  save(c, 'comp-muzzle.png')
+  savePreview(c, 'comp-muzzle.png', 8)
+}
+
+// ============================ ICÔNES DE POUVOIR (HUD) ============================
+function iconC() { return C(12, 12) }
+function saveIcon(c, file) { save(c, file); savePreview(c, file, 8) }
+{
+  // tir : dard (cyan)
+  let c = iconC()
+  ell(c, 5, 6, 4.4, 2.5, hex(0x1e9cc8))
+  ell(c, 5, 6, 3.2, 1.6, hex(0x35e0ff))
+  px(c, 10, 6, hex(0xc8f6ff)); px(c, 9, 5, hex(0xc8f6ff)); px(c, 9, 7, hex(0xc8f6ff))
+  saveIcon(c, 'icon-tir.png')
+
+  // bouclier : écu (bleu)
+  c = iconC()
+  rect(c, 3, 2, 8, 6, hex(0x93c5fd))
+  rect(c, 4, 3, 7, 5, hex(0xcfe6ff))
+  rect(c, 4, 7, 7, 8, hex(0x60a5fa))
+  px(c, 3, 7, hex(0x60a5fa)); px(c, 8, 7, hex(0x60a5fa)); px(c, 5, 9, hex(0x60a5fa)); px(c, 6, 9, hex(0x60a5fa))
+  saveIcon(c, 'icon-bouclier.png')
+
+  // explosion : éclatement (rose/orangé)
+  c = iconC()
+  seg(c, 6, 1, 6, 11, hex(0xff6b5e)); seg(c, 1, 6, 11, 6, hex(0xff6b5e))
+  seg(c, 2, 2, 10, 10, hex(0xf472b6)); seg(c, 2, 10, 10, 2, hex(0xf472b6))
+  ell(c, 6, 6, 2.2, 2.2, hex(0xffd166)); px(c, 6, 6, hex(0xffffff))
+  saveIcon(c, 'icon-explosion.png')
+
+  // soin : croix (vert)
+  c = iconC()
+  rect(c, 5, 2, 6, 10, hex(0x7dfca2)); rect(c, 2, 5, 9, 6, hex(0x7dfca2))
+  rect(c, 5, 3, 6, 9, hex(0xb9ffce)); rect(c, 3, 5, 8, 6, hex(0xb9ffce))
+  saveIcon(c, 'icon-soin.png')
+
+  // rapide : éclair (jaune)
+  c = iconC()
+  seg(c, 7, 1, 3, 6, hex(0xffd166)); seg(c, 3, 6, 6, 6, hex(0xffd166))
+  seg(c, 6, 6, 5, 11, hex(0xffd166)); seg(c, 5, 11, 9, 6, hex(0xffd166)); seg(c, 9, 6, 6, 6, hex(0xffd166))
+  px(c, 6, 3, hex(0xffe9a8)); px(c, 6, 11, hex(0xffe9a8))
+  saveIcon(c, 'icon-rapide.png')
+
+  // puissance : flèches montantes (magenta)
+  c = iconC()
+  seg(c, 4, 9, 9, 9, hex(0xf472b6)); seg(c, 4, 5, 9, 5, hex(0xf472b6)); seg(c, 2, 9, 8, 2, hex(0xf472b6))
+  seg(c, 2, 5, 8, 2, hex(0xf472b6)); px(c, 4, 2, hex(0xffc4e2)); px(c, 8, 2, hex(0xffc4e2))
+  saveIcon(c, 'icon-puissance.png')
+}
+
 // ============================ GLOW 16x16 (additive) ============================
 {
   const c = CF(16, 16)

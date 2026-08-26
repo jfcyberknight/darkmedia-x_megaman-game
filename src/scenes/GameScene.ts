@@ -15,6 +15,7 @@ import { STAGES, DEFAULT_STAGE, type StageDef } from '../stages'
 import { WEAPONS, BOSS_WEAPON, type WeaponId } from '../weapons'
 import { getCapsule, COMBAT, type CombatPower } from '../capsules'
 import { touchState, isTouchUI, consumeTouchEdges } from '../touch'
+import { getDifficulty, type Difficulty } from '../difficulty'
 
 const WORLD_H = 320
 // Actualisées en create() depuis level-entities.json (niveau généré).
@@ -62,7 +63,7 @@ export class GameScene extends Phaser.Scene {
   private compShieldT = 0
   private compHealT = 0
   private compSignature: CombatPower = 'tir'
-  private compHud!: Phaser.GameObjects.Text
+  private compIcons: Phaser.GameObjects.Image[] = []
   private readonly fallbackTaunts: Record<string, string[]> = {
     intro: ['Ton existence prend fin ici, gardien.', 'Néon City m’appartient déjà.'],
     combat: ['Ta résistance est une erreur de programmation.', 'Je calcule déjà ta défaite.', "Chaque tir t'affaiblit. Chaque seconde me rend plus fort."],
@@ -85,6 +86,7 @@ export class GameScene extends Phaser.Scene {
   private bgMid!: Phaser.GameObjects.TileSprite
   private enemyCount = 0
   private stage: StageDef = DEFAULT_STAGE
+  private diff!: Difficulty
   // Previous-frame state of the touch buttons (edge detection for jump/shoot).
   private tPrevJump = false
   private tPrevShoot = false
@@ -113,6 +115,18 @@ export class GameScene extends Phaser.Scene {
   preload() {
     const comp = getCompanion(this.registry.get('companion'))
     this.load.image(comp.texture, `assets/${comp.texture}.png`)
+    // Textures de tir / bouclier propres à chaque compagnon + flash de muzzle.
+    this.load.image('comp-orion-shot', 'assets/comp-orion-shot.png')
+    this.load.image('comp-nova-missile', 'assets/comp-nova-missile.png')
+    this.load.image('comp-bolt-field', 'assets/comp-bolt-field.png')
+    this.load.image('comp-muzzle', 'assets/comp-muzzle.png')
+    // Icônes de pouvoir du HUD (signature + boosts).
+    this.load.image('icon-tir', 'assets/icon-tir.png')
+    this.load.image('icon-bouclier', 'assets/icon-bouclier.png')
+    this.load.image('icon-explosion', 'assets/icon-explosion.png')
+    this.load.image('icon-soin', 'assets/icon-soin.png')
+    this.load.image('icon-rapide', 'assets/icon-rapide.png')
+    this.load.image('icon-puissance', 'assets/icon-puissance.png')
     this.load.image('tileset', 'assets/tileset.png')
     this.load.tilemapTiledJSON('level', `assets/level-${this.stage.id}.json`)
     this.load.spritesheet('player', 'assets/player.png', { frameWidth: 22, frameHeight: 30 })
@@ -141,6 +155,7 @@ export class GameScene extends Phaser.Scene {
     // Niveau généré : taille du monde + entités (ennemis, checkpoints, orbes).
     this.ents = this.cache.json.get('level-entities') as LevelEntities
     WORLD_W = this.ents.worldW
+    this.diff = getDifficulty(this.stage.id)
 
     // Clamp du delta physique à ~33 ms (plancher 30 fps) : au-delà, le jeu
     // ralentit au lieu de laisser les corps traverser les tuiles (tunneling).
@@ -283,10 +298,13 @@ export class GameScene extends Phaser.Scene {
     }).setScrollFactor(0).setDepth(200).setVisible(false)
     this.powerText.setShadow(0, 0, '#ff5546', 10, true, true)
 
-    // Indicateur du pouvoir de combat du compagnon (signature) + boosts.
-    this.compHud = this.add.text(this.cameras.main.width - 12, 34, '', {
-      fontSize: '7px', color: '#ffb3b8', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
-    }).setOrigin(1, 0).setScrollFactor(0).setDepth(200)
+    // Rangée d'icônes du pouvoir (signature + boosts) — remplace l'ancien texte.
+    for (let i = 0; i < 6; i++) {
+      this.compIcons.push(
+        this.add.image(this.cameras.main.width - 12, 34, 'icon-tir')
+          .setScrollFactor(0).setDepth(200).setScale(0.9).setVisible(false),
+      )
+    }
 
     // Lives (mini hero icons)
     const lives = (this.registry.get('lives') as number) ?? 3
@@ -478,14 +496,29 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // HUD compagnon : signature (pouvoir de combat) + boosts de capsules.
-    const sigName = COMBAT[this.compSignature].name
-    const boosts = [...powers].map((p) => getCapsule(p).name).join(' · ')
-    const s = `◈ ${sigName}${boosts ? '  • ' + boosts : ''}`
-    if (this.compHud.text !== s) this.compHud.setText(s)
+    // HUD compagnon : icônes de pouvoir (signature + boosts) au lieu du texte.
+    this.renderCompIcons(powers)
   }
 
-  /** Tire une balle de compagnon vers un ennemi (couleur = pouvoir). */
+  /** Affiche la rangée d'icônes de pouvoir (signature en premier, puis les boosts). */
+  private renderCompIcons(powers: Set<string>) {
+    const ids = [this.compSignature, ...[...powers]]
+    const gap = 14
+    const n = Math.min(ids.length, this.compIcons.length)
+    const startX = this.cameras.main.width - 12 - n * gap
+    for (let i = 0; i < this.compIcons.length; i++) {
+      const ic = this.compIcons[i]
+      if (i < n) {
+        // Ne change la texture que si l'icône a changé (évite setTexture à chaque frame).
+        if ((ic.texture.key ?? '') !== `icon-${ids[i]}`) ic.setTexture(`icon-${ids[i]}`)
+        ic.setPosition(startX + i * gap, 34).setVisible(true)
+      } else {
+        ic.setVisible(false)
+      }
+    }
+  }
+
+  /** Tire une balle de compagnon vers un ennemi (couleur + sprite = pouvoir). */
   private fireCompanionBullet(e: Phaser.Physics.Arcade.Sprite, dmg: number, weapon: WeaponId, tint: number) {
     const b = this.bullets.get(this.companion.x, this.companion.y - 4, 'bullet') as Bullet
     if (!b) return
@@ -494,7 +527,23 @@ export class GameScene extends Phaser.Scene {
     const ang = Math.atan2(e.y - this.companion.y, e.x - this.companion.x)
     b.setVelocity(Math.cos(ang) * 160, Math.sin(ang) * 160)
     b.setTint(tint)
+    // Sprite de tir PROPRE au compagnon : ORION = dard cyan, NOVA = orbe rose.
+    const shotTex = this.compSignature === 'explosion' ? 'comp-nova-missile' : 'comp-orion-shot'
+    b.setTexture(shotTex)
+    const bs = b.body as Phaser.Physics.Arcade.Body
+    bs.setSize(Math.max(8, Math.round(b.width * 0.7)), Math.max(6, Math.round(b.height * 0.7)))
+    this.spawnCompMuzzle(tint)
+    // Recul du compagnon quand il tire (animation de tir).
+    this.tweens.killTweensOf(this.companion)
+    this.tweens.add({ targets: this.companion, scale: 0.86, duration: 60, yoyo: true, ease: 'Quad.Out' })
     sfx.turretShot()
+  }
+
+  /** Petit flash de bouche (muzzle) teinté au pouvoir, additive. */
+  private spawnCompMuzzle(tint: number) {
+    const m = this.add.image(this.companion.x, this.companion.y - 4, 'comp-muzzle')
+      .setTint(tint).setBlendMode(Phaser.BlendModes.ADD).setDepth(36).setScale(0.5).setAlpha(0.9)
+    this.tweens.add({ targets: m, scale: 1.15, alpha: 0, duration: 150, onComplete: () => m.destroy() })
   }
 
   private createAnimations() {
@@ -837,9 +886,12 @@ export class GameScene extends Phaser.Scene {
 
   /** Bulle de protection autour du joueur (pouvoir bouclier). */
   private spawnShieldBubble() {
-    const b = this.add.circle(this.player.x, this.player.y, 18, 0x93c5fd, 0.16)
-      .setStrokeStyle(2, 0x93c5fd, 0.9).setDepth(60)
-    this.tweens.add({ targets: b, radius: 26, alpha: 0, duration: 1400, ease: 'Cubic.Out', onComplete: () => b.destroy() })
+    // Champ hexagonal (texture BOLT) pulsant autour du joueur esthétique ;
+    // l'invulnérabilité réelle est gérée par grantInvulnerability.
+    const pulse = this.add.image(this.player.x, this.player.y, 'comp-bolt-field')
+      .setBlendMode(Phaser.BlendModes.ADD).setDepth(60).setScale(0.6).setAlpha(0)
+    this.tweens.add({ targets: pulse, alpha: 0.9, scale: 1, duration: 180 })
+    this.tweens.add({ targets: pulse, alpha: 0, scale: 1.5, duration: 1400, delay: 180, ease: 'Cubic.Out', onComplete: () => pulse.destroy() })
     this.cameras.main.flash(160, 140, 200, 255)
   }
 
@@ -933,11 +985,11 @@ export class GameScene extends Phaser.Scene {
   private spawnEnemies() {
     for (const d of this.ents.enemies) {
       let enemy: StageEnemy
-      if (d.kind === 'flyer') enemy = new Flyer(this, d.x, d.y, this.player)
-      else if (d.kind === 'turret') enemy = new Turret(this, d.x, d.y, this.player)
-      else if (d.kind === 'charger') enemy = new Charger(this, d.x, d.y, this.player)
-      else if (d.kind === 'spitter') enemy = new Spitter(this, d.x, d.y, this.player)
-      else enemy = new Enemy(this, d.x, d.y, this.player)
+      if (d.kind === 'flyer') enemy = new Flyer(this, d.x, d.y, this.player, undefined, this.diff)
+      else if (d.kind === 'turret') enemy = new Turret(this, d.x, d.y, this.player, undefined, this.diff)
+      else if (d.kind === 'charger') enemy = new Charger(this, d.x, d.y, this.player, this.diff)
+      else if (d.kind === 'spitter') enemy = new Spitter(this, d.x, d.y, this.player, this.diff)
+      else enemy = new Enemy(this, d.x, d.y, this.player, undefined, this.diff)
       this.enemies.add(enemy as unknown as Phaser.Physics.Arcade.Sprite)
       this.enemyCount++
     }
@@ -998,7 +1050,8 @@ export class GameScene extends Phaser.Scene {
     b.setTint(tint).setScale(1).setDepth(45)
     b.body!.setSize(6, 6)
     const ang = Math.atan2(ty - y, tx - x)
-    b.setVelocity(Math.cos(ang) * speed, Math.sin(ang) * speed)
+    const s = speed * this.diff.bulletMult
+    b.setVelocity(Math.cos(ang) * s, Math.sin(ang) * s)
     const token = this.time.now + Math.random()
     b.setData('token', token)
     b.setData('kind', 'bullet') // réinit au cas où l'objet recyclé était une onde de choc
@@ -1050,7 +1103,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private spawnBoss() {
-    const boss = new Boss(this, this.ents.bossX, 262, this.player, (hp, max) => this.drawBossBar(hp, max))
+    const boss = new Boss(this, this.ents.bossX, 262, this.player, (hp, max) => this.drawBossBar(hp, max), undefined, this.diff)
     boss.setScale(1.35) // bien plus imposant que les sbires
     this.boss = boss
     this.bossActive = true

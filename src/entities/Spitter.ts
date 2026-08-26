@@ -1,16 +1,23 @@
 import Phaser from 'phaser'
 import type { StageEnemy } from './Enemy'
 import { sfx } from '../audio'
+import type { Difficulty } from '../difficulty'
 
 /** Cracheur : marche vers le joueur, s'arrête et tire à vue (mobile). */
 export class Spitter extends Phaser.Physics.Arcade.Sprite implements StageEnemy {
   private health = 3
   private spitTimer = 1100
   private target: { x: number; y: number }
+  private walkSpeed = 22
 
-  constructor(scene: Phaser.Scene, x: number, y: number, target: { x: number; y: number }) {
+  constructor(scene: Phaser.Scene, x: number, y: number, target: { x: number; y: number }, diff?: Difficulty) {
     super(scene, x, y, 'spitter')
     this.target = target
+    // Difficulté du stage : vie + vitesse de marche.
+    const hpMult = diff?.hpMult ?? 1
+    const spdMult = diff?.speedMult ?? 1
+    this.health = Math.max(1, Math.round(3 * hpMult))
+    this.walkSpeed = 22 * spdMult
 
     scene.add.existing(this)
     scene.physics.add.existing(this)
@@ -37,7 +44,7 @@ export class Spitter extends Phaser.Physics.Arcade.Sprite implements StageEnemy 
       this.spitTimer -= delta
       if (this.spitTimer <= 0) { this.spitTimer = 1700; this.fire() }
     } else {
-      this.setVelocityX(Math.sign(dx) * 22)
+      this.setVelocityX(Math.sign(dx) * this.walkSpeed)
       this.setFlipX(dx < 0)
       this.spitTimer = 800
     }

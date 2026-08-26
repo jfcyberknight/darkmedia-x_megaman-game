@@ -16,10 +16,12 @@ try {
   // avancer jusqu'à l'écran de sélection
   let t = Date.now()
   while (!(await scenes()).includes('StageSelectScene') && Date.now() - t < 25000) { await page.keyboard.press('z'); await sleep(300) }
-  await sleep(500) // laisser l'écran de sélection prêt
-  // sélectionner le stage voulu avec les flèches (délai large pour fiabilité)
-  for (let i = 0; i < STAGE_IDX; i++) { await page.keyboard.press('ArrowRight'); await sleep(450) }
-  await page.keyboard.press('z') // confirmer
+  await sleep(500)
+  // sélection fiable : forcer l'index + confirmer via la scène (pas de flèches flaky)
+  await page.evaluate((idx) => {
+    const s = window.__game.scene.getScene('StageSelectScene')
+    if (s) { s.selected = idx; s.confirm() }
+  }, STAGE_IDX)
   const inGame = await wait('GameScene', 10000)
   console.log('GameScene:', inGame, '| scènes:', (await scenes()).join(','))
   await sleep(800)

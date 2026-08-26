@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { StageEnemy } from './Enemy'
 import { sfx } from '../audio'
+import type { Difficulty } from '../difficulty'
 
 type ChargerState = 'idle' | 'telegraph' | 'dash' | 'rest'
 
@@ -11,11 +12,19 @@ export class Charger extends Phaser.Physics.Arcade.Sprite implements StageEnemy 
   private aiState: ChargerState = 'idle'
   private stateTime = 0
   private target: { x: number; y: number }
+  private patrolSpeed = 20
+  private dashSpeed = 120
 
-  constructor(scene: Phaser.Scene, x: number, y: number, target: { x: number; y: number }) {
+  constructor(scene: Phaser.Scene, x: number, y: number, target: { x: number; y: number }, diff?: Difficulty) {
     super(scene, x, y, 'charger')
     this.startX = x
     this.target = target
+    // Difficulté du stage : vie + vitesses.
+    const hpMult = diff?.hpMult ?? 1
+    const spdMult = diff?.speedMult ?? 1
+    this.health = Math.max(1, Math.round(4 * hpMult))
+    this.patrolSpeed = 20 * spdMult
+    this.dashSpeed = 120 * spdMult
 
     scene.add.existing(this)
     scene.physics.add.existing(this)
@@ -23,7 +32,7 @@ export class Charger extends Phaser.Physics.Arcade.Sprite implements StageEnemy 
     this.body!.setSize(16, 12)
     this.body!.setOffset(2, 4)
     this.setCollideWorldBounds(true)
-    this.setVelocityX(-20)
+    this.setVelocityX(-this.patrolSpeed)
     this.play('charger-anim')
   }
 
@@ -42,10 +51,10 @@ export class Charger extends Phaser.Physics.Arcade.Sprite implements StageEnemy 
     switch (this.aiState) {
       case 'idle':
         // patrouille lente ; si le joueur est proche -> telegraph
-        if (body.blocked.right) { this.setVelocityX(-20); this.setFlipX(true) }
-        else if (body.blocked.left) { this.setVelocityX(20); this.setFlipX(false) }
-        else if (this.x > this.startX + 60) { this.setVelocityX(-20); this.setFlipX(true) }
-        else if (this.x < this.startX - 60) { this.setVelocityX(20); this.setFlipX(false) }
+        if (body.blocked.right) { this.setVelocityX(-this.patrolSpeed); this.setFlipX(true) }
+        else if (body.blocked.left) { this.setVelocityX(this.patrolSpeed); this.setFlipX(false) }
+        else if (this.x > this.startX + 60) { this.setVelocityX(-this.patrolSpeed); this.setFlipX(true) }
+        else if (this.x < this.startX - 60) { this.setVelocityX(this.patrolSpeed); this.setFlipX(false) }
         if (Math.abs(dx) < 130 && dy < 64) {
           this.aiState = 'telegraph'; this.stateTime = 0; this.setVelocityX(0)
           this.setTintFill(0xffffff)
@@ -58,7 +67,7 @@ export class Charger extends Phaser.Physics.Arcade.Sprite implements StageEnemy 
           this.aiState = 'dash'; this.stateTime = 0
           const dir = Math.sign(dx) || 1
           this.setFlipX(dir < 0)
-          this.setVelocityX(dir * 120)
+          this.setVelocityX(dir * this.dashSpeed)
           sfx.dash()
         }
         break

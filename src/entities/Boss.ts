@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { sfx } from '../audio'
+import type { Difficulty } from '../difficulty'
 
 type BossState = 'walk' | 'telegraph' | 'volley' | 'dash' | 'slam' | 'rest'
 type Attack = 'volley' | 'dash' | 'slam'
@@ -23,6 +24,9 @@ export interface BossFlashTarget {
 export class Boss extends Phaser.Physics.Arcade.Sprite {
   private health = 30
   private maxHealth = 30
+  private walkSpeed = 14
+  private dashSpeed = 94
+  private restTime = 2000
   private dead = false
   private target: { x: number; y: number }
   private onHpChange: (hp: number, max: number) => void
@@ -45,11 +49,19 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     target: { x: number; y: number },
     onHpChange: (hp: number, max: number) => void,
     tint?: number,
+    diff?: Difficulty,
   ) {
     super(scene, x, y, 'boss')
     this.target = target
     this.onHpChange = onHpChange
     this.baseTint = tint ?? 0xffffff
+    // Difficulté du stage : HP + vitesses + temps de repos du boss.
+    this.health = diff?.bossHp ?? 30
+    this.maxHealth = this.health
+    this.walkSpeed = diff?.bossWalk ?? 14
+    this.dashSpeed = diff?.bossDash ?? 94
+    this.restTime = diff?.bossRest ?? 2000
+    this.cooldown = Math.round(this.restTime * 0.7)
 
     scene.add.existing(this)
     scene.physics.add.existing(this)
@@ -80,7 +92,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
 
     switch (this.aiState) {
       case 'walk': {
-        this.setVelocityX(Math.sign(dx) * (this.enraged ? 19 : 14))
+        this.setVelocityX(Math.sign(dx) * (this.enraged ? this.walkSpeed * 1.35 : this.walkSpeed))
         this.setFlipX(dx < 0)
         this.cooldown -= delta
         if (this.cooldown <= 0 && adx < 580) this.pickAttack(adx)
@@ -113,7 +125,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
         if (this.stateTime > (this.enraged ? 300 : 480)) {
           this.aiState = 'walk'
           this.stateTime = 0
-          this.cooldown = this.enraged ? 1200 : 2000
+          this.cooldown = this.enraged ? Math.round(this.restTime * 0.6) : this.restTime
         }
         break
       }
@@ -145,7 +157,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     } else if (this.pending === 'dash') {
       const dir = Math.sign(this.target.x - this.x) || 1
       this.setFlipX(dir < 0)
-      this.setVelocityX(dir * (this.enraged ? 112 : 94))
+      this.setVelocityX(dir * (this.enraged ? this.dashSpeed * 1.19 : this.dashSpeed))
       sfx.dash()
       this.aiState = 'dash'
       this.stateTime = 0
