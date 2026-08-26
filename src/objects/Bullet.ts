@@ -1,11 +1,12 @@
 import Phaser from 'phaser'
+import { WEAPONS, type WeaponId } from '../weapons'
 
 export type BulletType = 'normal' | 'mid' | 'big'
 
-const BULLET_DEF: Record<BulletType, { key: string; damage: number; speed: number; pierce: boolean }> = {
-  normal: { key: 'bullet', damage: 1, speed: 140, pierce: false },
-  mid: { key: 'bullet-mid', damage: 2, speed: 128, pierce: false },
-  big: { key: 'bullet-big', damage: 4, speed: 108, pierce: true },
+const BULLET_DEF: Record<BulletType, { key: string; speed: number }> = {
+  normal: { key: 'bullet', speed: 140 },
+  mid: { key: 'bullet-mid', speed: 128 },
+  big: { key: 'bullet-big', speed: 108 },
 }
 
 export class Bullet extends Phaser.Physics.Arcade.Image {
@@ -15,6 +16,10 @@ export class Bullet extends Phaser.Physics.Arcade.Image {
   bulletType: BulletType = 'normal'
   damage = 1
   pierce = false
+  weapon: WeaponId = 'buster'
+  homing = false
+  explode = false
+  freeze = false
   private hitSet = new Set<object>()
 
   constructor(scene: Phaser.Scene, x: number, y: number, texture: string) {
@@ -23,17 +28,21 @@ export class Bullet extends Phaser.Physics.Arcade.Image {
     this.setActive(false)
   }
 
-  activate(direction: number, type: BulletType = 'normal', bonusDamage = 0, flame = false) {
+  activate(direction: number, type: BulletType, damage: number, weapon: WeaponId) {
     const def = BULLET_DEF[type]
+    const w = WEAPONS[weapon]
     this.bulletType = type
-    this.damage = def.damage + bonusDamage
-    this.pierce = def.pierce
+    this.weapon = weapon
+    this.damage = damage
+    this.pierce = w.pierce || type === 'big'
+    this.homing = !!w.homing
+    this.explode = !!w.explode
+    this.freeze = !!w.freeze
     this.hitSet.clear()
 
     this.setTexture(def.key)
     this.body!.setSize(Math.max(8, Math.round(this.width * 0.7)), Math.max(6, Math.round(this.height * 0.7)))
-    if (flame) this.setTint(0xff9a76)
-    else this.clearTint()
+    this.setTint(w.tint)
 
     this.setVisible(true)
     this.setActive(true)
@@ -59,6 +68,16 @@ export class Bullet extends Phaser.Physics.Arcade.Image {
     if (body.blocked.left || body.blocked.right || body.blocked.up || body.blocked.down) {
       this.disableBody(true, true)
       return
+    }
+    // Tir guidé : dévie vers l'ennemi actif le plus proche.
+    if (this.homing) {
+      const sc = this.scene as Phaser.Scene & { enemies?: Phaser.Physics.Arcade.Group }
+      const e = sc.enemies?.getFirstAlive() as Phaser.Physics.Arcade.Sprite | null
+      if (e?.active) {
+        const ang = Math.atan2(e.y - this.y, e.x - this.x)
+        const speed = Math.hypot(body.velocity.x, body.velocity.y) || 100
+        this.setVelocity(Math.cos(ang) * speed, Math.sin(ang) * speed)
+      }
     }
     // Portée en distance : à bas FPS l'ancienne limite temporelle (1400 ms
     // temps réel) tuait les balles après ~50 px, déconnectée de la physique.

@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { Bullet, BulletType } from '../objects/Bullet'
+import { WEAPONS, type WeaponId } from '../weapons'
 import { sfx } from '../audio'
 
 const CHARGE_MID = 400
@@ -44,7 +45,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   // Boss power absorbed
   powerUp = false
-  weapon: 'buster' | 'war' = 'buster'
+  weapon: WeaponId = 'buster'
   private we = 28
   private weMax = 28
 
@@ -263,23 +264,29 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.lastShot = now
     }
 
-    // Canon war : plus puissant mais consomme de l'énergie
-    let bonus = this.powerUp ? 1 : 0
-    if (this.weapon === 'war') {
-      const cost = type === 'normal' ? 1 : type === 'mid' ? 2 : 4
-      if (this.we >= cost) {
-        this.we -= cost
-        bonus += 1
-      } else {
-        type = 'normal'   // secours : tir buster standard sans coût
-        bonus = this.powerUp ? 1 : 0
+    // Arme de boss : consomme de l'énergie (les orbes rechargent). Si plus
+    // d'énergie, repli sur le tir BUSTER standard (gratuit).
+    let weapon = this.weapon
+    const cost = weapon === 'buster' ? 0 : type === 'normal' ? 1 : type === 'mid' ? 2 : 4
+    if (cost > 0 && this.we < cost) weapon = 'buster'
+    else this.we = Math.max(0, this.we - cost)
+    const w = WEAPONS[weapon]
+    const dmg = w.damage + (type === 'mid' ? 1 : type === 'big' ? 3 : 0)
+
+    // Tir en éventail (RAM) : balles supplémentaires à ±angle.
+    const spread = w.burst ?? 1
+    const angles = spread === 1 ? [0] : spread === 3 ? [-0.28, 0, 0.28] : [-0.4, 0, 0.4]
+    for (const a of angles) {
+      const key = type === 'normal' ? 'bullet' : type === 'mid' ? 'bullet-mid' : 'bullet-big'
+      const bullet = this.bullets.get(this.x + dir * 8, this.y - 1, key) as Bullet
+      if (!bullet) continue
+      bullet.activate(dir, type, dmg, weapon)
+      if (a !== 0) {
+        // légère déviation verticale pour l'éventail
+        const bd = bullet.body as Phaser.Physics.Arcade.Body
+        bd.setVelocityY(Math.round(bd.velocity.x * Math.tan(a)))
       }
     }
-
-    const key = type === 'normal' ? 'bullet' : type === 'mid' ? 'bullet-mid' : 'bullet-big'
-    const bullet = this.bullets.get(this.x + dir * 8, this.y - 1, key) as Bullet
-    if (!bullet) return
-    bullet.activate(dir, type, bonus, this.weapon === 'war')
 
     const flashScale = type === 'big' ? 0.22 : type === 'mid' ? 0.14 : 0.09
     if (type === 'normal') sfx.shoot()
@@ -287,7 +294,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     else sfx.shootBig()
     ;(this.scene as Phaser.Scene & {
       spawnMuzzleFlash(x: number, y: number, scale?: number, flame?: boolean): void
-    }).spawnMuzzleFlash(this.x + dir * 8, this.y - 1, flashScale, this.powerUp)
+    }).spawnMuzzleFlash(this.x + dir * 8, this.y - 1, flashScale, weapon !== 'buster')
     this.scene.cameras.main.shake(type === 'normal' ? 25 : 60, type === 'normal' ? 0.001 : 0.002)
   }
 

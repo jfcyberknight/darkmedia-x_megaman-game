@@ -12,6 +12,7 @@ import { sfx, startMusic, stopMusic } from '../audio'
 import { askAI } from '../ai'
 import { getCompanion, type CompanionDef } from '../companions'
 import { STAGES, DEFAULT_STAGE, type StageDef } from '../stages'
+import { WEAPONS, BOSS_WEAPON, type WeaponId } from '../weapons'
 import { touchState, isTouchUI, consumeTouchEdges } from '../touch'
 
 const WORLD_H = 320
@@ -267,9 +268,9 @@ export class GameScene extends Phaser.Scene {
       fontSize: '7px', color: '#5a6280', fontFamily: 'monospace',
     }).setScrollFactor(0).setDepth(200)
 
-    this.powerText = this.add.text(6, 34, 'WAR POWER +', {
+    this.powerText = this.add.text(6, 34, '', {
       fontSize: '7px', color: '#ff9d8a', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 3,
-    }).setScrollFactor(0).setDepth(200).setVisible(this.player.powerUp)
+    }).setScrollFactor(0).setDepth(200).setVisible(false)
     this.powerText.setShadow(0, 0, '#ff5546', 10, true, true)
 
     // Lives (mini hero icons)
@@ -351,11 +352,14 @@ export class GameScene extends Phaser.Scene {
       this.tweens.add({ targets: this.muteToast, alpha: 0, duration: 900, delay: 500 })
     }
 
-    const weapon = this.registry.get('weapon') === 'war' && this.registry.get('power') ? 'war' : 'buster'
+    const weapon = (this.registry.get('weapon') as WeaponId | undefined) ?? 'buster'
     this.player.weapon = weapon
+    // HUD : nom de l'arme de boss équipée (masqué si BUSTER).
+    const wname = weapon === 'buster' ? '' : WEAPONS[weapon].name
+    if ((this.powerText.text as string) !== wname) this.powerText.setText(wname).setVisible(wname !== '')
     this.player.update(left, right, jump, jumpHeld, shootPressed, shootHeld, delta)
     this.drawHpBar()
-    if (weapon === 'war') this.drawWeBar()
+    if (weapon !== 'buster') this.drawWeBar()
     else this.weBar.clear()
 
     // Energy orbs: gentle magnet toward the player when close.
@@ -373,7 +377,15 @@ export class GameScene extends Phaser.Scene {
 
     this.enemies.children.iterate((child) => {
       const enemy = child as unknown as StageEnemy
-      if (enemy.active) enemy.update(delta)
+      if (!enemy.active) return true
+      // Gelé (arme CRYO) : ne bouge plus brièvement.
+      const frozenUntil = (child as unknown as { getData?: (k: string) => unknown }).getData?.('frozenUntil') as number | undefined
+      if (frozenUntil && frozenUntil > this.time.now) {
+        const body = (child as Phaser.Physics.Arcade.Sprite).body as Phaser.Physics.Arcade.Body
+        body.setVelocity(0, 0)
+        return true
+      }
+      enemy.update(delta)
       return true
     })
 
@@ -741,6 +753,12 @@ export class GameScene extends Phaser.Scene {
 
   /** Boss power absorbed: +1 damage on every shot, flame tint, cycling max-charge. */
   private absorbBossPower(x: number, y: number) {
+    // Le pouvoir dépend du gardien vaincu : chaque boss donne SON arme.
+    const wpn = BOSS_WEAPON[this.stage.id] ?? 'ram'
+    const owned = new Set<string>(this.registry.get('weapons') ?? [])
+    owned.add(wpn)
+    this.registry.set('weapons', [...owned])
+    this.registry.set('weapon', wpn)
     this.player.powerUp = true
     this.registry.set('power', true)
     sfx.powerup()
@@ -750,16 +768,16 @@ export class GameScene extends Phaser.Scene {
     this.spawnExplosion(x, y, false)
 
     const { width } = this.cameras.main
-    const t = this.add.text(width / 2, 58, `${this.stage.boss} POWER ABSORBED`, {
+    const t = this.add.text(width / 2, 58, `${WEAPONS[wpn].name} ABSORBED`, {
       fontSize: '12px', color: '#ffb3a8', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(300).setAlpha(0).setScale(0.8)
     t.setStroke('#1a0505', 3)
     t.setShadow(0, 0, '#ff5546', 9, true, true)
     this.tweens.add({ targets: t, alpha: 1, scale: 1, duration: 400, ease: 'Back.Out' })
 
-    this.powerText.setVisible(true)
+    this.powerText.setText(WEAPONS[wpn].name).setVisible(true)
     this.time.delayedCall(1000, () => {
-      const epi = this.add.text(width / 2, 84, 'Le cœur de la machine est à vous...', {
+      const epi = this.add.text(width / 2, 84, `Le cœur de ${this.stage.boss} est à vous...`, {
         fontSize: '9px', color: '#c7d2e8', fontFamily: 'monospace', fontStyle: 'italic',
       }).setOrigin(0.5).setScrollFactor(0).setDepth(300).setAlpha(0)
       this.tweens.add({ targets: epi, alpha: 1, duration: 500 })
@@ -1198,6 +1216,8 @@ export class GameScene extends Phaser.Scene {
     if (!bullet.canHit(bo)) return
     this.spawnSparks(bullet.x, bullet.y)
     bo.takeDamage(bullet.damage)
+    if (bullet.explode) this.explodeAt(bullet.x, bullet.y, 46, bullet.damage)
+    if (bullet.freeze && bo.active) this.spawnSparks(bullet.x, bullet.y)
     if (bullet.pierce) bullet.markHit(bo)
     else bullet.disableBody(true, true)
   }
@@ -1264,8 +1284,11 @@ export class GameScene extends Phaser.Scene {
       this.spawnDebris(bx, by)
     })
 
-    // Le noyau apparaît une fois l'onde passée.
-    this.time.delayedCall(2150, onDone)
+    // Le noyau de pouvoir tombe une fois l'onde passée, puis le boss disparaît.
+    this.time.delayedCall(2150, () => {
+      this.spawnOrb(bx, by - 8, 'core')
+      onDone()
+    })
   }
 
   /** Triple anneau d'onde de choc (blanc -> ambre -> rouge). */
@@ -1313,6 +1336,10 @@ export class GameScene extends Phaser.Scene {
     this.spawnSparks(bullet.x, bullet.y)
     e.takeDamage(bullet.damage)
 
+    // Armes : VENOM explose (dégâts zone), CRYO gèle l'ennemi touché.
+    if (bullet.explode) this.explodeAt(bullet.x, bullet.y, 46, bullet.damage, e)
+    if (bullet.freeze && e.active) (e as unknown as { setData?: (k: string, v: unknown) => void }).setData?.('frozenUntil', this.time.now + 1300)
+
     if (!e.active) {
       this.enemyCount--
       if (Math.random() < 0.6) this.spawnOrb(e.x, e.y, 'hp')
@@ -1321,6 +1348,26 @@ export class GameScene extends Phaser.Scene {
 
     if (bullet.pierce) bullet.markHit(e)
     else bullet.disableBody(true, true)
+  }
+
+  /** Explosion de zone (arme VENOM) : touche les ennemis voisins (hors la cible directe). */
+  private explodeAt(x: number, y: number, r: number, dmg: number, exclude?: StageEnemy) {
+    this.spawnExplosion(x, y, false)
+    this.enemies.children.iterate((child) => {
+      const en = child as unknown as StageEnemy
+      if (!en.active || en === exclude) return true
+      const p = child as unknown as { x: number; y: number }
+      const dx = p.x - x
+      const dy = p.y - y
+      if (Math.hypot(dx, dy) <= r) {
+        en.takeDamage(dmg)
+        if (!en.active) {
+          this.enemyCount--
+          if (this.enemyCount <= 0) this.showAllTargetsDown()
+        }
+      }
+      return true
+    })
   }
 
   private handlePlayerHitEnemy(

@@ -2,8 +2,7 @@ import Phaser from 'phaser'
 import type { GameScene } from './GameScene'
 import { sfx } from '../audio'
 import { consumeTouchEdges, isTouchUI, touchState } from '../touch'
-
-type WeaponId = 'buster' | 'war'
+import { WEAPONS, type WeaponId } from '../weapons'
 
 /** Pause overlay: weapon selection + status. GameScene is paused underneath. */
 export class PauseScene extends Phaser.Scene {
@@ -27,11 +26,14 @@ export class PauseScene extends Phaser.Scene {
     const gs = this.scene.get('GameScene') as GameScene
     this.gs = gs
     const { width, height } = this.cameras.main
-    const power = this.registry.get('power') === true
     const lives = (this.registry.get('lives') as number) ?? 3
 
+    // BUSTER + armes de boss absorbées (registry 'weapons').
+    const owned = new Set<string>(this.registry.get('weapons') ?? [])
     this.rows = [{ id: 'buster', label: 'BUSTER', locked: false }]
-    if (power) this.rows.push({ id: 'war', label: 'CANON WAR', locked: false })
+    for (const id of Object.keys(WEAPONS) as WeaponId[]) {
+      if (id !== 'buster' && owned.has(id)) this.rows.push({ id, label: WEAPONS[id].name, locked: false })
+    }
 
     // voile + panneau
     this.add.rectangle(width / 2, height / 2, width, height, 0x05060c, 0.82).setDepth(0)
@@ -64,19 +66,19 @@ export class PauseScene extends Phaser.Scene {
         this.equipSelected()
       })
       this.rowTexts.push(t)
-      if (row.id === 'war') {
-        this.add.text(width / 2 + 34, y, power ? 'FLAMMES + DÉGÂTS' : 'VERROUILLÉE — VAINCRE LE BOSS', {
-          fontSize: '6px', color: power ? '#ffb37a' : '#4a5266', fontFamily: 'monospace',
+      // Description de l'arme à droite.
+      if (row.id !== 'buster') {
+        this.add.text(width / 2 + 34, y, WEAPONS[row.id].desc, {
+          fontSize: '6px', color: '#ffb37a', fontFamily: 'monospace',
         }).setOrigin(0, 0.5).setDepth(2)
-      }
-      if (row.id === 'buster') {
-        this.add.text(width / 2 + 34, y, 'FIABLE — ÉNERGIE ∞', {
+      } else {
+        this.add.text(width / 2 + 34, y, WEAPONS.buster.desc, {
           fontSize: '6px', color: '#8b93a8', fontFamily: 'monospace',
         }).setOrigin(0, 0.5).setDepth(2)
       }
     })
 
-    // barre d'énergie du canon war
+    // barre d'énergie de l'arme de boss sélectionnée
     this.weBar = this.add.graphics().setDepth(2)
     this.drawWe(gs)
 
@@ -150,14 +152,14 @@ export class PauseScene extends Phaser.Scene {
   }
 
   private drawWe(gs: GameScene) {
-    const warRow = this.rows.findIndex(r => r.id === 'war')
-    if (warRow < 0) return
-    const y = this.cameras.main.height / 2 - 14 + warRow * 24 + 8
+    // Barre d'énergie de l'arme de boss sélectionnée (BUSTER = ∞).
+    if (this.rows[this.selected]?.id === 'buster') { this.weBar.clear(); return }
+    const y = this.cameras.main.height / 2 - 14 + this.selected * 24 + 8
     const x = this.cameras.main.width / 2 + 34
     this.weBar.clear()
     this.weBar.fillStyle(0x1a2030, 1).fillRect(x, y, 60, 4)
     const frac = gs.player.getWe() / gs.player.getWeMax()
-    this.weBar.fillGradientStyle(0xffc857, 0xff9a3c, 0xb87808, 0x8a5a06, 1)
+    this.weBar.fillGradientStyle(0xff8a94, 0xff2436, 0xa11024, 0x6e0f16, 1)
     this.weBar.fillRect(x, y, Math.max(1, 60 * frac), 4)
   }
 
