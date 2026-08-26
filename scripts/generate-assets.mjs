@@ -426,6 +426,32 @@ function turretFrame() {
 }
 save(turretFrame(), 'turret.png')
 
+// ============================ CHARGER 20x16 (fonce sur le joueur) ============================
+function chargerFrame(phase) {
+  const c = C(20, 16)
+  const bob = phase ? -1 : 0
+  ell(c, 10, 9 + bob, 8, 5, B.mid); ell(c, 10, 8 + bob, 7, 4, B.top)
+  px(c, 2, 8 + bob, B.amber); px(c, 3, 8 + bob, 0xffffff); px(c, 4, 8 + bob, B.lo)
+  px(c, 16, 8 + bob, B.amber); px(c, 17, 8 + bob, 0xffffff); px(c, 15, 8 + bob, B.lo)
+  px(c, 5, 7 + bob, hex(0xff2436)); px(c, 15, 7 + bob, hex(0xff2436))
+  seg(c, 6, 13, 4, 15, B.lo); seg(c, 14, 13, 16, 15, B.lo)
+  outline(c, B.outline)
+  return c
+}
+// ============================ SPITTER 18x16 (tire en marchant) ============================
+function spitterFrame(phase) {
+  const c = C(18, 16)
+  const bob = phase ? -1 : 0
+  ell(c, 10, 9 + bob, 6, 5, B.mid); ell(c, 10, 8 + bob, 5, 4, B.top); ell(c, 7, 6 + bob, 2, 2, B.hi)
+  rect(c, 15, 8 + bob, 17, 10 + bob, B.lo); px(c, 17, 9 + bob, hex(0xff2436))
+  px(c, 9, 7 + bob, hex(0xff2436))
+  px(c, 6, 13 + bob, B.lo); px(c, 8, 14 + bob, B.lo); px(c, 12, 14 + bob, B.lo); px(c, 14, 13 + bob, B.lo)
+  outline(c, B.outline)
+  return c
+}
+save(stitch([chargerFrame(0), chargerFrame(1)]), 'charger.png')
+save(stitch([spitterFrame(0), spitterFrame(1)]), 'spitter.png')
+
 // ---------- variantes d'ennemis PAR STAGE (palette de la couleur du stage) ----------
 const STAGE_ACCENTS = {
   'neon-city': 0xff2436, 'toxic-plant': 0x4ade80, 'scorched-desert': 0xfb923c,
@@ -454,6 +480,8 @@ for (const [id, acc] of Object.entries(STAGE_ACCENTS)) {
   save(stitch([bossFrame(false, BOSS_KINDS[id]), bossFrame(true, BOSS_KINDS[id])]), `boss-${id}.png`)
   save(stitch([flyerFrame(0), flyerFrame(1)]), `flyer-${id}.png`)
   save(turretFrame(), `turret-${id}.png`)
+  save(stitch([chargerFrame(0), chargerFrame(1)]), `charger-${id}.png`)
+  save(stitch([spitterFrame(0), spitterFrame(1)]), `spitter-${id}.png`)
 }
 
 // ============================ CHECKPOINT 10x28 ============================

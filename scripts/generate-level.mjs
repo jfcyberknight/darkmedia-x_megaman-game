@@ -59,6 +59,8 @@ function buildLevel(spec) {
   const enemies = []
   for (const x of spec.walkers ?? []) enemies.push({ kind: 'walker', x: x * TILE + 8, y: GT * TILE - 10 })
   for (const x of spec.turrets ?? []) enemies.push({ kind: 'turret', x: x * TILE + 8, y: GT * TILE - 10 })
+  for (const x of spec.chargers ?? []) enemies.push({ kind: 'charger', x: x * TILE + 8, y: GT * TILE - 10 })
+  for (const x of spec.spitters ?? []) enemies.push({ kind: 'spitter', x: x * TILE + 8, y: GT * TILE - 10 })
   for (const [x, y] of spec.flyers ?? []) enemies.push({ kind: 'flyer', x: x * TILE + 8, y })
   const checkpoints = (spec.checkpoints ?? []).map((x) => ({ x: x * TILE + 8, y: GT * TILE - 18 }))
   const orbs = (spec.orbs ?? []).map((x) => ({ x: x * TILE + 8, y: GT * TILE - 10 }))

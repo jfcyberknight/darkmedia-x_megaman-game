@@ -14,6 +14,8 @@ const walls = spec.walls ?? []
 const plats = spec.plats ?? []
 const walkers = spec.walkers ?? []
 const turrets = spec.turrets ?? []
+const chargers = spec.chargers ?? []
+const spitters = spec.spitters ?? []
 const flyers = spec.flyers ?? []
 const cps = spec.checkpoints ?? []
 const orbs = spec.orbs ?? []
@@ -66,13 +68,13 @@ for (const [sx, H] of shafts) {
     if (inPit(x)) errors.push(`shaft @${sx} : chevauche un trou @${x}`)
     if (wallCols.has(x)) errors.push(`shaft @${sx} : chevauche un mur @${x}`)
   }
-  for (const en of [...walkers, ...turrets]) if (en >= sx && en <= x2) errors.push(`shaft @${sx} : ennemi au sol @${en} dedans`)
+  for (const en of [...walkers, ...turrets, ...chargers, ...spitters]) if (en >= sx && en <= x2) errors.push(`shaft @${sx} : ennemi au sol @${en} dedans`)
   for (const x of cps) if (x >= sx && x <= x2) errors.push(`shaft @${sx} : checkpoint @${x} dedans`)
   for (const x of orbs) if (x >= sx && x <= x2) errors.push(`shaft @${sx} : orbe @${x} dedans`)
 }
 
-// Ennemis au sol (marcheurs + tourelles)
-for (const x of [...walkers, ...turrets]) {
+// Ennemis au sol (marcheurs + tourelles + chargeurs + cracheurs)
+for (const x of [...walkers, ...turrets, ...chargers, ...spitters]) {
   if (!Number.isInteger(x)) errors.push(`ennemi @${x} : position non entière`)
   if (inPit(x)) errors.push(`ennemi au sol @${x} : sur un trou`)
   if (wallCols.has(x)) errors.push(`ennemi au sol @${x} : sur un mur`)

@@ -12,8 +12,10 @@ import { installTouchControls } from './touch'
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: 'game-container',
-  width: 256,
-  height: 224,
+  // 16:9 (480x270) : remplit les écrans de téléphone en paysage sans bandes
+  // noires (l'ancien 256x224 en 8:7 causait un letterbox/pillarbox).
+  width: 480,
+  height: 270,
   pixelArt: true,
   antialias: false,
   roundPixels: true,

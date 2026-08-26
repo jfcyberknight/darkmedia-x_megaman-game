@@ -3,6 +3,8 @@ import { Player } from '../entities/Player'
 import { Enemy, type StageEnemy } from '../entities/Enemy'
 import { Flyer } from '../entities/Flyer'
 import { Turret } from '../entities/Turret'
+import { Charger } from '../entities/Charger'
+import { Spitter } from '../entities/Spitter'
 import { Boss } from '../entities/Boss'
 import { Bullet } from '../objects/Bullet'
 import { drawVignette } from '../ui'
@@ -113,6 +115,8 @@ export class GameScene extends Phaser.Scene {
     this.load.image('orb', 'assets/orb.png')
     this.load.spritesheet('flyer', `assets/flyer-${this.stage.id}.png`, { frameWidth: 20, frameHeight: 14 })
     this.load.image('turret', `assets/turret-${this.stage.id}.png`)
+    this.load.spritesheet('charger', `assets/charger-${this.stage.id}.png`, { frameWidth: 20, frameHeight: 16 })
+    this.load.spritesheet('spitter', `assets/spitter-${this.stage.id}.png`, { frameWidth: 18, frameHeight: 16 })
     this.load.image('checkpoint', 'assets/checkpoint.png')
     this.load.image(`bg-far-${this.stage.id}`, `assets/bg-far-${this.stage.id}.png`)
     this.load.image(`bg-mid-${this.stage.id}`, `assets/bg-mid-${this.stage.id}.png`)
@@ -244,9 +248,9 @@ export class GameScene extends Phaser.Scene {
     // Boss HP bar must exist before the boss spawns (spawn draws it once).
     // Top-right placement so it never covers the player.
     this.bossBar = this.add.graphics().setScrollFactor(0).setDepth(200)
-    this.bossName = this.add.text(536, 4, this.stage.boss, {
+    this.bossName = this.add.text(this.cameras.main.width - 12, 4, this.stage.boss, {
       fontSize: '8px', color: '#ff9d9d', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
-    }).setScrollFactor(0).setDepth(200).setVisible(false)
+    }).setOrigin(1, 0).setScrollFactor(0).setDepth(200).setVisible(false)
     this.spawnBoss()
 
     // HUD
@@ -454,6 +458,20 @@ export class GameScene extends Phaser.Scene {
       key: 'boss-idle',
       frames: this.anims.generateFrameNumbers('boss', { start: 0, end: 1 }),
       frameRate: 4,
+      repeat: -1,
+    })
+    this.anims.remove('charger-anim')
+    this.anims.create({
+      key: 'charger-anim',
+      frames: this.anims.generateFrameNumbers('charger', { start: 0, end: 1 }),
+      frameRate: 8,
+      repeat: -1,
+    })
+    this.anims.remove('spitter-anim')
+    this.anims.create({
+      key: 'spitter-anim',
+      frames: this.anims.generateFrameNumbers('spitter', { start: 0, end: 1 }),
+      frameRate: 8,
       repeat: -1,
     })
   }
@@ -768,6 +786,8 @@ export class GameScene extends Phaser.Scene {
       let enemy: StageEnemy
       if (d.kind === 'flyer') enemy = new Flyer(this, d.x, d.y, this.player)
       else if (d.kind === 'turret') enemy = new Turret(this, d.x, d.y, this.player)
+      else if (d.kind === 'charger') enemy = new Charger(this, d.x, d.y, this.player)
+      else if (d.kind === 'spitter') enemy = new Spitter(this, d.x, d.y, this.player)
       else enemy = new Enemy(this, d.x, d.y, this.player)
       this.enemies.add(enemy as unknown as Phaser.Physics.Arcade.Sprite)
       this.enemyCount++
@@ -906,7 +926,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawBossBar(hp?: number, max?: number) {
-    const x = 124, y = 10, barW = 120, barH = 6
+    const x = this.cameras.main.width - 140, y = 10, barW = 120, barH = 6
     this.bossBar.clear()
     if (!this.bossActive) {
       this.bossName.setVisible(false)

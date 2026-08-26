@@ -5,7 +5,7 @@ const BASE_URL = process.argv[2] || 'http://localhost:5174/'
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const browser = await chromium.launch()
 try {
-  const ctx = await browser.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true })
+  const ctx = await browser.newContext({ viewport: { width: 844, height: 475 }, hasTouch: true, isMobile: true })
   const page = await ctx.newPage()
   await page.goto(BASE_URL, { waitUntil: 'load', timeout: 45000 })
   await page.waitForSelector('#touch-ui .tc-jump', { timeout: 20000 })
