@@ -185,12 +185,12 @@ try {
     await page.evaluate(([bx]) => {
       const s = window.__game.scene.getScene('GameScene')
       if (!s || !s.player) return
-      const x = (s.boss?.active ? s.boss.x : bx) - 70
+      const x = (s.boss?.active ? s.boss.x : bx) - 90
       s.player.setPosition(x, 250); s.player.body.reset(x, 250); s.player.body.setVelocity(0, 0)
+      s.player.facingRight = true
     }, [ents.bossX]).catch(() => {})
     await sleep(400)
-    await tap('.tc-dir:nth-child(2)') // orienter vers la droite (le boss)
-    for (let i = 0; i < 6; i++) { await tap('.tc-fire'); await sleep(320) }
+    for (let i = 0; i < 8; i++) { await tap('.tc-fire'); await sleep(300) }
   }
   const bh = await page.evaluate(() => {
     const s = window.__game.scene.getScene('GameScene')
