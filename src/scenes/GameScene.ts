@@ -128,6 +128,7 @@ export class GameScene extends Phaser.Scene {
     this.load.image('icon-soin', 'assets/icon-soin.png')
     this.load.image('icon-rapide', 'assets/icon-rapide.png')
     this.load.image('icon-puissance', 'assets/icon-puissance.png')
+    this.load.image('rain', 'assets/rain.png')
     this.load.image('tileset', 'assets/tileset.png')
     this.load.tilemapTiledJSON('level', `assets/level-${this.stage.id}.json`)
     this.load.spritesheet('player', 'assets/player.png', { frameWidth: 22, frameHeight: 30 })
@@ -175,6 +176,7 @@ export class GameScene extends Phaser.Scene {
     this.createBackground()
     this.createTilemap()
     this.setupAmbient()
+    this.setupAmbientContinuous()
 
     this.bullets = this.physics.add.group({
       classType: Bullet,
@@ -794,6 +796,71 @@ export class GameScene extends Phaser.Scene {
         .setTint(0xffffff).setBlendMode(Phaser.BlendModes.ADD).setDepth(-3).setScrollFactor(0)
         .setScale(0.8).setAlpha(0)
       this.tweens.add({ targets: f, alpha: 0.9, scale: 1.25, duration: 60, yoyo: true, repeat: 1, onComplete: () => f.destroy() })
+    }
+  }
+
+  /** Couche d'ambiance CONTINUE (pluie, vapeur, cendres, brume, débris) par stage. */
+  private setupAmbientContinuous() {
+    const { width, height } = this.cameras.main
+    const dep = -4
+    switch (this.stage.id) {
+      case 'neon-city': {
+        // pluie : fine pluie cyan qui tombe en travers de l'écran (avec les explosions).
+        this.add.particles(0, -8, 'rain', {
+          x: { min: 0, max: width }, y: -8,
+          speedY: { min: 140, max: 240 }, speedX: { min: -26, max: -12 },
+          lifespan: 2200, scale: { min: 0.7, max: 1.2 }, alpha: { start: 0.5, end: 0 },
+          quantity: 2, frequency: 90, blendMode: Phaser.BlendModes.ADD, tint: 0x7fd4ff,
+        }).setScrollFactor(0).setDepth(dep)
+        break
+      }
+      case 'toxic-plant': {
+        // bulles de gaz toxique qui montent depuis le sol (avec les gouttes de slime).
+        this.add.particles(0, height + 6, 'orb', {
+          x: { min: 0, max: width }, y: height + 6,
+          speedY: { min: -24, max: -50 }, speedX: { min: -8, max: 8 },
+          lifespan: 3200, scale: { start: 0.12, end: 0.42 }, alpha: { start: 0.5, end: 0 },
+          quantity: 1, frequency: 260, blendMode: Phaser.BlendModes.ADD, tint: [0x7dfca2, 0xb9ffce],
+        }).setScrollFactor(0).setDepth(dep)
+        break
+      }
+      case 'scorched-desert': {
+        // cendres/braises qui dérivent en travers (avec les braises montantes).
+        this.add.particles(0, height + 4, 'orb', {
+          x: { min: 0, max: width }, y: height + 4,
+          speedY: { min: -30, max: -12 }, speedX: { min: 18, max: 44 },
+          lifespan: 3600, scale: { start: 0.07, end: 0.2 }, alpha: { start: 0.5, end: 0 },
+          quantity: 1, frequency: 200, blendMode: Phaser.BlendModes.ADD, tint: [0xffd9b0, 0xff9a3c],
+        }).setScrollFactor(0).setDepth(dep)
+        break
+      }
+      case 'frost-lab': {
+        // brume froide qui monte doucement (avec la neige).
+        this.add.particles(0, height + 4, 'glow', {
+          x: { min: 0, max: width }, y: { min: height * 0.5, max: height + 4 },
+          speedY: { min: -9, max: -2 }, speedX: { min: -14, max: 12 },
+          lifespan: 5200, scale: { start: 0.5, end: 1.1 }, alpha: { start: 0.05, end: 0 },
+          quantity: 1, frequency: 300, blendMode: Phaser.BlendModes.ADD, tint: 0xdbe9ff,
+        }).setScrollFactor(0).setDepth(dep)
+        break
+      }
+      case 'sky-fortress': {
+        // débris sombres qui dérivent lentement (avec les éclairs).
+        this.add.particles(0, 0, 'orb', {
+          x: { min: 0, max: width }, y: { min: height * 0.12, max: height * 0.62 },
+          speedX: { min: -34, max: -12 }, speedY: { min: -4, max: 4 },
+          lifespan: 6500, scale: { start: 0.18, end: 0.4 }, alpha: { start: 0.35, end: 0 },
+          quantity: 1, frequency: 420, tint: 0x272c38,
+        }).setScrollFactor(0).setDepth(dep)
+        // lueurs énergétiques flottantes.
+        this.add.particles(0, 0, 'glow', {
+          x: { min: 0, max: width }, y: { min: height * 0.15, max: height * 0.5 },
+          speedY: { min: -14, max: -4 }, speedX: { min: -8, max: 8 },
+          lifespan: 2600, scale: { start: 0.07, end: 0.02 }, alpha: { start: 0.4, end: 0 },
+          quantity: 1, frequency: 260, blendMode: Phaser.BlendModes.ADD, tint: [0xf472b6, 0x9fb4d8],
+        }).setScrollFactor(0).setDepth(dep)
+        break
+      }
     }
   }
 

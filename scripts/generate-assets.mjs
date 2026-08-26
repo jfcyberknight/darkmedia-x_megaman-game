@@ -702,6 +702,15 @@ function saveIcon(c, file) { save(c, file); savePreview(c, file, 8) }
   saveIcon(c, 'icon-puissance.png')
 }
 
+// ============================ PLUIE (streak vertical) ============================
+{
+  const r = C(2, 12)
+  rect(r, 0, 0, 1, 11, hex(0xffffff))
+  rect(r, 0, 0, 0, 5, hex(0xcfe9ff))
+  save(r, 'rain.png')
+  savePreview(r, 'rain.png', 8)
+}
+
 // ============================ GLOW 16x16 (additive) ============================
 {
   const c = CF(16, 16)
