@@ -1,38 +1,39 @@
-// Spec du niveau NEON CITY (niveau 1, layout validé par le bot Playwright).
-// Format attendu par scripts/generate-level.mjs. Toutes les positions sont en
-// TUILLES (16 px). Largeur = nombre de tuiles. Le générateur convertit en px.
+// Spec du niveau NEON CITY (niveau 1 — « blocs urbains »).
+// Identité : gauntlet de BÂTIMENTS. Beaucoup de murs (immeubles) à franchir,
+// tourelles en force sur les façades, rythme trou+mur serré. Se joue surtout
+// horizontalement avec des sauts de mur pour franchir les blocs.
 //
-// Contraindications (à respecter ABSOLUMENT — dérivées de la physique réelle) :
-//   - pits : largeur <= 3, jamais dans les 14 premières tuiles (spawn), jamais
-//     dans les 42 dernières (arène du boss), jamais sous un ennemi/CP/orbe.
-//   - walls : hauteur = 2 uniquement (3 = fenêtre de saut trop courte), colonne
-//     seule, pas sur un trou, laisser >= 4 tuiles de sol après un trou.
-//   - plats : row 10 ou 11 uniquement (plus bas = plafonne les sauts dessous ;
-//     plus haut = inatteignable).
-//   - ennemis/CP/orbes : au sol (pas sur trou ni mur), espacés.
-//   - flyers : y en pixels entre 100 et 170.
-//   - arène : les 42 dernières tuiles sans trou ni mur (boss).
+// Contraintes (dérivées de la physique réelle, voir validate-level.mjs) :
+// pits <= 3 tuiles, jamais x<14 ni dans l'arène (ARENA=171 pour W=210),
+// walls hauteur 2, plats rows 10/11, ennemis au sol >= 2 tuiles d'un trou,
+// flyers y en pixels 100..170.
 export default {
   id: 'neon-city',
   width: 210,
+  // Trous : rythme régulier (~24 tuiles), plus épars qu'avant (on saute des blocs).
   pits: [
-    [22, 3], [40, 3], [58, 3], [76, 3], [94, 3], [112, 3], [130, 3], [150, 3], [168, 3],
+    [20, 3], [43, 3], [67, 3], [91, 3], [115, 3], [139, 3], [159, 3],
   ],
+  // Murs : les « buildings » — un par segment de sol, beaucoup plus nombreux.
   walls: [
-    [31, 2], [66, 2], [88, 2], [120, 2], [141, 2],
+    [32, 2], [55, 2], [79, 2], [103, 2], [127, 2], [150, 2],
   ],
+  // Dalles (toits) qui relient les mur-à-mur : gros volume de plateformes.
   plats: [
-    [15, 10, 4], [25, 11, 4], [34, 10, 4], [48, 11, 4],
-    [84, 10, 4], [104, 11, 4], [118, 10, 4], [136, 11, 4], [156, 10, 4],
-    [172, 11, 4], [184, 10, 4],
+    [15, 10, 4], [26, 11, 3], [38, 10, 4], [61, 11, 3], [73, 10, 4],
+    [96, 11, 3], [107, 10, 4], [120, 11, 3], [132, 10, 4], [145, 11, 3], [156, 10, 3], [166, 11, 4],
   ],
-  // Puits de saut de mur : sections « compétence », infranchissables au saut normal.
-  shafts: [[100, 6], [154, 7]],
-  walkers: [28, 55, 72, 84, 105, 118, 135, 158, 176, 194],
-  turrets: [45, 92, 108, 128, 166, 182],
-  chargers: [63, 123],
-  spitters: [86, 138],
-  flyers: [[70, 150], [96, 132], [122, 132], [140, 145], [155, 140], [176, 150]],
-  checkpoints: [20, 62, 97, 145, 185],
-  orbs: [12, 28, 36, 46, 54, 64, 72, 82, 90, 104, 108, 126, 136, 146, 158, 164, 176],
+  shafts: [],
+  // Marcheurs de rue, répartis dans les segments dégagés.
+  walkers: [62, 84, 105, 134, 145, 155],
+  // Tourelles de façade : LE point fort de la ville (en force).
+  turrets: [26, 50, 72, 98, 122, 131, 148, 163],
+  chargers: [39],
+  spitters: [86],
+  // Drones qui surveillent depuis les toits.
+  flyers: [[24, 150], [58, 130], [88, 145], [118, 132], [143, 150], [158, 140], [166, 150]],
+  checkpoints: [28, 64, 104, 144, 170],
+  orbs: [
+    12, 28, 36, 46, 57, 66, 76, 89, 101, 108, 118, 126, 136, 146, 158, 164,
+  ],
 }

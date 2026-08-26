@@ -1,81 +1,39 @@
-// Spec du niveau SKY FORTRESS (stage 5 — LE PLUS DIFFICILE).
-// « La forteresse céleste — le dernier bastion avant le WAR MACHINE ».
-// Parcours du combattant final : trous et murs en rythme serré, plus
-// d'ennemis que tout autre stage, difficulté croissante du spawn à l'arène.
-//
-// Format attendu par scripts/generate-level.mjs. Positions en TUILLES (16 px),
-// sauf flyers.y en PIXELS. Largeur 270 -> arène du boss à partir de la tuile
-// 231 (floor(((270-22)*16-270)/16)) : terrain plat, ni trou ni mur.
-//
-// Contraindications physiques (respectées ABSOLUMENT — voir validate-level.mjs) :
-//   - pits : largeur <= 3, jamais < 14 (spawn), jamais dans l'arène, jamais
-//     adjacents, >= 4 tuiles de sol entre deux trous.
-//   - walls : hauteur EXACTEMENT 2, colonne seule, pas sur un trou,
-//     >= 4 tuiles de sol après le trou précédent et avant le trou suivant.
-//   - plats : row 10 ou 11 uniquement (dalles hautes décoratives).
-//   - ennemis/CP/orbes : au sol, >= 2 tuiles claires de chaque côté d'un trou
-//     (zones d'atterrissage de saut dégagées), jamais sur une colonne de mur.
-//   - flyers : y en pixels entre 100 et 170.
+// Spec du niveau SKY FORTRESS (stage 5 — « les ponts du vide », LE PLUS DUR).
+// Identité : PLATEFORMES AU-DESSUS DU VIDE. Beaucoup de dalles hautes qui
+// servent de ponts au-dessus de larges fosses (peu de sol continu), dense en
+// tourelles + drones. On traverse surtout en sautant de pont en pont.
 export default {
   id: 'sky-fortress',
   width: 270,
   pits: [
-    // Secteur 1 (initiation musclée)
-    [24, 3], [37, 2], [50, 3],
-    // Secteur 2
-    [59, 3], [71, 2], [84, 3],
-    // Secteur 3
-    [97, 3], [110, 3], [122, 2],
-    // Secteur 4
-    [134, 3], [147, 3], [160, 2],
-    // Secteur 5 (paroxysme)
-    [172, 3], [185, 3], [198, 2],
-    // Secteur 6 (ultime gauntlet avant l'arène @231)
-    [209, 3], [221, 2],
+    [26, 3], [44, 3], [62, 2], [78, 3],
+    [98, 3], [114, 2], [130, 3],
+    [150, 3], [166, 3], [182, 2],
+    [198, 3], [214, 2], [224, 3],
   ],
   walls: [
-    [31, 2], [44, 2],
-    [66, 2], [78, 2],
-    [92, 2], [105, 2], [117, 2],
-    [129, 2], [142, 2], [155, 2],
-    [167, 2], [180, 2], [193, 2],
-    [204, 2], [216, 2], [227, 2], // porte finale de la forteresse
+    [36, 2], [54, 2], [70, 2], [90, 2], [106, 2], [122, 2],
+    [140, 2], [174, 2], [190, 2], [206, 2], [220, 2],
   ],
   plats: [
-    [15, 11, 4], [24, 10, 4], [37, 11, 4], [44, 10, 3],
-    [56, 11, 4], [69, 10, 4], [81, 11, 4], [94, 10, 3],
-    [107, 11, 4], [120, 10, 4], [133, 11, 4], [145, 10, 4],
-    [158, 11, 3], [170, 10, 4], [183, 11, 4], [196, 10, 4],
-    [207, 11, 4], [217, 10, 4],
+    [15, 10, 4], [24, 11, 3], [40, 10, 4], [52, 11, 3], [68, 10, 3],
+    [82, 11, 4], [96, 10, 3], [110, 11, 4], [124, 10, 3], [138, 11, 4],
+    [152, 10, 3], [164, 11, 4], [178, 10, 3], [194, 11, 4], [208, 10, 4],
+    [220, 11, 4],
   ],
+  shafts: [[144, 6]],
   walkers: [
-    // S1 : patrouilles courtes pour apprivoiser le rythme trou+mur
-    17, 29, 41,
-    // S2-S3 : pression continue de part et d'autre des murs
-    65, 75, 89, 102, 115, 126,
-    // S4-S6 : flancs de murs doublés, fin de niveau saturée
-    139, 144, 169, 182, 203, 214, 226,
-    // approche / arène du boss (comme neon-city)
-    236,
+    18, 30, 48, 64, 86, 102, 118, 134, 204, 228,
   ],
   turrets: [
-    34, 47,
-    68, 81, 94,
-    107, 119, 131,
-    157, 164, 177,
-    195, 206,
-    229, 244,
+    34, 50, 74, 92, 108, 128, 186, 210, 222,
   ],
+  chargers: [42, 116],
+  spitters: [60, 136, 180],
   flyers: [
-    [24, 140], [47, 120], [63, 150], [86, 125], [103, 145],
-    [124, 115], [148, 135], [173, 150], [199, 120], [223, 145],
-    [241, 130],
+    [22, 145], [46, 122], [66, 150], [88, 128], [104, 148], [120, 118],
+    [142, 150], [162, 126], [180, 148], [196, 120], [212, 148], [224, 128],
   ],
-  chargers: [27, 101],
-  spitters: [63, 137],
-  checkpoints: [20, 56, 104, 153, 192, 218],
-  orbs: [
-    10, 16, 30, 33, 42, 46, 55, 64, 76, 79, 91,
-    116, 127, 140, 154, 166, 202, 215, 225, 233,
-  ],
+  checkpoints: [20, 66, 112, 164, 194, 228],
+  orbs: [12, 20, 29, 40, 48, 58, 72, 88, 94, 112, 126, 136, 156, 164, 178, 192, 202, 222],
 }
