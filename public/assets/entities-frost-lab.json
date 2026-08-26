@@ -311,22 +311,22 @@
     {
       "x": 808,
       "y": 258,
-      "type": "tir"
+      "type": "soin"
     },
     {
       "x": 1592,
       "y": 258,
-      "type": "bouclier"
+      "type": "rapide"
     },
     {
       "x": 2408,
       "y": 258,
-      "type": "soin"
+      "type": "puissance"
     },
     {
       "x": 3288,
       "y": 258,
-      "type": "rapide"
+      "type": "puissance"
     }
   ]
 }

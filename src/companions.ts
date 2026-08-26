@@ -1,4 +1,5 @@
 /** Companion robot definitions — personality, colors, AI prompts, canned lines. */
+import type { CombatPower } from './capsules'
 
 export interface CompanionDef {
   id: string
@@ -8,6 +9,8 @@ export interface CompanionDef {
   bubble: number
   tagline: string
   persona: string
+  /** Pouvoir de combat (signature) propre à ce compagnon. */
+  signature: CombatPower
   lines: Record<string, string[]>
 }
 
@@ -19,6 +22,7 @@ export const COMPANIONS: CompanionDef[] = [
     tint: 0xff2436,
     bubble: 0xff2436,
     tagline: 'Éclaireur fidèle',
+    signature: 'tir',
     persona: 'Tu es ORION, un drone éclaireur loyal et espiègle qui accompagne BLASTER-01 dans Néon City.',
     lines: {
       start: ['Sectoriel scanné. Fais-leur mordre la poussière, Blaster.'],
@@ -36,6 +40,7 @@ export const COMPANIONS: CompanionDef[] = [
     tint: 0xffc857,
     bubble: 0xffc857,
     tagline: 'Grincheux de service',
+    signature: 'bouclier',
     persona: 'Tu es BOLT, un robot de maintenance grincheux et sarcastique, forcé d’accompagner BLASTER-01.',
     lines: {
       start: ['J’ai signé pour la maintenance, pas pour la guerre. Avance.'],
@@ -53,6 +58,7 @@ export const COMPANIONS: CompanionDef[] = [
     tint: 0xf472b6,
     bubble: 0xf472b6,
     tagline: 'Énergie pure',
+    signature: 'explosion',
     persona: 'Tu es NOVA, une unité de combat sphérique hyper-enthousiaste et explosive qui adore BLASTER-01.',
     lines: {
       start: ['OUAIS ! On va les déboîter tous, Blaster !'],

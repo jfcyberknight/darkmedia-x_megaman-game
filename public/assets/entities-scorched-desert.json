@@ -300,22 +300,22 @@
     {
       "x": 760,
       "y": 258,
-      "type": "tir"
+      "type": "soin"
     },
     {
       "x": 1512,
       "y": 258,
-      "type": "bouclier"
+      "type": "rapide"
     },
     {
       "x": 2264,
       "y": 258,
-      "type": "soin"
+      "type": "puissance"
     },
     {
       "x": 3080,
       "y": 258,
-      "type": "rapide"
+      "type": "puissance"
     }
   ]
 }

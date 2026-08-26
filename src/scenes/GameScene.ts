@@ -13,7 +13,7 @@ import { askAI } from '../ai'
 import { getCompanion, type CompanionDef } from '../companions'
 import { STAGES, DEFAULT_STAGE, type StageDef } from '../stages'
 import { WEAPONS, BOSS_WEAPON, type WeaponId } from '../weapons'
-import { getCapsule } from '../capsules'
+import { getCapsule, COMBAT, type CombatPower } from '../capsules'
 import { touchState, isTouchUI, consumeTouchEdges } from '../touch'
 
 const WORLD_H = 320
@@ -61,6 +61,8 @@ export class GameScene extends Phaser.Scene {
   private compShootT = 0
   private compShieldT = 0
   private compHealT = 0
+  private compSignature: CombatPower = 'tir'
+  private compHud!: Phaser.GameObjects.Text
   private readonly fallbackTaunts: Record<string, string[]> = {
     intro: ['Ton existence prend fin ici, gardien.', 'Néon City m’appartient déjà.'],
     combat: ['Ta résistance est une erreur de programmation.', 'Je calcule déjà ta défaite.', "Chaque tir t'affaiblit. Chaque seconde me rend plus fort."],
@@ -281,6 +283,11 @@ export class GameScene extends Phaser.Scene {
     }).setScrollFactor(0).setDepth(200).setVisible(false)
     this.powerText.setShadow(0, 0, '#ff5546', 10, true, true)
 
+    // Indicateur du pouvoir de combat du compagnon (signature) + boosts.
+    this.compHud = this.add.text(this.cameras.main.width - 12, 34, '', {
+      fontSize: '7px', color: '#ffb3b8', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
+    }).setOrigin(1, 0).setScrollFactor(0).setDepth(200)
+
     // Lives (mini hero icons)
     const lives = (this.registry.get('lives') as number) ?? 3
     for (let i = 0; i < lives; i++) {
@@ -290,6 +297,7 @@ export class GameScene extends Phaser.Scene {
 
     // Compagnon — drone choisi sur l'écran de sélection
     this.compData = getCompanion(this.registry.get('companion'))
+    this.compSignature = this.compData.signature
     this.companion = this.add.image(this.player.x - 20, this.player.y - 30, this.compData.texture)
       .setTint(this.compData.tint).setScale(1).setDepth(35)
     this.companionGlow = this.add.image(this.companion.x, this.companion.y, 'glow')
@@ -427,33 +435,31 @@ export class GameScene extends Phaser.Scene {
   /** Pouvoirs de compagnon (capsules) : tir drone, bouclier, soin, cadence rapide. */
   private applyCompanionPowers(delta: number) {
     const powers = new Set<string>(this.registry.get('companionPowers') ?? [])
+    const boost = powers.has('puissance') ? 1 : 0
     this.player.fireMult = powers.has('rapide') ? 0.55 : 1
 
-    // TIR : le compagnon tire sur l'ennemi le plus proche.
-    if (powers.has('tir')) {
+    // SIGNATURE : le pouvoir de combat du compagnon CHOISI (tir/bouclier/explosion),
+    // toujours actif. 'puissance' le renforce.
+    const sig = this.compSignature
+    if (sig === 'tir') {
       this.compShootT -= delta
       if (this.compShootT <= 0) {
-        this.compShootT = 1500
+        this.compShootT = 1500 - boost * 300
         const e = this.enemies.getFirstAlive() as Phaser.Physics.Arcade.Sprite | null
-        if (e?.active) {
-          const b = this.bullets.get(this.companion.x, this.companion.y - 4, 'bullet') as Bullet
-          if (b) {
-            const dir = Math.sign(e.x - this.companion.x) || 1
-            b.activate(dir, 'normal', 2, 'buster')
-            const ang = Math.atan2(e.y - this.companion.y, e.x - this.companion.x)
-            b.setVelocity(Math.cos(ang) * 160, Math.sin(ang) * 160)
-            b.setTint(getCapsule('tir').tint)
-            sfx.turretShot()
-          }
-        }
+        if (e?.active) this.fireCompanionBullet(e, 2 + boost, 'buster', COMBAT.tir.tint)
       }
-    }
-    // BOUCLIER : le compagnon te protège périodiquement (invuln brève).
-    if (powers.has('bouclier')) {
+    } else if (sig === 'explosion') {
+      this.compShootT -= delta
+      if (this.compShootT <= 0) {
+        this.compShootT = 2000 - boost * 300
+        const e = this.enemies.getFirstAlive() as Phaser.Physics.Arcade.Sprite | null
+        if (e?.active) this.fireCompanionBullet(e, 2 + boost, 'venom', COMBAT.explosion.tint)
+      }
+    } else if (sig === 'bouclier') {
       this.compShieldT -= delta
       if (this.compShieldT <= 0) {
-        this.compShieldT = 9000
-        this.player.grantInvulnerability(1600)
+        this.compShieldT = 9000 - boost * 1500
+        this.player.grantInvulnerability(1600 + boost * 400)
         this.spawnShieldBubble()
       }
     }
@@ -462,7 +468,7 @@ export class GameScene extends Phaser.Scene {
       this.compHealT -= delta
       if (this.compHealT <= 0) {
         if (this.player.getHealth() <= 4) {
-          this.compHealT = 6000
+          this.compHealT = 6000 - boost * 1500
           this.player.heal(1)
           this.spawnCollectBurst(this.player.x, this.player.y, 0x7dfca2)
           sfx.collect()
@@ -471,6 +477,24 @@ export class GameScene extends Phaser.Scene {
         }
       }
     }
+
+    // HUD compagnon : signature (pouvoir de combat) + boosts de capsules.
+    const sigName = COMBAT[this.compSignature].name
+    const boosts = [...powers].map((p) => getCapsule(p).name).join(' · ')
+    const s = `◈ ${sigName}${boosts ? '  • ' + boosts : ''}`
+    if (this.compHud.text !== s) this.compHud.setText(s)
+  }
+
+  /** Tire une balle de compagnon vers un ennemi (couleur = pouvoir). */
+  private fireCompanionBullet(e: Phaser.Physics.Arcade.Sprite, dmg: number, weapon: WeaponId, tint: number) {
+    const b = this.bullets.get(this.companion.x, this.companion.y - 4, 'bullet') as Bullet
+    if (!b) return
+    const dir = Math.sign(e.x - this.companion.x) || 1
+    b.activate(dir, 'normal', dmg, weapon)
+    const ang = Math.atan2(e.y - this.companion.y, e.x - this.companion.x)
+    b.setVelocity(Math.cos(ang) * 160, Math.sin(ang) * 160)
+    b.setTint(tint)
+    sfx.turretShot()
   }
 
   private createAnimations() {
@@ -778,11 +802,16 @@ export class GameScene extends Phaser.Scene {
   /** Capsules de compagnon : objets à collecter qui déverrouillent un pouvoir. */
   private spawnCapsules() {
     for (const c of this.ents.capsules ?? []) {
+      const tint = getCapsule(c.type).tint
       const cap = this.orbs.create(c.x, c.y, 'capsule') as Phaser.Physics.Arcade.Image
       cap.setDepth(30).setData('kind', 'capsule').setData('capType', c.type)
-      cap.setTint(getCapsule(c.type).tint)
+      cap.setTint(tint)
       cap.body!.setSize(10, 10)
-      this.tweens.add({ targets: cap, y: c.y - 4, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
+      // Halo lumineux pour bien repérer la capsule.
+      const halo = this.add.image(c.x, c.y, 'glow')
+        .setTint(tint).setBlendMode(Phaser.BlendModes.ADD).setScale(0.35).setAlpha(0.5).setDepth(29)
+      this.tweens.add({ targets: halo, scale: 0.5, alpha: 0.8, duration: 700, yoyo: true, repeat: -1 })
+      this.tweens.add({ targets: [cap, halo], y: c.y - 5, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
       this.tweens.add({ targets: cap, angle: 360, duration: 2200, repeat: -1 })
       this.tweens.add({ targets: cap, alpha: { from: 0.6, to: 1 }, duration: 500, yoyo: true, repeat: -1 })
     }

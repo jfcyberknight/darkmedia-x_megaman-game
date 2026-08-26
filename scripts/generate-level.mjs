@@ -64,9 +64,10 @@ function buildLevel(spec) {
   for (const [x, y] of spec.flyers ?? []) enemies.push({ kind: 'flyer', x: x * TILE + 8, y })
   const checkpoints = (spec.checkpoints ?? []).map((x) => ({ x: x * TILE + 8, y: GT * TILE - 18 }))
   const orbs = (spec.orbs ?? []).map((x) => ({ x: x * TILE + 8, y: GT * TILE - 10 }))
-  // Capsules de compagnon : 4 par niveau (tir/bouclier/soin/rapide), sur du sol
-  // dégagé (pas de trou ni de mur), réparties sur toute la longueur.
-  const capsTypes = ['tir', 'bouclier', 'soin', 'rapide']
+  // Capsules de compagnon : 4 améliorations de soutien (soin/rapide/puissance),
+  // sur du sol dégagé, réparties sur toute la longueur. Le POUVOIR DE COMBAT du
+  // compagnon est sa signature (dépend du compagnon choisi), pas des capsules.
+  const capsTypes = ['soin', 'rapide', 'puissance', 'puissance']
   const wantTiles = [Math.round(W * 0.2), Math.round(W * 0.4), Math.round(W * 0.6), Math.round(W * 0.82)]
   const capsules = []
   const safeCell = (x) => x >= 14 && x < W - 42 && ground[GT][x] !== 0 && ground[GT - 1][x] === 0
