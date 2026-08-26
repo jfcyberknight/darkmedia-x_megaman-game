@@ -805,12 +805,19 @@ export class GameScene extends Phaser.Scene {
     const dep = -4
     switch (this.stage.id) {
       case 'neon-city': {
-        // pluie : fine pluie cyan qui tombe en travers de l'écran (avec les explosions).
+        // pluie : dense, cyan, en travers de l'écran (avec les explosions).
         this.add.particles(0, -8, 'rain', {
           x: { min: 0, max: width }, y: -8,
-          speedY: { min: 140, max: 240 }, speedX: { min: -26, max: -12 },
-          lifespan: 2200, scale: { min: 0.7, max: 1.2 }, alpha: { start: 0.5, end: 0 },
-          quantity: 2, frequency: 90, blendMode: Phaser.BlendModes.ADD, tint: 0x7fd4ff,
+          speedY: { min: 150, max: 260 }, speedX: { min: -30, max: -12 },
+          lifespan: 2200, scale: { min: 0.7, max: 1.25 }, alpha: { start: 0.55, end: 0 },
+          quantity: 3, frequency: 60, blendMode: Phaser.BlendModes.ADD, tint: 0x7fd4ff,
+        }).setScrollFactor(0).setDepth(dep)
+        // fumée grise qui dérive lentement au-dessus de la ville.
+        this.add.particles(0, -10, 'glow', {
+          x: { min: 0, max: width }, y: -10,
+          speedY: { min: -8, max: -2 }, speedX: { min: -6, max: 6 },
+          lifespan: 5000, scale: { start: 0.4, end: 1 }, alpha: { start: 0.05, end: 0 },
+          quantity: 1, frequency: 300, tint: 0x39404e,
         }).setScrollFactor(0).setDepth(dep)
         break
       }
@@ -818,9 +825,16 @@ export class GameScene extends Phaser.Scene {
         // bulles de gaz toxique qui montent depuis le sol (avec les gouttes de slime).
         this.add.particles(0, height + 6, 'orb', {
           x: { min: 0, max: width }, y: height + 6,
-          speedY: { min: -24, max: -50 }, speedX: { min: -8, max: 8 },
-          lifespan: 3200, scale: { start: 0.12, end: 0.42 }, alpha: { start: 0.5, end: 0 },
-          quantity: 1, frequency: 260, blendMode: Phaser.BlendModes.ADD, tint: [0x7dfca2, 0xb9ffce],
+          speedY: { min: -26, max: -54 }, speedX: { min: -8, max: 8 },
+          lifespan: 3200, scale: { start: 0.12, end: 0.46 }, alpha: { start: 0.5, end: 0 },
+          quantity: 1, frequency: 190, blendMode: Phaser.BlendModes.ADD, tint: [0x7dfca2, 0xb9ffce],
+        }).setScrollFactor(0).setDepth(dep)
+        // vapeur/smoke : panache vert qui monte.
+        this.add.particles(0, height + 8, 'glow', {
+          x: { min: 0, max: width }, y: height + 8,
+          speedY: { min: -16, max: -5 }, speedX: { min: -10, max: 10 },
+          lifespan: 4200, scale: { start: 0.5, end: 1.3 }, alpha: { start: 0.08, end: 0 },
+          quantity: 1, frequency: 180, blendMode: Phaser.BlendModes.ADD, tint: 0x6ee7a0,
         }).setScrollFactor(0).setDepth(dep)
         break
       }
@@ -828,39 +842,61 @@ export class GameScene extends Phaser.Scene {
         // cendres/braises qui dérivent en travers (avec les braises montantes).
         this.add.particles(0, height + 4, 'orb', {
           x: { min: 0, max: width }, y: height + 4,
-          speedY: { min: -30, max: -12 }, speedX: { min: 18, max: 44 },
-          lifespan: 3600, scale: { start: 0.07, end: 0.2 }, alpha: { start: 0.5, end: 0 },
-          quantity: 1, frequency: 200, blendMode: Phaser.BlendModes.ADD, tint: [0xffd9b0, 0xff9a3c],
+          speedY: { min: -32, max: -14 }, speedX: { min: 18, max: 46 },
+          lifespan: 3600, scale: { start: 0.08, end: 0.22 }, alpha: { start: 0.5, end: 0 },
+          quantity: 1, frequency: 160, blendMode: Phaser.BlendModes.ADD, tint: [0xffd9b0, 0xff9a3c],
         }).setScrollFactor(0).setDepth(dep)
+        // halo de chaleur qui miroite à l'horizon.
+        this.addHeatShimmer()
         break
       }
       case 'frost-lab': {
         // brume froide qui monte doucement (avec la neige).
         this.add.particles(0, height + 4, 'glow', {
           x: { min: 0, max: width }, y: { min: height * 0.5, max: height + 4 },
-          speedY: { min: -9, max: -2 }, speedX: { min: -14, max: 12 },
-          lifespan: 5200, scale: { start: 0.5, end: 1.1 }, alpha: { start: 0.05, end: 0 },
-          quantity: 1, frequency: 300, blendMode: Phaser.BlendModes.ADD, tint: 0xdbe9ff,
+          speedY: { min: -10, max: -2 }, speedX: { min: -16, max: 12 },
+          lifespan: 5200, scale: { start: 0.5, end: 1.2 }, alpha: { start: 0.06, end: 0 },
+          quantity: 1, frequency: 240, blendMode: Phaser.BlendModes.ADD, tint: 0xdbe9ff,
+        }).setScrollFactor(0).setDepth(dep)
+        // vapeur froide : petits nuages qui dérivent.
+        this.add.particles(0, height * 0.55, 'glow', {
+          x: { min: 0, max: width }, y: { min: height * 0.55, max: height + 4 },
+          speedX: { min: -20, max: 16 }, speedY: { min: -4, max: 0 },
+          lifespan: 4800, scale: { start: 0.9, end: 1.6 }, alpha: { start: 0.07, end: 0 },
+          quantity: 1, frequency: 320, blendMode: Phaser.BlendModes.ADD, tint: 0xffffff,
         }).setScrollFactor(0).setDepth(dep)
         break
       }
       case 'sky-fortress': {
-        // débris sombres qui dérivent lentement (avec les éclairs).
+        // débris sombres plus nombreux qui dérivent (avec les éclairs).
         this.add.particles(0, 0, 'orb', {
           x: { min: 0, max: width }, y: { min: height * 0.12, max: height * 0.62 },
-          speedX: { min: -34, max: -12 }, speedY: { min: -4, max: 4 },
-          lifespan: 6500, scale: { start: 0.18, end: 0.4 }, alpha: { start: 0.35, end: 0 },
-          quantity: 1, frequency: 420, tint: 0x272c38,
+          speedX: { min: -36, max: -12 }, speedY: { min: -4, max: 4 },
+          lifespan: 6500, scale: { start: 0.2, end: 0.44 }, alpha: { start: 0.4, end: 0 },
+          quantity: 1, frequency: 280, tint: 0x272c38,
         }).setScrollFactor(0).setDepth(dep)
         // lueurs énergétiques flottantes.
         this.add.particles(0, 0, 'glow', {
           x: { min: 0, max: width }, y: { min: height * 0.15, max: height * 0.5 },
           speedY: { min: -14, max: -4 }, speedX: { min: -8, max: 8 },
           lifespan: 2600, scale: { start: 0.07, end: 0.02 }, alpha: { start: 0.4, end: 0 },
-          quantity: 1, frequency: 260, blendMode: Phaser.BlendModes.ADD, tint: [0xf472b6, 0x9fb4d8],
+          quantity: 1, frequency: 240, blendMode: Phaser.BlendModes.ADD, tint: [0xf472b6, 0x9fb4d8],
         }).setScrollFactor(0).setDepth(dep)
         break
       }
+    }
+  }
+
+  /** Halo de chaleur : bandes orange qui miroitent à l'horizon (scorched-desert). */
+  private addHeatShimmer() {
+    const { width, height } = this.cameras.main
+    for (let i = 0; i < 3; i++) {
+      const band = this.add.rectangle(width / 2, height * 0.58 + i * 5, width, 3, 0xffb37a)
+        .setBlendMode(Phaser.BlendModes.ADD).setScrollFactor(0).setDepth(-4)
+      this.tweens.add({
+        targets: band, alpha: { from: 0.03, to: 0.1 }, y: band.y + 3,
+        duration: 800 + i * 180, yoyo: true, repeat: -1, ease: 'Sine.InOut',
+      })
     }
   }
 
