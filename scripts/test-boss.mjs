@@ -16,8 +16,9 @@ try {
   // avancer jusqu'à l'écran de sélection
   let t = Date.now()
   while (!(await scenes()).includes('StageSelectScene') && Date.now() - t < 25000) { await page.keyboard.press('z'); await sleep(300) }
-  // sélectionner le stage voulu avec les flèches
-  for (let i = 0; i < STAGE_IDX; i++) { await page.keyboard.press('ArrowRight'); await sleep(200) }
+  await sleep(500) // laisser l'écran de sélection prêt
+  // sélectionner le stage voulu avec les flèches (délai large pour fiabilité)
+  for (let i = 0; i < STAGE_IDX; i++) { await page.keyboard.press('ArrowRight'); await sleep(450) }
   await page.keyboard.press('z') // confirmer
   const inGame = await wait('GameScene', 10000)
   console.log('GameScene:', inGame, '| scènes:', (await scenes()).join(','))

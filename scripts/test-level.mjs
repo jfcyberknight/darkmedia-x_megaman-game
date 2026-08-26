@@ -71,11 +71,17 @@ try {
     return { ok: !!p, x: Math.round(p?.x ?? -9999), y: Math.round(p?.y ?? -9999), hp: p?.getHealth?.() ?? -1, lives: s.registry.get('lives'), cpX: s.registry.get('cpX') ?? null, bossIntro: s.bossIntroDone === true }
   })
   // Navigation clavier Z jusqu'à GameScene (réutilisable après un reload).
+  const STAGE_IDX = { 'neon-city':0, 'toxic-plant':1, 'scorched-desert':2, 'frost-lab':3, 'sky-fortress':4 }[STAGE] ?? 0
   const navToGame = async () => {
     const t0 = Date.now()
+    let sel = false
     while (Date.now() - t0 < 30000) {
       const sc = await scenes()
       if (sc.includes('GameScene')) return true
+      if (sc.includes('StageSelectScene') && !sel) {
+        sel = true
+        for (let i = 0; i < STAGE_IDX; i++) { await page.keyboard.press('ArrowRight'); await sleep(200) }
+      }
       await page.keyboard.press('z')
       await sleep(340)
     }
