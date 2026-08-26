@@ -287,9 +287,9 @@ export class GameScene extends Phaser.Scene {
     this.companionGlow = this.add.image(this.companion.x, this.companion.y, 'glow')
       .setTint(this.compData.bubble).setBlendMode(Phaser.BlendModes.ADD).setScale(0.14).setAlpha(0.3).setDepth(34)
 
-    // Audio: stage theme + mute toggle (M)
+    // Audio: musique du stage (thème propre à chaque stage) + mute toggle (M)
     sfx.unlock()
-    startMusic('stage')
+    startMusic('stage', STAGES.findIndex(s => s.id === this.stage.id))
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => stopMusic())
 
     if (!this.registry.get('briefed')) {

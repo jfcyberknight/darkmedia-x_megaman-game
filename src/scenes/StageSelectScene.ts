@@ -34,6 +34,10 @@ export class StageSelectScene extends Phaser.Scene {
   }
 
   create() {
+    // Au retour d'un niveau terminé, on réinitialise l'état : sinon `confirming`
+    // restait true et aucun autre stage n'était sélectionnable.
+    this.confirming = false
+    this.selected = 0
     const { width, height } = this.cameras.main
 
     const bg = this.add.graphics()

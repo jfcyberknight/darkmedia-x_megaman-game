@@ -9,13 +9,19 @@ import { PauseScene } from './scenes/PauseScene'
 import { getTrack, installAudioGestures } from './audio'
 import { installTouchControls } from './touch'
 
+// Hauteur logique fixe : la LARGEUR suit l'aspect de l'écran (ratio w/h) pour
+// que le jeu remplisse N'IMPORTE QUEL téléphone (16:9, 19.5:9, 20:9) sans bandes
+// — il montre simplement plus de monde à droite. Clamp pour ne jamais être
+// trop étroit (portrait) ni dépasser la largeur du monde.
+const GAME_H = 270
+const clampW = () =>
+  Math.min(760, Math.max(360, Math.round(GAME_H * (window.innerWidth / window.innerHeight))))
+
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: 'game-container',
-  // 16:9 (480x270) : remplit les écrans de téléphone en paysage sans bandes
-  // noires (l'ancien 256x224 en 8:7 causait un letterbox/pillarbox).
-  width: 480,
-  height: 270,
+  width: clampW(),
+  height: GAME_H,
   pixelArt: true,
   antialias: false,
   roundPixels: true,
@@ -43,6 +49,12 @@ installTouchControls()
 // Déblocage audio global : les boutons tactiles DOM ne passent pas par
 // l'input Phaser, donc on écoute aussi au niveau document.
 installAudioGestures()
+
+// Recalcule la largeur logique quand l'écran change d'orientation / taille :
+// le jeu reste plein écran (remplit largeur ET hauteur) sur tout téléphone.
+const fitToScreen = () => game.scale.setGameSize(clampW(), GAME_H)
+window.addEventListener('resize', fitToScreen)
+window.addEventListener('orientationchange', () => setTimeout(fitToScreen, 300))
 
 // Le clamp du delta physique est installé dans GameScene.create() (garde
 // statique) : `physics` s'injecte par scène dans Phaser 3, il n'existe pas

@@ -129,6 +129,7 @@ type Track = 'menu' | 'stage'
 
 let musicTimer: ReturnType<typeof setInterval> | null = null
 let currentTrack: Track | null = null
+let stageIdx = 0
 let step = 0
 let nextTime = 0
 const BPM = 158
@@ -160,7 +161,7 @@ function getLeadBus(): GainNode | null {
 }
 
 const N = {
-  A2: 110, C3: 130.81, D3: 146.83, E3: 164.81, F2: 87.31, F3: 174.61, G2: 98, G3: 196, A3: 220, B3: 246.94,
+  A2: 110, B2: 123.47, C3: 130.81, D2: 73.42, D3: 146.83, E2: 82.41, E3: 164.81, F2: 87.31, F3: 174.61, G2: 98, G3: 196, A3: 220, B3: 246.94,
   C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392, A4: 440, B4: 493.88,
   C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880, B5: 987.77,
   C6: 1046.5, D6: 1174.66, E6: 1318.51,
@@ -185,36 +186,35 @@ const LEAD_A = [
   N.E5, 0, N.G5, 0, N.A5, 0, N.B5, N.C6,
   0, N.B5, N.G5, N.A5, 0, N.E5, 0, 0,
 ]
-const LEAD_A2 = [
-  N.E5, 0, N.G5, 0, N.A5, 0, N.G5, N.E5,
-  0, N.C5, 0, N.D5, N.E5, 0, N.G5, N.A5,
-  N.B5, 0, N.C6, 0, N.D6, 0, N.C6, N.B5,
-  0, N.A5, N.G5, N.A5, 0, N.E5, 0, 0,
-]
-const LEAD_B = [
-  N.F5, 0, N.A5, 0, N.C6, 0, N.A5, N.F5,
-  0, N.G5, 0, N.A5, N.B5, 0, N.C6, 0,
-  N.D6, 0, N.C6, 0, N.B5, 0, N.G5, 0,
-  N.A5, 0, N.G5, 0, N.E5, 0, N.C5, 0,
-]
-const LEAD_B2 = [
-  N.F5, 0, N.A5, 0, N.C6, 0, N.E6, N.D6,
-  0, N.C6, 0, N.B5, N.C6, 0, N.D6, 0,
-  N.E6, 0, N.D6, 0, N.C6, 0, N.B5, 0,
-  N.C6, 0, N.G5, 0, N.E5, 0, N.C5, 0,
-]
 const BASS_A = [
   N.C3, 0, N.C4, 0, N.C3, 0, N.C4, N.C3,
   0, N.C4, 0, N.C3, N.C4, 0, N.C3, 0,
   N.A2, 0, N.A3, 0, N.A2, 0, N.E3, N.A2,
   0, N.A3, 0, N.E3, N.A3, 0, N.E3, 0,
 ]
-const BASS_B = [
-  N.F3, 0, N.F3, 0, N.F3, 0, N.C4, N.F3,
-  0, N.C4, 0, N.F3, N.C4, 0, N.F3, 0,
-  N.G3, 0, N.D4, 0, N.G3, 0, N.D4, N.G3,
-  0, N.D4, 0, N.G3, N.D4, 0, N.G3, 0,
+
+// ----- Musique de STAGE : un thème distinct par stage (mélodie + basse + tempo) -----
+const STAGE_BPM = [158, 130, 146, 118, 168]
+const STAGE_LEADS: number[][] = [
+  // neon-city : anthemic minor riff
+  [N.E5, 0, N.G5, 0, N.A5, 0, N.G5, N.E5, 0, N.C5, 0, N.D5, N.E5, 0, N.D5, 0, N.E5, 0, N.G5, 0, N.B5, 0, N.C6, 0, N.A5, 0, N.G5, N.E5, 0, N.D5, 0, 0],
+  // toxic-plant : sombre et rampant
+  [N.A3, 0, N.A3, 0, N.B3, 0, N.C4, 0, N.E4, 0, N.C4, 0, N.B3, 0, N.A3, 0, N.A3, 0, N.A3, 0, N.B3, 0, N.C4, 0, N.D4, 0, N.C4, 0, N.B3, 0, N.A3, 0],
+  // scorched-desert : tension lourde
+  [N.D4, 0, N.A4, 0, N.D5, 0, N.C5, 0, N.A4, 0, N.G4, 0, N.A4, 0, 0, 0, N.D4, 0, N.A4, 0, N.D5, 0, N.F5, 0, N.E5, 0, N.D5, 0, N.A4, 0, 0, 0],
+  // frost-lab : arpège froid et aéré
+  [N.A4, 0, 0, 0, N.C5, 0, 0, 0, N.E5, 0, 0, 0, N.C5, 0, 0, 0, N.A4, 0, 0, 0, N.B4, 0, 0, 0, N.D5, 0, 0, 0, N.B4, 0, 0, 0],
+  // sky-fortress : épique, montée finale
+  [N.E5, 0, N.F5, 0, N.G5, 0, N.A5, 0, N.B5, 0, N.A5, 0, N.G5, 0, N.F5, 0, N.E5, 0, N.G5, 0, N.A5, 0, N.C6, 0, N.B5, 0, N.A5, 0, N.G5, 0, N.E5, 0],
 ]
+const STAGE_BASS: number[][] = [
+  [N.A2, 0, N.A2, 0, N.E3, 0, N.A2, 0, N.A2, 0, N.A2, 0, N.E3, 0, N.A2, 0, N.C3, 0, N.C3, 0, N.G3, 0, N.C3, 0, N.B2, 0, N.B2, 0, N.F3, 0, N.B2, 0],
+  [N.A2, 0, 0, 0, N.F2, 0, 0, 0, N.C3, 0, 0, 0, N.G2, 0, 0, 0, N.A2, 0, 0, 0, N.F2, 0, 0, 0, N.E2, 0, 0, 0, N.A2, 0, 0, 0],
+  [N.D2, 0, N.D2, 0, N.A2, 0, N.D2, 0, N.B2, 0, N.B2, 0, N.F2, 0, N.B2, 0, N.C3, 0, N.C3, 0, N.G2, 0, N.C3, 0, N.A2, 0, N.A2, 0, N.E2, 0, N.A2, 0],
+  [N.A2, 0, 0, 0, 0, 0, 0, 0, N.F2, 0, 0, 0, 0, 0, 0, 0, N.C3, 0, 0, 0, 0, 0, 0, 0, N.E2, 0, 0, 0, 0, 0, 0, 0],
+  [N.A2, 0, N.A3, 0, N.A2, 0, N.A3, 0, N.F2, 0, N.F3, 0, N.F2, 0, N.F3, 0, N.C3, 0, N.C4, 0, N.C3, 0, N.C4, 0, N.E2, 0, N.E3, 0, N.E2, 0, N.E3, 0],
+]
+
 const KICK = [
   1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0,
   1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0,
@@ -236,7 +236,8 @@ function schedule() {
   if (nextTime < c.currentTime - 0.2) nextTime = c.currentTime + 0.05
   const lead = getLeadBus()
   const menu = currentTrack === 'menu'
-  const stepDur = menu ? MENU_STEP : STEP
+  const stageStep = STAGE_BPM[stageIdx] ?? 158
+  const stepDur = menu ? MENU_STEP : 60 / stageStep / 4
   while (nextTime < c.currentTime + 0.35) {
     const delay = Math.max(0, nextTime - c.currentTime)
     if (menu) {
@@ -247,14 +248,13 @@ function schedule() {
       if (l) tone({ f: l, dur: stepDur * 3.4, type: 'square', vol: 0.09, delay, bus: lead })
       if (i % 16 === 0) noise({ dur: 0.05, vol: 0.05, freq: 4500, delay })
     } else {
-      const bar = Math.floor(step / 32) % 4
       const i = step % 32
-      const leadPat = bar === 0 ? LEAD_A : bar === 1 ? LEAD_A2 : bar === 2 ? LEAD_B : LEAD_B2
-      const bassPat = bar < 2 ? BASS_A : BASS_B
+      const leadPat = STAGE_LEADS[stageIdx] ?? LEAD_A
+      const bassPat = STAGE_BASS[stageIdx] ?? BASS_A
       const li = leadPat[i]
-      if (li) tone({ f: li, dur: STEP * 0.9, type: 'square', vol: 0.13, delay, bus: lead })
+      if (li) tone({ f: li, dur: stepDur * 0.9, type: 'square', vol: 0.13, delay, bus: lead })
       const b = bassPat[i]
-      if (b) tone({ f: b, dur: STEP * 1.5, type: 'triangle', vol: 0.5, delay, bus: musicBus })
+      if (b) tone({ f: b, dur: stepDur * 1.5, type: 'triangle', vol: 0.5, delay, bus: musicBus })
       if (KICK[i]) tone({ f: 150, to: 45, dur: 0.1, type: 'sine', vol: 0.75, delay, bus: musicBus })
       if (SNARE[i]) noise({ dur: 0.09, vol: 0.3, freq: 2400, delay })
       if (HAT[i]) noise({ dur: 0.03, vol: 0.12, freq: 7000, delay })
@@ -264,15 +264,16 @@ function schedule() {
   }
 }
 
-export function startMusic(track: Track = 'stage') {
+export function startMusic(track: Track = 'stage', stage = 0) {
   const c = ac()
   if (!c) return
-  if (musicTimer && currentTrack === track) return
+  if (musicTimer && currentTrack === track && stageIdx === stage) return
   if (musicTimer) {
     clearInterval(musicTimer)
     musicTimer = null
   }
   currentTrack = track
+  stageIdx = Math.max(0, Math.min(4, stage))
   step = 0
   nextTime = c.currentTime + 0.2
   musicTimer = setInterval(schedule, 120)
