@@ -84,6 +84,7 @@ export class GameScene extends Phaser.Scene {
   private weBar!: Phaser.GameObjects.Graphics
   private bgFar!: Phaser.GameObjects.TileSprite
   private bgMid!: Phaser.GameObjects.TileSprite
+  private ambientEvt?: Phaser.Time.TimerEvent
   private enemyCount = 0
   private stage: StageDef = DEFAULT_STAGE
   private diff!: Difficulty
@@ -173,6 +174,7 @@ export class GameScene extends Phaser.Scene {
 
     this.createBackground()
     this.createTilemap()
+    this.setupAmbient()
 
     this.bullets = this.physics.add.group({
       classType: Bullet,
@@ -324,7 +326,7 @@ export class GameScene extends Phaser.Scene {
     // Audio: musique du stage (thème propre à chaque stage) + mute toggle (M)
     sfx.unlock()
     startMusic('stage', STAGES.findIndex(s => s.id === this.stage.id))
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => stopMusic())
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.ambientEvt?.remove(); stopMusic() })
 
     if (!this.registry.get('briefed')) {
       this.registry.set('briefed', true)
@@ -664,6 +666,135 @@ export class GameScene extends Phaser.Scene {
       blendMode: Phaser.BlendModes.ADD,
       tint: [this.stage.accent, 0xffffff, 0x9fb4d8],
     }).setScrollFactor(0).setDepth(-5)
+  }
+
+  // ------------------------------------------------------------------
+  // AMBIANCE DE FOND : événements décoratifs propres à chaque stage.
+  // Purement visuels (depth -3, scrollFactor 0, derrière le niveau).
+  // ------------------------------------------------------------------
+  private static readonly AMBIENT_PERIOD: Record<string, number> = {
+    'neon-city': 2600,
+    'toxic-plant': 1100,
+    'scorched-desert': 1900,
+    'frost-lab': 1400,
+    'sky-fortress': 3000,
+  }
+
+  /** Lance le générateur d'ambiance du stage (auto-détruit au shutdown). */
+  private setupAmbient() {
+    const period = GameScene.AMBIENT_PERIOD[this.stage.id]
+    if (!period) return
+    // premier événement assez vite, puis en boucle.
+    this.time.delayedCall(500, () => this.spawnAmbient())
+    this.ambientEvt = this.time.addEvent({ delay: period, loop: true, callback: () => this.spawnAmbient() })
+  }
+
+  private spawnAmbient() {
+    switch (this.stage.id) {
+      case 'neon-city': this.ambientExplosion(); break
+      case 'toxic-plant': this.ambientDrip(); break
+      case 'scorched-desert': this.ambientEmber(); break
+      case 'frost-lab': this.ambientSnow(); break
+      case 'sky-fortress': this.ambientLightning(); break
+    }
+  }
+
+  /** Néon City : explosion lointaine (cœur + halo + onde + fumée + étincelles). */
+  private ambientExplosion() {
+    const { width, height } = this.cameras.main
+    const x = Phaser.Math.Between(40, width - 40)
+    const y = Phaser.Math.Between(Math.round(height * 0.16), Math.round(height * 0.4))
+    // cœur blanc chaud (culmine vite)
+    const core = this.add.image(x, y, 'glow')
+      .setTint(0xffffff).setBlendMode(Phaser.BlendModes.ADD).setDepth(-3).setScrollFactor(0).setScale(0.6).setAlpha(1)
+    this.tweens.add({ targets: core, scale: 1.9, alpha: 0, duration: 300, ease: 'Cubic.Out', onComplete: () => core.destroy() })
+    // halo orange qui gonfle (gros dès le départ)
+    const halo = this.add.image(x, y, 'glow')
+      .setTint(0xff9a3c).setBlendMode(Phaser.BlendModes.ADD).setDepth(-3).setScrollFactor(0).setScale(1).setAlpha(0.95)
+    this.tweens.add({ targets: halo, scale: 3, alpha: 0, duration: 560, ease: 'Cubic.Out', onComplete: () => halo.destroy() })
+    // onde de choc
+    const ring = this.add.image(x, y, 'glow')
+      .setTint(0xffd9a0).setBlendMode(Phaser.BlendModes.ADD).setDepth(-3).setScrollFactor(0).setScale(0.5).setAlpha(0.6)
+    this.tweens.add({ targets: ring, scale: 3.7, alpha: 0, duration: 480, ease: 'Cubic.Out', onComplete: () => ring.destroy() })
+    // fumée
+    for (let i = 0; i < 6; i++) {
+      const s = this.add.image(x + Phaser.Math.Between(-18, 18), y + Phaser.Math.Between(-12, 10), 'orb')
+        .setTint(0x2a2f3a).setDepth(-3).setScrollFactor(0).setScale(0.28).setAlpha(0.6)
+      this.tweens.add({ targets: s, x: s.x + Phaser.Math.Between(-30, 30), y: s.y - Phaser.Math.Between(12, 44), scale: 0.6, alpha: 0, duration: Phaser.Math.Between(850, 1450), ease: 'Cubic.Out', onComplete: () => s.destroy() })
+    }
+    // étincelles
+    const p = this.add.particles(x, y, 'glow', {
+      speed: { min: 60, max: 180 }, scale: { start: 0.16, end: 0 }, lifespan: 680, emitting: false,
+      blendMode: Phaser.BlendModes.ADD, tint: [0xffe9a8, 0xff9a3c, 0xffffff],
+    }).setDepth(-3).setScrollFactor(0)
+    p.explode(16)
+    this.time.delayedCall(1000, () => p.destroy())
+  }
+
+  /** Toxic Plant : gouttes de slime qui tombent du plafond et éclaboussent. */
+  private ambientDrip() {
+    const { width, height } = this.cameras.main
+    const x = Phaser.Math.Between(40, width - 40)
+    const bottom = height * 0.52
+    const d = this.add.image(x, -10, 'orb')
+      .setTint(0x7dfca2).setBlendMode(Phaser.BlendModes.ADD).setDepth(-3).setScrollFactor(0)
+      .setScale(0.55).setAlpha(0.95)
+    this.tweens.add({
+      targets: d, y: bottom, duration: Phaser.Math.Between(950, 1500), ease: 'Quad.In',
+      onComplete: () => {
+        const splash = this.add.image(x, bottom, 'glow')
+          .setTint(0x7dfca2).setBlendMode(Phaser.BlendModes.ADD).setDepth(-3).setScrollFactor(0)
+          .setScale(0.4).setAlpha(0.8)
+        this.tweens.add({ targets: splash, scale: 1.6, alpha: 0, duration: 460, onComplete: () => splash.destroy() })
+        // petites gouttelettes d'éclaboussure
+        for (let i = 0; i < 5; i++) {
+          const sp = this.add.image(x, bottom, 'orb')
+            .setTint(0x7dfca2).setBlendMode(Phaser.BlendModes.ADD).setDepth(-3).setScrollFactor(0).setScale(0.22).setAlpha(0.75)
+          this.tweens.add({ targets: sp, x: sp.x + Phaser.Math.Between(-20, 20), y: bottom - Phaser.Math.Between(10, 30), alpha: 0, duration: 460, onComplete: () => sp.destroy() })
+        }
+        d.destroy()
+      },
+    })
+  }
+
+  /** Scorched Desert : braises qui montent. */
+  private ambientEmber() {
+    const { width, height } = this.cameras.main
+    const n = Phaser.Math.Between(3, 5)
+    for (let i = 0; i < n; i++) {
+      const x = Phaser.Math.Between(0, width)
+      const y = height * Phaser.Math.Between(0.5, 0.85)
+      const e = this.add.image(x, y, 'orb')
+        .setTint(0xffb37a).setBlendMode(Phaser.BlendModes.ADD).setDepth(-3).setScrollFactor(0)
+        .setScale(0.1).setAlpha(0.7)
+      this.tweens.add({ targets: e, y: y - Phaser.Math.Between(60, 130), x: e.x + Phaser.Math.Between(-18, 18), alpha: 0, duration: Phaser.Math.Between(1100, 1900), onComplete: () => e.destroy() })
+    }
+  }
+
+  /** Frost Lab : flocons qui tombent. */
+  private ambientSnow() {
+    const { width, height } = this.cameras.main
+    const n = Phaser.Math.Between(4, 7)
+    for (let i = 0; i < n; i++) {
+      const x = Phaser.Math.Between(0, width)
+      const y = Phaser.Math.Between(-10, Math.round(height * 0.2))
+      const s = this.add.image(x, y, 'orb')
+        .setTint(0xdbe9ff).setDepth(-3).setScrollFactor(0).setScale(0.07).setAlpha(0.85)
+      this.tweens.add({ targets: s, y: y + Phaser.Math.Between(80, 150), x: s.x + Phaser.Math.Between(-16, 16), alpha: 0, duration: Phaser.Math.Between(1400, 2400), onComplete: () => s.destroy() })
+    }
+  }
+
+  /** Sky Fortress : éclairs de tempête qui flashent dans le ciel. */
+  private ambientLightning() {
+    const { width, height } = this.cameras.main
+    for (let i = 0; i < 3; i++) {
+      const x = Phaser.Math.Between(0, width)
+      const y = Phaser.Math.Between(Math.round(height * 0.1), Math.round(height * 0.3))
+      const f = this.add.image(x, y, 'glow')
+        .setTint(0xffffff).setBlendMode(Phaser.BlendModes.ADD).setDepth(-3).setScrollFactor(0)
+        .setScale(0.8).setAlpha(0)
+      this.tweens.add({ targets: f, alpha: 0.9, scale: 1.25, duration: 60, yoyo: true, repeat: 1, onComplete: () => f.destroy() })
+    }
   }
 
   /** Modern segmented HP bar (screen-fixed HUD). */
