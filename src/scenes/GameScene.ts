@@ -920,6 +920,7 @@ export class GameScene extends Phaser.Scene {
 
   private spawnBoss() {
     const boss = new Boss(this, this.ents.bossX, 262, this.player, (hp, max) => this.drawBossBar(hp, max))
+    boss.setScale(1.35) // bien plus imposant que les sbires
     this.boss = boss
     this.bossActive = true
     // Colliders sur les DEUX couches : sans `ground`, le boss tombait à

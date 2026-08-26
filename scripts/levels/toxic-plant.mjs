@@ -33,6 +33,9 @@ export default {
   walkers: [28, 46, 66, 84, 102, 120, 137, 155, 172],
   // Tourelles qui gardent les passages délicats (avant/après fosses et murs).
   turrets: [38, 56, 93, 127, 162, 178],
+  // Chargeurs (foncent sur le joueur) et cracheurs (tirent en marchant).
+  chargers: [63, 117],
+  spitters: [44, 100],
   // Drones volants (y en px, 100..170), répartis sur toute la longueur.
   flyers: [[20, 150], [34, 140], [62, 125], [81, 150], [110, 132], [144, 145], [170, 155]],
   // 6 checkpoints au sol, premier à 20, espacés de >= 25 tuiles ; dernier avant l'arène.
