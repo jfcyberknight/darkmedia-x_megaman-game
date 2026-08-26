@@ -13,6 +13,7 @@ import { askAI } from '../ai'
 import { getCompanion, type CompanionDef } from '../companions'
 import { STAGES, DEFAULT_STAGE, type StageDef } from '../stages'
 import { WEAPONS, BOSS_WEAPON, type WeaponId } from '../weapons'
+import { getCapsule } from '../capsules'
 import { touchState, isTouchUI, consumeTouchEdges } from '../touch'
 
 const WORLD_H = 320
@@ -29,6 +30,7 @@ interface LevelEntities {
   enemies: Array<{ kind: string; x: number; y: number }>
   checkpoints: Array<{ x: number; y: number }>
   orbs: Array<{ x: number; y: number }>
+  capsules?: Array<{ x: number; y: number; type: string }>
 }
 
 export class GameScene extends Phaser.Scene {
@@ -55,6 +57,10 @@ export class GameScene extends Phaser.Scene {
   private compCooldown = 5000
   private compSaid = new Set<string>()
   private compT = 0
+  // Timers des pouvoirs de compagnon (capsules).
+  private compShootT = 0
+  private compShieldT = 0
+  private compHealT = 0
   private readonly fallbackTaunts: Record<string, string[]> = {
     intro: ['Ton existence prend fin ici, gardien.', 'Néon City m’appartient déjà.'],
     combat: ['Ta résistance est une erreur de programmation.', 'Je calcule déjà ta défaite.', "Chaque tir t'affaiblit. Chaque seconde me rend plus fort."],
@@ -119,6 +125,7 @@ export class GameScene extends Phaser.Scene {
     this.load.spritesheet('charger', `assets/charger-${this.stage.id}.png`, { frameWidth: 20, frameHeight: 16 })
     this.load.spritesheet('spitter', `assets/spitter-${this.stage.id}.png`, { frameWidth: 18, frameHeight: 16 })
     this.load.image('checkpoint', 'assets/checkpoint.png')
+    this.load.image('capsule', 'assets/capsule.png')
     this.load.image(`bg-far-${this.stage.id}`, `assets/bg-far-${this.stage.id}.png`)
     this.load.image(`bg-mid-${this.stage.id}`, `assets/bg-mid-${this.stage.id}.png`)
     this.load.image('haze', 'assets/haze.png')
@@ -185,6 +192,7 @@ export class GameScene extends Phaser.Scene {
     this.spawnCheckpoint()
     this.spawnEnemies()
     this.spawnEnergyPickups()
+    this.spawnCapsules()
 
     this.cursors = this.input.keyboard!.createCursorKeys()
     this.shootKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.Z)
@@ -412,6 +420,56 @@ export class GameScene extends Phaser.Scene {
     if (this.player.getHealth() <= 3 && !this.compSaid.has('lowhp') && this.compCooldown <= 0) {
       this.compSaid.add('lowhp')
       void this.companionSay('lowhp')
+    }
+    this.applyCompanionPowers(delta)
+  }
+
+  /** Pouvoirs de compagnon (capsules) : tir drone, bouclier, soin, cadence rapide. */
+  private applyCompanionPowers(delta: number) {
+    const powers = new Set<string>(this.registry.get('companionPowers') ?? [])
+    this.player.fireMult = powers.has('rapide') ? 0.55 : 1
+
+    // TIR : le compagnon tire sur l'ennemi le plus proche.
+    if (powers.has('tir')) {
+      this.compShootT -= delta
+      if (this.compShootT <= 0) {
+        this.compShootT = 1500
+        const e = this.enemies.getFirstAlive() as Phaser.Physics.Arcade.Sprite | null
+        if (e?.active) {
+          const b = this.bullets.get(this.companion.x, this.companion.y - 4, 'bullet') as Bullet
+          if (b) {
+            const dir = Math.sign(e.x - this.companion.x) || 1
+            b.activate(dir, 'normal', 2, 'buster')
+            const ang = Math.atan2(e.y - this.companion.y, e.x - this.companion.x)
+            b.setVelocity(Math.cos(ang) * 160, Math.sin(ang) * 160)
+            b.setTint(getCapsule('tir').tint)
+            sfx.turretShot()
+          }
+        }
+      }
+    }
+    // BOUCLIER : le compagnon te protège périodiquement (invuln brève).
+    if (powers.has('bouclier')) {
+      this.compShieldT -= delta
+      if (this.compShieldT <= 0) {
+        this.compShieldT = 9000
+        this.player.grantInvulnerability(1600)
+        this.spawnShieldBubble()
+      }
+    }
+    // SOIN : le compagnon te soigne quand tu es bas.
+    if (powers.has('soin')) {
+      this.compHealT -= delta
+      if (this.compHealT <= 0) {
+        if (this.player.getHealth() <= 4) {
+          this.compHealT = 6000
+          this.player.heal(1)
+          this.spawnCollectBurst(this.player.x, this.player.y, 0x7dfca2)
+          sfx.collect()
+        } else {
+          this.compHealT = 500
+        }
+      }
     }
   }
 
@@ -717,6 +775,45 @@ export class GameScene extends Phaser.Scene {
     return orb
   }
 
+  /** Capsules de compagnon : objets à collecter qui déverrouillent un pouvoir. */
+  private spawnCapsules() {
+    for (const c of this.ents.capsules ?? []) {
+      const cap = this.orbs.create(c.x, c.y, 'capsule') as Phaser.Physics.Arcade.Image
+      cap.setDepth(30).setData('kind', 'capsule').setData('capType', c.type)
+      cap.setTint(getCapsule(c.type).tint)
+      cap.body!.setSize(10, 10)
+      this.tweens.add({ targets: cap, y: c.y - 4, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
+      this.tweens.add({ targets: cap, angle: 360, duration: 2200, repeat: -1 })
+      this.tweens.add({ targets: cap, alpha: { from: 0.6, to: 1 }, duration: 500, yoyo: true, repeat: -1 })
+    }
+  }
+
+  /** Accorde un pouvoir de compagnon (capsule) + toast + son. */
+  private grantCompanionPower(type: string) {
+    const def = getCapsule(type)
+    const owned = new Set<string>(this.registry.get('companionPowers') ?? [])
+    if (owned.has(type)) { sfx.collect(); return }
+    owned.add(type)
+    this.registry.set('companionPowers', [...owned])
+    sfx.powerup()
+    if (this.compData) void this.companionSay('power')
+    const { width } = this.cameras.main
+    const t = this.add.text(width / 2, 74, `${def.name} — ${def.desc}`, {
+      fontSize: '10px', color: '#ceffe8', fontFamily: 'monospace', fontStyle: 'bold', letterSpacing: 1,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(300).setAlpha(0).setScale(0.8)
+    t.setStroke('#05230f', 3); t.setShadow(0, 0, '#7dfca2', 8, true, true)
+    this.tweens.add({ targets: t, alpha: 1, scale: 1, duration: 320, ease: 'Back.Out' })
+    this.time.delayedCall(2400, () => this.tweens.add({ targets: t, alpha: 0, duration: 400, onComplete: () => t.destroy() }))
+  }
+
+  /** Bulle de protection autour du joueur (pouvoir bouclier). */
+  private spawnShieldBubble() {
+    const b = this.add.circle(this.player.x, this.player.y, 18, 0x93c5fd, 0.16)
+      .setStrokeStyle(2, 0x93c5fd, 0.9).setDepth(60)
+    this.tweens.add({ targets: b, radius: 26, alpha: 0, duration: 1400, ease: 'Cubic.Out', onComplete: () => b.destroy() })
+    this.cameras.main.flash(160, 140, 200, 255)
+  }
+
   private spawnCollectBurst(x: number, y: number, tint: number) {
     const p = this.add.particles(x, y, 'glow', {
       speed: { min: 18, max: 48 },
@@ -737,12 +834,17 @@ export class GameScene extends Phaser.Scene {
     const p = player as Player
     const orb = orbObj as Phaser.Physics.Arcade.Image
     if (!orb.active) return
-    const kind = orb.getData('kind') as 'hp' | 'core'
+    const kind = orb.getData('kind') as 'hp' | 'core' | 'capsule'
     const ox = orb.x, oy = orb.y
     orb.disableBody(true, true)
 
     if (kind === 'core') {
       this.absorbBossPower(ox, oy)
+      return
+    }
+    if (kind === 'capsule') {
+      this.grantCompanionPower(orb.getData('capType') as string)
+      this.spawnCollectBurst(ox, oy, getCapsule(orb.getData('capType') as string).tint)
       return
     }
     p.heal(2)

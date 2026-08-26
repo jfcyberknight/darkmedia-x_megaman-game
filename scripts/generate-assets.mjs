@@ -598,6 +598,14 @@ savePreview(novaSprite(), 'comp-nova.png', 8)
   ell(o, 4, 4, 3.4, 3.4, hex(0xf2f6fa))
   ell(o, 4, 4, 1.8, 1.8, hex(0xffffff))
   save(o, 'orb.png')
+  // capsule de compagnon (pod énergétique)
+  const cap = C(10, 10)
+  rect(cap, 2, 1, 7, 8, hex(0x1c2b4a))
+  rect(cap, 3, 2, 6, 7, hex(0x35e0ff))
+  rect(cap, 3, 3, 5, 4, hex(0x9df2ff))
+  px(cap, 4, 2, hex(0xffffff))
+  outline(cap, hex(0x0a1a2e))
+  save(cap, 'capsule.png')
 }
 
 // ============================ GLOW 16x16 (additive) ============================

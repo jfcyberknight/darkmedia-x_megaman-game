@@ -64,6 +64,20 @@ function buildLevel(spec) {
   for (const [x, y] of spec.flyers ?? []) enemies.push({ kind: 'flyer', x: x * TILE + 8, y })
   const checkpoints = (spec.checkpoints ?? []).map((x) => ({ x: x * TILE + 8, y: GT * TILE - 18 }))
   const orbs = (spec.orbs ?? []).map((x) => ({ x: x * TILE + 8, y: GT * TILE - 10 }))
+  // Capsules de compagnon : 4 par niveau (tir/bouclier/soin/rapide), sur du sol
+  // dégagé (pas de trou ni de mur), réparties sur toute la longueur.
+  const capsTypes = ['tir', 'bouclier', 'soin', 'rapide']
+  const wantTiles = [Math.round(W * 0.2), Math.round(W * 0.4), Math.round(W * 0.6), Math.round(W * 0.82)]
+  const capsules = []
+  const safeCell = (x) => x >= 14 && x < W - 42 && ground[GT][x] !== 0 && ground[GT - 1][x] === 0
+  for (let i = 0; i < capsTypes.length; i++) {
+    let tx = -1
+    for (let d = 0; d < 20; d++) {
+      if (safeCell(wantTiles[i] + d)) { tx = wantTiles[i] + d; break }
+      if (safeCell(wantTiles[i] - d)) { tx = wantTiles[i] - d; break }
+    }
+    if (tx >= 0) capsules.push({ x: tx * TILE + 8, y: GT * TILE - 14, type: capsTypes[i] })
+  }
 
   const data = (grid) => {
     const d = []
@@ -84,7 +98,7 @@ function buildLevel(spec) {
   const entities = {
     worldW: W * TILE, spawnX: 8 * TILE, spawnY: GT * TILE - 22,
     bossX: (W - 22) * TILE, bossWarnX: (W - 22) * TILE - 270,
-    enemies, checkpoints, orbs,
+    enemies, checkpoints, orbs, capsules,
   }
   writeFileSync(join(outDir, `level-${spec.id}.json`), JSON.stringify(level))
   writeFileSync(join(outDir, `entities-${spec.id}.json`), JSON.stringify(entities, null, 2))

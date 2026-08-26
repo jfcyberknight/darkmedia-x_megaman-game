@@ -35,6 +35,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private bullets: Phaser.Physics.Arcade.Group
   private lastShot = 0
   private shootCooldown = 220
+  /** Multiplicateur de cadence de tir (pouvoir compagnon 'rapide' : < 1 = plus rapide). */
+  fireMult = 1
 
   // Charge shot (hold Z) — timestamp-based so it is framerate-independent
   private charging = false
@@ -260,7 +262,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const dir = this.facingRight ? 1 : -1
     const now = this.scene.time.now
     if (type === 'normal') {
-      if (now - this.lastShot < this.shootCooldown) return
+      if (now - this.lastShot < this.shootCooldown * this.fireMult) return
       this.lastShot = now
     }
 
