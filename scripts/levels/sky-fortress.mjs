@@ -22,6 +22,9 @@ export default {
     [220, 11, 4],
   ],
   shafts: [[144, 6]],
+  // Ponts à plateforme : larges ouvertures infranchissables au saut, traversées
+  // via une dalle centrale atteignable — le joueur DOIT utiliser les plateformes.
+  bridges: [[15, 6], [83, 6], [154, 6]],
   walkers: [
     18, 30, 48, 64, 86, 102, 118, 134, 204, 228,
   ],

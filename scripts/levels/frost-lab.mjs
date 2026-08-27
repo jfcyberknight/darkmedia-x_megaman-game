@@ -29,4 +29,6 @@ export default {
   ],
   checkpoints: [20, 66, 112, 158, 200],
   orbs: [12, 20, 28, 38, 46, 58, 66, 78, 88, 100, 112, 122, 138, 146, 164, 170, 190, 202],
+  // Ponts à plateforme : gouffres gelés — le passage se fait sur la dalle centrale.
+  bridges: [[29, 6], [78, 6], [140, 6]],
 }

@@ -53,8 +53,22 @@ for (const [x, h] of walls) {
 }
 
 // Plateformes
+// rows autorisées : 10-11 (dalles hautes/attiques) et 13-15 (dalles atteignables,
+// utilisées par les ponts à plateforme) — 12 et >15 inutilisables (hors de portée).
 for (const [x, row] of plats) {
-  if (row !== 10 && row !== 11) errors.push(`plat @${x} : row ${row} (doit être 10 ou 11)`)
+  if (row < 10 || row > 15) errors.push(`plat @${x} : row ${row} (doit être 10..15)`)
+}
+
+// Ponts à plateforme : large ouverture (5-7 tuiles, infranchissable au saut)
+// traversée par une dalle centrale atteignable. On vérifie la position/portée.
+const bridges = spec.bridges ?? []
+for (const [x, w] of bridges) {
+  if (!Number.isInteger(x) || !Number.isInteger(w)) errors.push(`bridge invalide [${x},${w}]`)
+  if (w < 5 || w > 7) errors.push(`bridge @${x} : largeur ${w} (doit être 5..7)`)
+  if (x < 14) errors.push(`bridge @${x} : trop près du spawn (x<14)`)
+  if (x + w > ARENA) errors.push(`bridge @${x} : dans l'arène du boss (x+w>${ARENA})`)
+  if (pits.some(([px, pw]) => x < px + pw && px < x + w)) errors.push(`bridge @${x} : chevauche un trou`)
+  if (wallCols.has(x) || wallCols.has(x + w - 1)) errors.push(`bridge @${x} : sur un mur`)
 }
 
 // Puits de saut de mur (sections "compétence")

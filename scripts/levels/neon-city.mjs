@@ -36,4 +36,7 @@ export default {
   orbs: [
     12, 28, 36, 46, 57, 66, 76, 89, 101, 108, 118, 126, 136, 146, 158, 164,
   ],
+  // Ponts à plateforme : larges « sauts de toit » — fossé infranchissable au saut,
+  // traversé via une dalle — force l'usage des plateformes entre deux buildings.
+  bridges: [[35, 6], [96, 6], [143, 6]],
 }

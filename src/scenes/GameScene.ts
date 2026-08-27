@@ -645,6 +645,11 @@ export class GameScene extends Phaser.Scene {
 
     this.ground.setCollisionByExclusion([-1])
     this.platforms.setCollisionByExclusion([-1])
+
+    // Décor distinct par niveau : teinte l'accent du stage sur le sol/les dalles
+    // (multiplication) — chaque secteur prend la couleur de son univers.
+    this.ground.setTint(this.stage.accent)
+    this.platforms.setTint(this.stage.accent)
   }
 
   private createBackground() {

@@ -43,6 +43,15 @@ function buildLevel(spec) {
     for (let x = sx; x <= x2; x++) setG(GT - H, x, GID_TOP) // dalle au sommet
     for (let x = sx + 1; x < x2; x++) clearGround(x)         // trou dessous
   }
+  // Pont à plateforme : une large ouverture (w tuiles, infranchissable au saut
+  // horizontal max ~4 tuiles) traversée via une dalle centrale à hauteur
+  // atteignable (2 tuiles de haut). Le joueur DOIT poser le pied sur la dalle.
+  const bridge = (x, w) => {
+    for (let c = x; c < x + w; c++) clearGround(c)
+    const mid = x + Math.floor(w / 2)
+    // dalle centrale de 3 tuiles : plus de marge d'atterrissage (pont clément).
+    for (let c = mid - 1; c <= mid + 1; c++) setP(GT - 2, c, GID_PLAT)
+  }
 
   for (let x = 0; x < W; x++) fillGround(x)
   for (const [x, w] of spec.pits ?? []) for (let c = x; c < x + w; c++) clearGround(c)
@@ -55,6 +64,8 @@ function buildLevel(spec) {
   // une dalle qui relie ; le fond est un trou (tomber = mort). Le joueur DOIT
   // grimper en saut de mur pour le franchir (impossible au saut normal).
   for (const [sx, H] of spec.shafts ?? []) shaft(sx, H)
+  // Ponts à plateforme : larges ouvertures traversées via une dalle centrale.
+  for (const [x, w] of spec.bridges ?? []) bridge(x, w)
 
   const enemies = []
   for (const x of spec.walkers ?? []) enemies.push({ kind: 'walker', x: x * TILE + 8, y: GT * TILE - 10 })
