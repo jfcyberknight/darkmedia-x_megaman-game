@@ -52,6 +52,20 @@ function buildLevel(spec) {
     // dalle centrale de 3 tuiles : plus de marge d'atterrissage (pont clément).
     for (let c = mid - 1; c <= mid + 1; c++) setP(GT - 2, c, GID_PLAT)
   }
+  // Ascension verticale : un mur haut (infranchissable au saut, h tuiles) qu'on
+  // grimpe via un escalier de dalles atteignables à gauche du mur, puis on bascule
+  // sur le sommet. Dalles décalées (zigzag) pour ne pas bloquer la montée.
+  const climb = (xw, h) => {
+    setG(GT - h, xw, GID_TOP)
+    for (let y = GT - h + 1; y <= GT + 2; y++) setG(y, xw, GID_FILL)
+    const steps = Math.max(1, Math.ceil((h - 3) / 3))
+    for (let i = 1; i <= steps; i++) {
+      const row = GT - 3 * i
+      const c = xw - 2 * (steps - i + 1)
+      setP(row, c, GID_PLAT)
+      setP(row, c + 1, GID_PLAT)
+    }
+  }
 
   for (let x = 0; x < W; x++) fillGround(x)
   for (const [x, w] of spec.pits ?? []) for (let c = x; c < x + w; c++) clearGround(c)
@@ -66,6 +80,8 @@ function buildLevel(spec) {
   for (const [sx, H] of spec.shafts ?? []) shaft(sx, H)
   // Ponts à plateforme : larges ouvertures traversées via une dalle centrale.
   for (const [x, w] of spec.bridges ?? []) bridge(x, w)
+  // Ascensions verticales : mur haut grimpé via un escalier de dalles.
+  for (const [xw, h] of spec.climbs ?? []) climb(xw, h)
 
   const enemies = []
   for (const x of spec.walkers ?? []) enemies.push({ kind: 'walker', x: x * TILE + 8, y: GT * TILE - 10 })

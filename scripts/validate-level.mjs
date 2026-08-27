@@ -71,6 +71,18 @@ for (const [x, w] of bridges) {
   if (wallCols.has(x) || wallCols.has(x + w - 1)) errors.push(`bridge @${x} : sur un mur`)
 }
 
+// Ascensions verticales : mur haut (h>=6, infranchissable au saut) grimpé via
+// des dalles atteignables à gauche. On vérifie position/portée.
+const climbs = spec.climbs ?? []
+for (const [xw, h] of climbs) {
+  if (!Number.isInteger(xw) || !Number.isInteger(h)) errors.push(`climb invalide [${xw},${h}]`)
+  if (h < 6 || h > 9) errors.push(`climb @${xw} : hauteur ${h} (doit être 6..9)`)
+  if (xw < 20) errors.push(`climb @${xw} : trop près du spawn (xw<20)`)
+  if (xw + 1 > ARENA) errors.push(`climb @${xw} : dans l'arène du boss (xw+1>${ARENA})`)
+  if (wallCols.has(xw)) errors.push(`climb @${xw} : sur un mur`)
+  if (pits.some(([px, pw]) => xw >= px && xw < px + pw)) errors.push(`climb @${xw} : sur un trou`)
+}
+
 // Puits de saut de mur (sections "compétence")
 const shafts = spec.shafts ?? []
 for (const [sx, H] of shafts) {

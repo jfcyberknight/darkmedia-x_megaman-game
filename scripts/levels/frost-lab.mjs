@@ -31,4 +31,7 @@ export default {
   orbs: [12, 20, 28, 38, 46, 58, 66, 78, 88, 100, 112, 122, 138, 146, 164, 170, 190, 202],
   // Ponts à plateforme : gouffres gelés — le passage se fait sur la dalle centrale.
   bridges: [[29, 6], [78, 5], [140, 7]],
+  // Ascension verticale : un mur de glace haut (infranchissable au saut) grimpé
+  // via un escalier de dalles atteignables — vraie verticalité.
+  climbs: [[110, 6]],
 }
