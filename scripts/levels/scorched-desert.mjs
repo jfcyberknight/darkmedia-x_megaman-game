@@ -25,5 +25,5 @@ export default {
   orbs: [12, 18, 32, 35, 47, 55, 63, 75, 86, 94, 105, 116, 127, 138, 150, 160, 173, 186],
   // Ponts à plateforme : chasmes du désert — larges ouvertures traversées sur une
   // dalle, le sol étant infranchissable au saut.
-  bridges: [[34, 6], [102, 6], [164, 6]],
+  bridges: [[34, 7], [102, 6], [164, 5]],
 }

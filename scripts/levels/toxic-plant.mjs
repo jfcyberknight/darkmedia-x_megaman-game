@@ -28,5 +28,5 @@ export default {
   orbs: [12, 26, 36, 44, 54, 64, 76, 90, 102, 116, 126, 140, 152, 166],
   // Ponts à plateforme : coulées de toxique — le passage se fait sur la dalle
   // centrale, le sol étant une large ouverture infranchissable.
-  bridges: [[38, 6], [110, 6], [163, 6]],
+  bridges: [[38, 5], [110, 7], [163, 6]],
 }

@@ -38,5 +38,5 @@ export default {
   ],
   // Ponts à plateforme : larges « sauts de toit » — fossé infranchissable au saut,
   // traversé via une dalle — force l'usage des plateformes entre deux buildings.
-  bridges: [[35, 6], [96, 6], [143, 6]],
+  bridges: [[35, 7], [96, 5], [143, 6]],
 }
