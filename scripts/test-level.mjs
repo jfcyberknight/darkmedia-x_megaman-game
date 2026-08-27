@@ -9,6 +9,8 @@ import { chromium } from 'playwright'
 
 const BASE_URL = process.argv[2] || 'http://localhost:5174/'
 const STAGE = process.argv[3] || 'neon-city'
+// Faiblesse d'arme du gardien de chaque stage (le boss ne se blesse qu'avec celle-ci).
+const WEAKNESS = { 'neon-city': 'buster', 'toxic-plant': 'drill', 'scorched-desert': 'cryo', 'frost-lab': 'ram', 'sky-fortress': 'venom' }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 const level = await (await fetch(BASE_URL + `assets/level-${STAGE}.json`)).json()
@@ -182,13 +184,17 @@ try {
 
   // --- Boss touchable dans la nouvelle arène ---
   if (ck.ok) {
-    await page.evaluate(([bx]) => {
+    await page.evaluate(([bx, wpn]) => {
       const s = window.__game.scene.getScene('GameScene')
       if (!s || !s.player) return
       const x = (s.boss?.active ? s.boss.x : bx) - 90
       s.player.setPosition(x, 250); s.player.body.reset(x, 250); s.player.body.setVelocity(0, 0)
       s.player.facingRight = true
-    }, [ents.bossX]).catch(() => {})
+      // Le gardien ne se blesse qu'avec SON arme faible : on l'équipe pour le test.
+      s.registry.set('weapons', [wpn])
+      s.registry.set('weapon', wpn)
+      if (s.player.addWe) s.player.addWe(99)
+    }, [ents.bossX, WEAKNESS[STAGE] ?? 'buster']).catch(() => {})
     await sleep(400)
     for (let i = 0; i < 8; i++) { await tap('.tc-fire'); await sleep(300) }
   }

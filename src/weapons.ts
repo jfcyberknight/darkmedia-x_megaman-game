@@ -35,4 +35,17 @@ export const BOSS_WEAPON: Record<string, WeaponId> = {
   'sky-fortress': 'aeron',
 }
 
+/** Faiblesse de chaque gardien : le boss n'est blessé QUE par cette arme.
+ *  L'ordre est à DEVINER par le joueur (chaque boss est faible à l'arme du boss
+ *  précédent — Neon → Glace → Feu → Toxique → Forteresse). Comme on ne peut pas
+ *  changer d'arme (toujours la dernière absorbée), on ne peut vaincre que le boss
+ *  suivant, ce qui impose l'ordre à l'essai. */
+export const BOSS_WEAKNESS: Record<string, WeaponId> = {
+  'neon-city': 'buster',      // premier gardien : se bat à l'arme de départ
+  'frost-lab': 'ram',         // faible au RAM de NEON CITY (glace)
+  'scorched-desert': 'cryo',  // faible au CRYO de FROST LAB (glace bat feu)
+  'toxic-plant': 'drill',     // faible au DRILL de SCORCHED DESERT (feu)
+  'sky-fortress': 'venom',    // faible au VENOM de TOXIC PLANT
+}
+
 export const WEAPON_LIST: WeaponId[] = ['buster', 'ram', 'venom', 'drill', 'cryo', 'aeron']

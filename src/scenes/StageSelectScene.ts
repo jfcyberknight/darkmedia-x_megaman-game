@@ -82,10 +82,11 @@ export class StageSelectScene extends Phaser.Scene {
       })
       this.cards.push(card)
 
-      this.add.text(x, y, String(i + 1), {
-        fontSize: '16px', color: '#ffffff', fontFamily: 'monospace', fontStyle: 'bold',
+      // Pas de numéro d'ordre : chaque carte affiche le nom du gardien. L'ordre
+      // réel (Neon → Glace → Feu → Toxique → Forteresse) est à deviner par le joueur.
+      this.add.text(x, y, s.boss, {
+        fontSize: '9px', color: '#ffffff', fontFamily: 'monospace', fontStyle: 'bold',
       }).setOrigin(0.5).setAlpha(0.85)
-      // pas de nom par carte : le nom du stage sélectionné est affiché en grand plus bas
     }
 
     this.cursor = this.add.rectangle(0, 0, this.cardSize + 4, this.cardSize + 4)

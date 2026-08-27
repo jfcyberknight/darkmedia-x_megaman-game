@@ -12,7 +12,7 @@ import { sfx, startMusic, stopMusic } from '../audio'
 import { askAI } from '../ai'
 import { getCompanion, type CompanionDef } from '../companions'
 import { STAGES, DEFAULT_STAGE, type StageDef } from '../stages'
-import { WEAPONS, BOSS_WEAPON, type WeaponId } from '../weapons'
+import { WEAPONS, BOSS_WEAPON, BOSS_WEAKNESS, type WeaponId } from '../weapons'
 import { getCapsule, COMBAT, type CombatPower } from '../capsules'
 import { touchState, isTouchUI, consumeTouchEdges } from '../touch'
 import { getDifficulty, type Difficulty } from '../difficulty'
@@ -73,6 +73,7 @@ export class GameScene extends Phaser.Scene {
   private bossBar!: Phaser.GameObjects.Graphics
   private bossName!: Phaser.GameObjects.Text
   private bossActive = false
+  private lastBlockMsg = 0
   private hpBar!: Phaser.GameObjects.Graphics
   private powerText!: Phaser.GameObjects.Text
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
@@ -114,6 +115,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload() {
+    // Assets rechargés par niveau (même clé, URL différente selon le stage) :
+    // quand on enchaîne deux niveaux dans la même session, Phaser garde la
+    // ressource du niveau précédent en cache (clé déjà présente => pas de reload),
+    // ce qui affiche les mauvais sprites / la mauvaise géométrie.
+    // On purge ces assets pour forcer leur rechargement avec ceux du stage courant.
+    for (const k of ['enemy', 'boss', 'flyer', 'turret', 'charger', 'spitter']) {
+      if (this.textures.exists(k)) this.textures.remove(k)
+    }
+    if (this.cache.json.exists('level-entities')) this.cache.json.remove('level-entities')
+    // Tilemap Tiled chargée sous la clé 'level' (cache 'tilemap' de Phaser).
+    const c = this.cache as unknown as { tilemap?: { exists(k: string): boolean; remove(k: string): void } }
+    if (c.tilemap?.exists?.('level')) c.tilemap.remove('level')
+
     const comp = getCompanion(this.registry.get('companion'))
     this.load.image(comp.texture, `assets/${comp.texture}.png`)
     // Textures de tir / bouclier propres à chaque compagnon + flash de muzzle.
@@ -1633,12 +1647,47 @@ export class GameScene extends Phaser.Scene {
     const bo = (a instanceof Bullet ? b : a) as Boss
     if (!bullet.active || !bo.active) return
     if (!bullet.canHit(bo)) return
+
+    // Faiblesse d'arme : chaque gardien n'est blessé QUE par SON arme faible
+    // (à deviner par le joueur). Avec la mauvaise arme, le boss « résiste ».
+    const weak = BOSS_WEAKNESS[this.stage.id]
+    if (weak !== undefined && bullet.weapon !== weak) {
+      this.spawnBossBlocked(bullet.x, bullet.y)
+      if (bullet.pierce) bullet.markHit(bo)
+      else bullet.disableBody(true, true)
+      return
+    }
+
     this.spawnSparks(bullet.x, bullet.y)
     bo.takeDamage(bullet.damage)
     if (bullet.explode) this.explodeAt(bullet.x, bullet.y, 46, bullet.damage)
     if (bullet.freeze && bo.active) this.spawnSparks(bullet.x, bullet.y)
     if (bullet.pierce) bullet.markHit(bo)
     else bullet.disableBody(true, true)
+  }
+
+  /** Feedback visuel quand on frappe un gardien avec une arme qui n'est pas sa
+   *  faiblesse : ondulation « bouclier » + mention « RÉSISTE! » (throttlée).
+   *  Le joueur comprend ainsi qu'il faut une autre arme. */
+  private spawnBossBlocked(x: number, y: number) {
+    const shield = this.add.image(x, y, 'glow')
+      .setTint(0x66ccff)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setScale(0.12)
+      .setAlpha(0.9)
+      .setDepth(120)
+    this.tweens.add({
+      targets: shield, scale: 0.75, alpha: 0, duration: 320, ease: 'Cubic.Out',
+      onComplete: () => shield.destroy(),
+    })
+    if (this.time.now > this.lastBlockMsg) {
+      this.lastBlockMsg = this.time.now + 900
+      const t = this.add.text(x, y - 18, 'RÉSISTE!', {
+        fontSize: '9px', color: '#8fd0ff', fontFamily: 'monospace', fontStyle: 'bold',
+      }).setOrigin(0.5).setDepth(200)
+      t.setStroke('#06202f', 3)
+      this.tweens.add({ targets: t, y: y - 36, alpha: 0, duration: 750, onComplete: () => t.destroy() })
+    }
   }
 
   private handlePlayerHitBoss(

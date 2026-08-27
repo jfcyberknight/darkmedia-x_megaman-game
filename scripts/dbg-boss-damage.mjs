@@ -2,6 +2,9 @@
 import { chromium } from 'playwright'
 const BASE = process.argv[2] || 'http://localhost:5174/'
 const STAGE_IDX = Number(process.argv[3] || '0')
+// Faiblesse d'arme du gardien par index de stage (ordre STAGES) : le boss ne se
+// blesse qu'avec celle-ci — on l'équipe pour que le debug montre des dégâts.
+const WEAKNESS = { 0: 'buster', 1: 'drill', 2: 'cryo', 3: 'ram', 4: 'venom' }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const browser = await chromium.launch()
 try {
@@ -26,6 +29,10 @@ try {
     const bx = s.boss?.active ? s.boss.x : s.ents.bossX
     s.player.setPosition(bx - 90, 250); s.player.body.reset(bx - 90, 250); s.player.body.setVelocity(0, 0)
     s.player.facingRight = true
+    // Équipe la faiblesse du gardien (sinon le boss « résiste »).
+    const wpn = WEAKNESS[STAGE_IDX] ?? 'buster'
+    s.registry.set('weapons', [wpn]); s.registry.set('weapon', wpn)
+    if (s.player.addWe) s.player.addWe(99)
   })
   await sleep(600)
   const fire = page.locator('.tc-fire')
