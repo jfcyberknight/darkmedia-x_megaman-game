@@ -1,0 +1,11 @@
+services:
+  game:
+    build: .
+    container_name: megaman-game
+    restart: unless-stopped
+    networks:
+      - dmx-net
+
+networks:
+  dmx-net:
+    external: true
